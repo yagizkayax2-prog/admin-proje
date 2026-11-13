@@ -6,7 +6,8 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 
 - İki lig (Yıldızlar Ligi ve Umut Ligi, 24 kurgusal kulüp), küme düşme ve yükselme, eleme usulü kupa (uzatma ve seri penaltılar)
 - Canvas üzerinde animasyonlu canlı maç: paslaşma, şut, kurtarış, direk, penaltı, frikik, korner, gol sevinci, kartlar, hakemler
-- Kadro değerine göre büyüyen 5 kademeli 2D stadyum, maç öncesi seremoni ve ev sahibi tribün koreografisi (kart gösterisi, dev pankart, bayrak, meşale)
+- Yayın açısından perspektifli, kadro değerine göre büyüyen 5 kademeli stadyum; maç öncesi seremoni ve ev sahibi tribün koreografisi (kart mozaiği, tribün yazısı, meşale)
+- TV tarzı skor bandı: golde takım renginde GOOOL ve golcü şeridi
 - Hava durumu (yağmur, kar, gece maçı), maç sonu gol tekrarı, oyuncu maç puanları ve maçın adamı
 - Maç içinde hız, taktik talimatları (pres, tempo, savunma hattı, hücum yönü), 5 oyuncu değişikliği
 - Diziliş, ilk 11, duran top görevlileri, oyuncu rolleri ve özel yetenekler
