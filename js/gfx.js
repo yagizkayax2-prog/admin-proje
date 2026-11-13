@@ -57,6 +57,7 @@
     swap: '<path d="M7 4v16l-4-4M17 20V4l4 4"/>',
     skip: '<path d="M4 5l9 7-9 7zM13 5l9 7-9 7z" fill="currentColor"/>'
   };
+  FM.tacSegs = (tac, attr) => Object.keys(FM.TAC).map(k => `<div class="tac-row" title="${FM.TAC[k][2]}"><span>${FM.TAC[k][0]}</span><div class="seg">${FM.TAC[k][1].map((n, i) => `<button ${attr}="tac" data-k="${k}" data-v="${i}" class="${tac[k] === i ? 'on' : ''}">${n}</button>`).join('')}</div></div>`).join('');
   FM.icon = n => `<svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;
 
   /* ---------- Ses (WebAudio ile sentezlenir, dosya gerekmez) ---------- */
@@ -109,8 +110,20 @@
       g.gain.setValueAtTime(.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + .11);
       o.connect(g); g.connect(master); o.start(t); o.stop(t + .12);
     }
+    function anthem() {
+      if (!ctx) return;
+      const notes = [523, 659, 784, 1047, 784, 880, 1047, 1319, 1175, 1047], t0 = ctx.currentTime + .3;
+      notes.forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(), t = t0 + i * .42, len = i === notes.length - 1 ? 1.1 : .4;
+        o.type = 'triangle'; o.frequency.value = f / 2;
+        g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(.16, t + .04); g.gain.exponentialRampToValueAtTime(0.001, t + len);
+        o.connect(g); g.connect(master); o.start(t); o.stop(t + len + .05);
+        if (i % 2 === 0) setTimeout(kick, (t - ctx.currentTime) * 1000);
+      });
+      burst(800, .2, 5);
+    }
     return {
-      init, crowd, whistle, kick,
+      init, crowd, whistle, kick, anthem,
       cheer: () => { burst(950, .55, 2.8); burst(1900, .18, 2.2); },
       groan: () => burst(380, .22, 1.1, 'lowpass'),
       get muted() { return muted; },

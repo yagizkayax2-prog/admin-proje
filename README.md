@@ -4,13 +4,16 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 
 ## Neler var
 
-- 12 kurgusal kulüp, 22 haftalık lig, sezonlar arası yaşlanma, emeklilik ve gelişim
-- Canvas üzerinde animasyonlu canlı maç: paslaşma, şut, kurtarış, direk, gol sevinci, konfeti, kartlar
-- Maç içinde hız (1x/2x/4x), oyun anlayışı, 5 oyuncu değişikliği, "sonuca git"
-- Kadro, 5 diziliş, dokunarak ilk 11 düzenleme
-- Transfer pazarı (satın alma, pazarlık, satış, gelen teklifler), altyapı
-- Antrenman odağı ve temposu, tesis geliştirme, finans, yönetim hedefi
-- Otomatik kayıt (tarayıcının `localStorage` alanı)
+- İki lig (Yıldızlar Ligi ve Umut Ligi, 24 kurgusal kulüp), küme düşme ve yükselme, eleme usulü kupa (uzatma ve seri penaltılar)
+- Canvas üzerinde animasyonlu canlı maç: paslaşma, şut, kurtarış, direk, penaltı, frikik, korner, gol sevinci, kartlar, hakemler
+- Kadro değerine göre büyüyen 5 kademeli 2D stadyum, maç öncesi seremoni ve ev sahibi tribün koreografisi (kart gösterisi, dev pankart, bayrak, meşale)
+- Hava durumu (yağmur, kar, gece maçı), maç sonu gol tekrarı, oyuncu maç puanları ve maçın adamı
+- Maç içinde hız, taktik talimatları (pres, tempo, savunma hattı, hücum yönü), 5 oyuncu değişikliği
+- Diziliş, ilk 11, duran top görevlileri, oyuncu rolleri ve özel yetenekler
+- Transfer dönemleri, pazarlık, serbest kalma bedeli, kiralama, sözleşme yenileme, scout raporları, altyapı
+- Basın toplantıları, oyuncu görüşmeleri, yönetim güveni ve taraftar desteği, görevden alınma ve iş teklifleri
+- Kulüp müzesi: kupalar, rekorlar, efsaneler, başarımlar
+- Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
 ## Dosyalar
 
@@ -19,6 +22,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | `js/data.js` | Kulüpler, isimler, dizilişler, spiker metinleri |
 | `js/core.js` | Oyun çekirdeği: maç motoru, lig, transfer, finans |
 | `js/gfx.js` | Üretilen armalar, oyuncu portreleri, ikonlar, sentezlenen sesler |
-| `js/matchview.js` | Canlı maç ekranı ve animasyonlar |
+| `js/stadium.js` | 2D stadyum, seyirci, koreografi, hava efektleri |
+| `js/matchview.js` | Canlı maç ekranı, seremoni ve animasyonlar |
 | `js/ui.js` | Ekranlar ve etkileşim |
 | `assets/` | SVG görseller: logo, top, kupa, stadyum |
