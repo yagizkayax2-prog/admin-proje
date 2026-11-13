@@ -249,7 +249,7 @@
     }).join('');
     const xi = t.lineup.filter((id, i) => id != null && i > 0).map(P);
     const spSel = (k, l) => `<label class="sp" for="sp-${k}"><span>${l}</span><select id="sp-${k}" data-a="sp" data-k="${k}">${xi.map(p => `<option value="${p.id}" ${t.sp[k] === p.id ? 'selected' : ''}>${esc(p.name)} (${k === 'ck' ? 'pas ' + p.a.pas : 'şut ' + p.a.sho})</option>`).join('')}</select></label>`;
-    return `<div class="tac">
+    return (U.pre ? `<div class="pre-return"><span>Maç öncesi hazırlık sürüyor. Değişiklikler otomatik kaydedilir.</span><button class="btn primary" data-a="pre-back">${FM.icon('back')} Maç öncesine dön</button></div>` : '') + `<div class="tac">
       <section class="card"><h2>Diziliş</h2><div class="seg wrap">${Object.keys(FM.FORMATIONS).map(f => `<button data-a="formation" data-v="${f}" class="${f === t.formation ? 'on' : ''}">${f}</button>`).join('')}</div>
         <div class="pitch"><div class="pitch-lines"></div>${toks}</div>
         <p class="hint">Yer değiştirmek için önce bir oyuncuya, sonra diğerine dokun. Sarı çerçeve mevki dışı oyuncuyu gösterir.</p></section>
@@ -413,15 +413,96 @@
       host.appendChild(c);
     }
   }
-  function playMatch(force) {
-    const G = FM.G, t = me(), cup = G.cupDue, pend = FM.Inbox.pending();
-    if (pend.length && !force) return modal(`<h3>${pend.length} karar bekliyor</h3><p class="muted">Cevap vermediğin mesajlarda hafta sonunda son seçenek geçerli olur.</p>
-      <ul class="ib-ul">${pend.map(ibItem).join('')}</ul><div class="row end"><button class="btn" data-a="play-anyway">Yine de maça çık</button><button class="btn primary" data-a="ib-open" data-id="${pend[pend.length - 1].id}">Gelen kutusuna git</button></div>`, true);
-    if (cup && !FM.cupTie()) { const name = G.cup.name, ties = FM.playCupRound(); render(); return cupModal(name, ties); }
-    const fx = cup ? FM.cupTie() : FM.userFixture();
+  /* ---------- Maç öncesi ekranı ---------- */
+  const cdist = (a, b) => { const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16); return Math.abs((x >> 16) - (y >> 16)) + Math.abs(((x >> 8) & 255) - ((y >> 8) & 255)) + Math.abs((x & 255) - (y & 255)); };
+  const lumH = h => { const n = parseInt(h.slice(1), 16); return (n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114; };
+  const kitFill = (t, k) => (k === 2 ? '#1b2433' : k ? t.c2 : t.c1);
+  const kitLine = (t, k) => (k ? t.c1 : t.c2);
+  const TALKS = [
+    ['calm', 'Sakin olun, kendi oyunumuzu oynayalım', 'Her durumda küçük bir moral artışı.'],
+    ['fire', 'Bugün tarih yazacağız!', 'Güçlü rakibe karşı çok etkili, zayıf rakibe karşı sönük kalır.'],
+    ['press', 'Kaybetmek yok, sonuç istiyorum', 'Favoriyken işe yarar; değilken takımı geriyebilir.'],
+    ['trust', 'Size güveniyorum', 'Moral düşükken takımı toparlar.']
+  ];
+  function slotAbbr(s) {
+    const [r, y, x] = s;
+    if (r === 'GK') return 'KL';
+    if (r === 'DEF') return x < .3 ? (y > .25 ? 'SLKB' : 'SLB') : x > .7 ? (y > .25 ? 'SĞKB' : 'SĞB') : 'STP';
+    if (r === 'MID') return x < .25 ? 'SLO' : x > .75 ? 'SĞO' : y < .41 ? 'DOS' : y > .58 ? 'OOS' : 'MO';
+    return x < .3 ? 'SLK' : x > .7 ? 'SĞK' : 'SNT';
+  }
+  const shortName = n => { const a = n.split(' '); return (a.length > 1 ? a[0][0] + '. ' + a.slice(1).join(' ') : n).toLocaleUpperCase('tr'); };
+  const xiStr = t => { const xi = t.lineup.filter(x => x != null).map(P); return xi.length ? Math.round(xi.reduce((s, p) => s + p.ovr, 0) / xi.length) : 0; };
+  function preBoard(t, k, side) {
+    const slots = FM.FORMATIONS[t.formation], fill = kitFill(t, k), ink = lumH(fill) > 150 ? '#14202f' : '#ffffff', line = kitLine(t, k);
+    const capId = t.lineup.filter(x => x != null).map(P).sort((a, b) => b.age + b.ovr / 4 - (a.age + a.ovr / 4))[0];
+    const toks = slots.map((s, i) => {
+      const p = t.lineup[i] != null ? P(t.lineup[i]) : null; if (!p) return '';
+      const gk = s[0] === 'GK';
+      return `<button class="pb-t" data-a="player" data-id="${p.id}" style="left:${s[2] * 100}%;top:${86 - (s[1] || -.08) * 76}%;--f:${gk ? '#f3efe4' : fill};--l:${gk ? '#14202f' : line};--i:${gk ? '#14202f' : ink}" aria-label="${esc(p.name)}, ${slotAbbr(s)}">
+        <span class="pb-n">${p.num}</span><span class="pb-nm">${esc(shortName(p.name))}${capId && capId.id === p.id ? ' <i class="cap" title="Kaptan">K</i>' : ''}</span><span class="pb-r ${gk ? 'gk' : ''}">${slotAbbr(s)}</span></button>`;
+    }).join('');
+    return `<div class="pb-wrap"><div class="pb"><i class="pb-box t"></i><i class="pb-box b"></i><i class="pb-c"></i><i class="pb-m"></i>${toks}</div></div>`;
+  }
+  function preScreen() {
+    const G = FM.G, pr = U.pre, fx = pr.fx, h = T(fx.h), a = T(fx.a), mine = fx.h === G.teamId ? 0 : 1, opp = mine ? h : a, myT = me();
+    const day = G.week * 7 - (pr.cup ? 3 : 0), dt = FM.Inbox.date(G.season, day), wx = fx.wx || { t: 'clear', n: 0 };
+    const when = `${['PAZ', 'PZT', 'SAL', 'ÇAR', 'PER', 'CUM', 'CMT'][dt.getDay()]} ${dt.getDate()} ${['OCA', 'ŞUB', 'MAR', 'NİS', 'MAY', 'HAZ', 'TEM', 'AĞU', 'EYL', 'EKİ', 'KAS', 'ARA'][dt.getMonth()]} · ${wx.n ? '20:00' : '17:00'}`;
+    const kits = [0, 1, 2].map(k => `<button class="kit ${pr.kit === k ? 'on' : ''}" data-a="pre-kit" data-v="${k}" style="--f:${kitFill(myT, k)};--l:${kitLine(myT, k)}" aria-label="${['İç saha', 'Deplasman', 'Üçüncü'][k]} forması" aria-pressed="${pr.kit === k}"></button>`).join('');
+    const kOf = (t, i) => (i === mine ? pr.kit : (() => { const uf = kitFill(myT, pr.kit); return cdist(uf, t.c1) < 150 ? (cdist(uf, t.c2) < 150 ? 2 : 1) : 0; })());
+    const team = (t, i) => `<div class="pre-team ${i ? 'r' : ''}">${FM.crest(t, 76)}<h2>${esc(t.name)}</h2><span class="pre-f">${t.formation}</span>${t.id === G.teamId ? '<em class="pre-me">Senin takımın</em>' : ''}</div>`;
+    const patch = (t, i) => `<div class="patch ${i ? 'r' : ''}" style="--f:${kitFill(t, kOf(t, i))};--l:${kitLine(t, kOf(t, i))};--i:${lumH(kitFill(t, kOf(t, i))) > 150 ? '#14202f' : '#ffffff'}" aria-label="Takım gücü ${xiStr(t)}"><span>GÜÇ</span><b>${xiStr(t)}</b></div>`;
+    const talk = pr.talk ? `<p class="pre-talk-res">${FM.icon('check')} ${esc(pr.talkRes)}</p>` : '';
+    const talkPanel = pr.panel === 'talk' ? `<div class="pre-panel" role="dialog" aria-label="Takım konuşması"><div class="pre-card"><h3>Takım konuşması</h3><p class="muted">Soyunma odasında son sözler. Bir kez seçebilirsin.</p><div class="ib-opts">${TALKS.map(([k, n, d]) => `<button class="ib-opt col" data-a="pre-talk" data-v="${k}"><strong>${n}</strong><small>${d}</small></button>`).join('')}</div><button class="link" data-a="pre-panel" data-v="">Vazgeç</button></div></div>` : '';
+    return `<div class="pre" style="--h1:${h.c1};--a1:${a.c1}">
+      <div class="pre-bg" aria-hidden="true"></div>${patch(h, 0)}${patch(a, 1)}
+      <header class="pre-head">${team(h, 0)}
+        <div class="pre-mid"><img src="${pr.cup ? 'assets/trophy.svg' : 'assets/logo.svg'}" alt="" width="54" height="54"><p class="eyebrow">${pr.cup ? 'Kupa · ' + esc(G.cup.name) : FM.DIV_TR[myT.div] + ' · ' + (G.week + 1) + '. hafta'}</p><p class="pre-st">${esc(pr.cup && G.cup.final ? 'Tarafsız saha' : h.stadium)}</p><p class="pre-when">${when}</p><p class="pre-wx">${FM.WX_TR[wx.t]}${wx.n ? ' · Gece' : ''}</p></div>
+        ${team(a, 1)}</header>
+      <div class="pre-body">${preBoard(h, kOf(h, 0), 0)}
+        <nav class="pre-menu" aria-label="Maç öncesi">
+          <div class="pre-kits"><span>Forma</span>${kits}</div>
+          <button data-a="pre-tactics">Kadro ve taktik</button>
+          <button data-a="pre-panel" data-v="talk" ${pr.talk ? 'disabled' : ''}>Takım konuşması${pr.talk ? ' ✓' : ''}</button>
+          <button data-a="team" data-id="${opp.id}">Rakip</button>
+          <button class="go" data-a="pre-go">Onayla ${FM.icon('play')}</button>
+          <button class="back" data-a="pre-close">${FM.icon('back')} Geri dön</button>
+          ${talk}</nav>
+        ${preBoard(a, kOf(a, 1), 1)}</div>${talkPanel}</div>`;
+  }
+  function showPre() { const el = $('pre'); el.innerHTML = preScreen(); el.hidden = false; document.body.classList.add('noscroll'); }
+  function closePre() { $('pre').hidden = true; $('pre').innerHTML = ''; document.body.classList.remove('noscroll'); }
+  function openPre() {
+    const G = FM.G, t = me(), cup = G.cupDue, fx = cup ? FM.cupTie() : FM.userFixture();
     const changed = FM.ensureLineup(t);
     if (t.lineup.filter(x => x != null).length < 11) toast('Sahaya 11 kişiden az çıkıyorsun: uygun oyuncu yok.', 'bad');
     else if (changed.length) toast('Kadro güncellendi: ' + changed.map(id => P(id).name).join(', ') + ' ilk 11\'e girdi.');
+    const opp = T(fx.h === G.teamId ? fx.a : fx.h); FM.autoPick(opp);
+    const key = G.season + ':' + G.week + ':' + (cup ? 'c' : 'l');
+    if (!U.pre || U.pre.key !== key) {
+      const away = fx.a === G.teamId, hc = T(fx.h).c1;
+      U.pre = { key, fx, cup, kit: away && cdist(t.c1, hc) < 150 ? (cdist(t.c2, hc) < 150 ? 2 : 1) : 0, talk: null, talkRes: '', panel: '' };
+    }
+    U.pre.fx = fx; U.pre.panel = '';
+    showPre();
+  }
+  function teamTalk(k) {
+    const G = FM.G, pr = U.pre, t = me(), opp = T(pr.fx.h === G.teamId ? pr.fx.a : pr.fx.h);
+    const xi = t.lineup.filter(x => x != null).map(P), avgM = xi.reduce((s, p) => s + p.mor, 0) / xi.length;
+    const edge = xiStr(t) - xiStr(opp) + (pr.fx.h === G.teamId ? 2 : -2), fav = edge >= 2, dog = edge <= -2;
+    let d, msg;
+    if (k === 'calm') { d = 3; msg = 'Oyuncular sakin ve odaklı.'; }
+    else if (k === 'fire') { d = dog ? 9 : fav ? 1 : 5; msg = dog ? 'Soyunma odası ayağa kalktı, oyuncular sahaya koşuyor!' : fav ? 'Oyuncular bu sözleri abartılı buldu.' : 'Konuşman takımı ateşledi.'; }
+    else if (k === 'press') { d = fav ? 7 : Math.random() < .5 ? -4 : 2; msg = fav ? 'Takım sorumluluğu üstlendi, galibiyete kilitlendi.' : d < 0 ? 'Baskı ters tepti, bazı oyuncular gergin.' : 'Mesaj alındı ama oyuncular biraz gergin.'; }
+    else { d = avgM < 62 ? 8 : 2; msg = avgM < 62 ? 'Güvenin takımı toparladı.' : 'Oyuncular teşekkür etti, zaten iyi durumdalar.'; }
+    for (const p of xi) p.mor = Math.max(20, Math.min(100, p.mor + d));
+    FM.save();
+    pr.talk = k; pr.talkRes = `${msg} (ilk 11 morali ${d > 0 ? '+' : ''}${d})`; pr.panel = '';
+    toast(pr.talkRes, d > 0 ? 'good' : 'bad');
+  }
+  function startMatch() {
+    const G = FM.G, t = me(), pr = U.pre, cup = pr.cup, fx = pr.fx;
+    closePre(); U.pre = null;
     FM.Audio.init();
     const m = FM.newMatch(fx, { cup, neutral: cup && G.cup.final }), wk = G.week, name = G.cup.name;
     FM.MatchView.start(m, () => {
@@ -431,7 +512,14 @@
       U.view = 'home'; U.fxWeek = null; U.sel = null;
       render(); window.scrollTo(0, 0);
       if (cup) cupModal(name, ties); else if (!G.phase) weekModal(wk);
-    }, { comp: cup ? 'Kupa · ' + name : `${FM.DIV_TR[t.div]} · ${G.week + 1}. hafta` });
+    }, { comp: cup ? 'Kupa · ' + name : `${FM.DIV_TR[t.div]} · ${G.week + 1}. hafta`, kit: pr.kit });
+  }
+  function playMatch(force) {
+    const G = FM.G, cup = G.cupDue, pend = FM.Inbox.pending();
+    if (pend.length && !force) return modal(`<h3>${pend.length} karar bekliyor</h3><p class="muted">Cevap vermediğin mesajlarda hafta sonunda son seçenek geçerli olur.</p>
+      <ul class="ib-ul">${pend.map(ibItem).join('')}</ul><div class="row end"><button class="btn" data-a="play-anyway">Yine de maça çık</button><button class="btn primary" data-a="ib-open" data-id="${pend[pend.length - 1].id}">Gelen kutusuna git</button></div>`, true);
+    if (cup && !FM.cupTie()) { const name = G.cup.name, ties = FM.playCupRound(); render(); return cupModal(name, ties); }
+    openPre();
   }
   function weekModal(wk) {
     const G = FM.G, l = G.fin.last;
@@ -465,6 +553,13 @@
       case 'ib-allread': for (const m of IB()) m.read = true; FM.save(); render(true); break;
       case 'continue': { const p = FM.Inbox.pending(); if (p.length) { goInbox(p[p.length - 1]); toast(p.length === 1 ? 'Bir karar seni bekliyor.' : p.length + ' karar seni bekliyor.'); } else playMatch(); } break;
       case 'play-anyway': closeModal(); playMatch(true); break;
+      case 'pre-kit': U.pre.kit = +d.v; showPre(); break;
+      case 'pre-panel': U.pre.panel = d.v; showPre(); break;
+      case 'pre-talk': teamTalk(d.v); showPre(); break;
+      case 'pre-go': startMatch(); break;
+      case 'pre-close': closePre(); break;
+      case 'pre-tactics': closePre(); U.view = 'tactics'; U.sel = null; render(); window.scrollTo(0, 0); break;
+      case 'pre-back': playMatch(true); break;
       case 'sound': el.innerHTML = FM.icon(FM.Audio.toggle() ? 'mute' : 'sound'); break;
       case 'play': playMatch(); break;
       case 'close': closeModal(); break;
@@ -529,6 +624,7 @@
   document.addEventListener('input', e => { if (e.target.id === 'ibq') { U.ib.q = e.target.value; refreshInbox(true); } });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('modal').hidden) closeModal();
+    else if (e.key === 'Escape' && !$('pre').hidden) { if (U.pre && U.pre.panel) { U.pre.panel = ''; showPre(); } else closePre(); }
     if (e.key === 'Enter' && e.target.matches('tr[data-a]')) act(e.target.dataset.a, e.target.dataset, e.target);
     if (e.key === 'Enter' && e.target.id === 'mgr') act('start', {}, e.target);
   });

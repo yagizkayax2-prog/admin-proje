@@ -609,14 +609,16 @@
         </div>`;
       el.hidden = false; el.scrollTop = 0;
       const cv = $('mvCanvas');
-      const clash = cdist(h.c1, a.c1) < 150;
-      const kit = (t, alt) => { const fl = alt ? t.c2 : t.c1, stroke = alt ? t.c1 : t.c2; return { fill: fl, stroke, text: lum(fl) > 150 ? '#14202f' : '#ffffff' }; };
+      /* forma: 0 iç saha (c1), 1 deplasman (c2), 2 üçüncü forma (koyu); kullanıcı seçimi info.kit ile gelir */
+      const kit = (t, k) => { const fl = k === 2 ? '#1b2433' : k ? t.c2 : t.c1, stroke = k === 1 ? t.c1 : k === 2 ? t.c1 : t.c2; return { fill: fl, stroke, text: lum(fl) > 150 ? '#14202f' : '#ffffff' }; };
+      const uk = info && info.kit != null ? info.kit : null, hk = user === 0 && uk != null ? uk : 0, hf = kit(h, hk).fill;
+      const ak = user === 1 && uk != null ? uk : cdist(hf, a.c1) < 150 ? (cdist(hf, a.c2) < 150 ? 2 : 1) : 0;
       S = {
         m, onDone, user, cv, g: cv.getContext('2d'), t: 0, ct: 0, speed: 1, slow: 1, paused: false, acc: 0, queue: [], script: null, second: false, phase: 'cer',
         poss: 0, holder: null, passT: 1, kickT: 0, dots: [], ball: { x: .5, y: 1.1, z: 0 }, conf: [], pops: [], last: {}, shake: 0, shakeSide: 0,
         disp: [0, 0], ended: false, fill, cheer: [0, 0], choreo: 0, choreoA: 1, goals: [], rep: 0, pk: [[], []], htPending: false, wasPaused: false,
         rt: 0, discA: 1, said: 0, info: { stadium: h.stadium, home: h.name, away: a.name, att: Math.round(cap * fill).toLocaleString('tr-TR') }, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
-        kits: [{ ...kit(h), gk: '#ffc93c' }, { ...kit(a, clash), gk: '#58c4dd' }]
+        kits: [{ ...kit(h, hk), gk: '#ffc93c' }, { ...kit(a, ak), gk: '#58c4dd' }]
       };
       for (let s = 0; s < 2; s++) for (let i = 0; i < 11; i++) S.dots.push({ s, i, x: .5, y: 1.2, ph: Math.random() * 6.28, ov: null });
       S.onResize = () => { if (S) resize(); };

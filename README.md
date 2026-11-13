@@ -13,6 +13,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Diziliş, ilk 11, duran top görevlileri, oyuncu rolleri ve özel yetenekler
 - Transfer dönemleri, pazarlık, serbest kalma bedeli, kiralama, sözleşme yenileme, scout raporları, altyapı
 - Gelen kutusu: yardımcı antrenör, sağlık ekibi, scout, finans direktörü, yönetim, gazeteciler ve menajerlerden gelen mesajlar; karar isteyen mesajlar (kulis bilgisi, soyunma odası krizi, süre isteyen oyuncu, transfer teklifleri, kiralık fırsatları, sponsor ve kulüp sahibi parası), arama ve filtreler
+- Maç öncesi ekranı: iki takımın dizilişi perspektif sahada, forma seçimi (iç saha, deplasman, üçüncü), takım konuşması, rakip analizi, maç tarihi ve saati
 - Takvim tarihi, “Devam et” düğmesi ve alt bantta kayan sonuç/haber şeridi
 - Basın toplantıları, oyuncu görüşmeleri, yönetim güveni ve taraftar desteği, görevden alınma ve iş teklifleri
 - Kulüp müzesi: kupalar, rekorlar, efsaneler, başarımlar
