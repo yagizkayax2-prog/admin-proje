@@ -360,7 +360,11 @@
   /* ---------- Çizim (perspektifli) ---------- */
   function resize() {
     const c = S.cv, w = c.parentElement.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1), m = S.m, home = FM.T(m.s[0].tid);
-    S.st = FM.Stadium.create({ W: w, dpr, tier: FM.stadiumTier(home), home, away: FM.T(m.s[1].tid), fill: S.fill, wx: m.wx });
+    const opt = { W: w, dpr, tier: FM.stadiumTier(home), home, away: FM.T(m.s[1].tid), fill: S.fill, wx: m.wx };
+    if (S.st && S.st.dispose) S.st.dispose();
+    S.st = (!S.no3d && FM.Stadium3D && FM.Stadium3D.create({ ...opt, canvas: $('mvGL'), logo: LOGO })) || null;
+    if (!S.st) { S.no3d = true; S.st = FM.Stadium.create(opt); }
+    c.parentElement.classList.toggle('flat', !S.st.gl);
     c.width = w * dpr; c.height = S.st.H * dpr; c.style.height = S.st.H + 'px'; c.parentElement.style.setProperty('--cvh', S.st.H + 'px');
     S.W = w; S.H = S.st.H; S.dpr = dpr;
   }
@@ -391,10 +395,15 @@
   function draw(dt) {
     const g = S.g, w = S.W, h = S.H, P = S.st.proj;
     g.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
-    g.drawImage(S.st.bg, 0, 0, w, h);
-    S.st.drawCrowd(g, S.rt, { choreo: S.choreo, alpha: S.choreoA, cheer: S.cheer, dt });
-    if (S.discA > 0) drawDisc(g, S.discA);
-    drawGoals(g);
+    if (S.st.gl) {
+      S.st.render(S.rt, { choreo: S.choreo, alpha: S.choreoA, cheer: S.cheer, disc: S.discA, shake: S.shake, shakeSide: S.shakeSide, cer: S.phase === 'cer' ? S.ct : -1 });
+      g.clearRect(0, 0, w, h);
+    } else {
+      g.drawImage(S.st.bg, 0, 0, w, h);
+      S.st.drawCrowd(g, S.rt, { choreo: S.choreo, alpha: S.choreoA, cheer: S.cheer, dt });
+      if (S.discA > 0) drawDisc(g, S.discA);
+      drawGoals(g);
+    }
     const r0 = Math.max(5.2, w * .0125);
     g.textAlign = 'center'; g.textBaseline = 'middle';
     const items = S.dots.filter(active).map(d => ({ d, y: d.y })).concat(S.refs.map((rf, k) => ({ rf, k, y: rf.y }))).sort((a, b) => a.y - b.y);
@@ -555,7 +564,7 @@
     else if (a === 'second') { S.htPending = false; $('mvOverlay').hidden = true; S.second = true; S.paused = false; kickoff(1); FM.Audio.whistle(1); }
     else if (a === 'replay') { $('mvOverlay').hidden = true; S.rep = 0; replayNext(); }
     else if (a === 'done') {
-      cancelAnimationFrame(S.raf); window.removeEventListener('resize', S.onResize); clearTimeout(S.bannerT);
+      cancelAnimationFrame(S.raf); window.removeEventListener('resize', S.onResize); clearTimeout(S.bannerT); if (S.st && S.st.dispose) S.st.dispose();
       const cb = S.onDone; S = null;
       $('match').hidden = true; $('match').innerHTML = '';
       cb();
@@ -571,7 +580,7 @@
       el.innerHTML = `
         <div class="mv">
           <div class="mv-pitch">
-            <canvas id="mvCanvas" aria-label="Canlı maç sahası"></canvas>
+            <canvas id="mvGL" class="gl" aria-hidden="true"></canvas><canvas id="mvCanvas" aria-label="Canlı maç sahası"></canvas>
             <div class="tvb" id="tvb" role="status" aria-label="Skor">
               <div class="tvb-logo"><img src="assets/logo.svg" alt="" width="30" height="30"></div>
               <div class="tvb-t" style="--k1:${h.c1};--k2:${h.c2}"><i></i><span>${h.short}</span></div>

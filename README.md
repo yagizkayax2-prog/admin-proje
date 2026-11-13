@@ -6,7 +6,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 
 - İki lig (Yıldızlar Ligi ve Umut Ligi, 24 kurgusal kulüp), küme düşme ve yükselme, eleme usulü kupa (uzatma ve seri penaltılar)
 - Canvas üzerinde animasyonlu canlı maç: paslaşma, şut, kurtarış, direk, penaltı, frikik, korner, gol sevinci, kartlar, hakemler
-- Yayın açısından perspektifli, kadro değerine göre büyüyen 5 kademeli stadyum; maç öncesi seremoni ve ev sahibi tribün koreografisi (kart mozaiği, tribün yazısı, meşale)
+- Three.js ile 3D, kadro değerine göre büyüyen 5 kademeli stadyum; maç öncesi seremoni ve ev sahibi tribün koreografisi (kart mozaiği, tribün yazısı, meşale)
 - TV tarzı skor bandı: golde takım renginde GOOOL ve golcü şeridi
 - Hava durumu (yağmur, kar, gece maçı), maç sonu gol tekrarı, oyuncu maç puanları ve maçın adamı
 - Maç içinde hız, taktik talimatları (pres, tempo, savunma hattı, hücum yönü), 5 oyuncu değişikliği
@@ -23,7 +23,9 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | `js/data.js` | Kulüpler, isimler, dizilişler, spiker metinleri |
 | `js/core.js` | Oyun çekirdeği: maç motoru, lig, transfer, finans |
 | `js/gfx.js` | Üretilen armalar, oyuncu portreleri, ikonlar, sentezlenen sesler |
-| `js/stadium.js` | 2D stadyum, seyirci, koreografi, hava efektleri |
+| `js/stadium3d.js` | Three.js ile 3D stadyum (saha, tribünler, çatı, kaleler, bayrak) |
+| `js/stadium.js` | WebGL olmayan cihazlar için 2D stadyum; kulüp sayfasındaki önizleme |
+| `js/vendor/three.min.js` | Three.js r128 (MIT lisansı) |
 | `js/matchview.js` | Canlı maç ekranı, seremoni ve animasyonlar |
 | `js/ui.js` | Ekranlar ve etkileşim |
 | `assets/` | SVG görseller: logo, top, kupa, stadyum |

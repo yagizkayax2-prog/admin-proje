@@ -468,4 +468,7 @@ textarea { font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vert
   .tk:not(:last-child) { display: none; }
 }
 
+.mv-pitch #mvGL { display: block; width: 100%; } .mv-pitch #mvCanvas { position: absolute; left: 0; top: 0; }
+.mv-pitch.flat #mvGL { display: none; } .mv-pitch.flat #mvCanvas { position: static; }
+.mv { max-width: min(1240px, calc((100vh - 70px) / .62)); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
