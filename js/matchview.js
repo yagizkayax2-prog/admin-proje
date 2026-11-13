@@ -218,7 +218,17 @@
   }
 
   /* ---------- Akış ve olaylar ---------- */
+  /* Spiker balonu: saha üstünde kısa süre görünür */
+  function talk(text, tag) {
+    const el = $('mvTalk'); if (!el) return;
+    const d = document.createElement('div');
+    d.className = 'tk'; d.innerHTML = `<b>${tag || '●'}</b><span>${esc(text)}</span>`;
+    el.appendChild(d);
+    while (el.children.length > 2) el.firstChild.remove();
+    setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 400); }, 4600);
+  }
   function feed(e, cls) {
+    talk(e.text, e.min + "'");
     const li = document.createElement('li');
     li.className = 'fd ' + (cls || e.type) + (e.out ? ' ' + e.out : '') + (e.side != null && e.side === S.user ? ' mine' : '');
     li.innerHTML = `<b>${e.min}'</b><span>${esc(e.text)}</span>`;
@@ -278,6 +288,8 @@
     if (s != null) { const el = $(s ? 'mvA' : 'mvH'); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
   }
   function paintUi() {
+    const sd = S.m.s[S.user];
+    $('mvChMent').textContent = FM.MENT_TR[sd.ment]; $('mvChPress').textContent = FM.TAC.press[1][sd.tac.press];
     $('mvMin').textContent = S.m.min + "'";
     $('mvBar').style.setProperty('--p', S.m.min / (S.m.et ? 120 : 90) * 100 + '%');
     const sub = $('mvSubs'); if (sub) sub.textContent = S.m.s[S.user].subsLeft;
@@ -311,7 +323,9 @@
   function ceremony(dt) {
     S.ct += dt;
     const ct = S.ct, LY = .8;
-    S.choreo = clamp((ct - .2) / 2.4, 0, 1.2);
+    S.choreo = clamp((ct - .9) / 3.2, 0, 1.2);
+    const say = [[.3, `İyi seyirler! ${S.info.stadium} tribünleri doldu, ${S.info.att} seyirci var.`], [3.2, `${S.info.home} ile ${S.info.away} karşı karşıya. Tribünlerde koreografi açılıyor.`], [5.8, 'Takımlar selam verdi, yazı tura atılıyor. Az sonra başlıyoruz.']];
+    while (S.said < say.length && ct >= say[S.said][0]) talk(say[S.said++][1]);
     S.cheer[0] = Math.max(S.cheer[0], .35);
     if (ct < 6.8) {
       for (const d of S.dots) {
@@ -337,7 +351,7 @@
   function endCeremony() {
     if (S.phase !== 'cer') return;
     S.phase = 'play'; S.ct = CER_END; S.choreo = 1.2;
-    $('mvCer').hidden = true;
+    $('mvCerBtn').hidden = true; $('mvSkipBtn').hidden = false;
     freeDots(); kickoff(0);
     S.refs[1].ty = -.04; S.refs[2].ty = 1.04;
     FM.Audio.whistle(1);
@@ -347,7 +361,7 @@
   function resize() {
     const c = S.cv, w = c.parentElement.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1), m = S.m, home = FM.T(m.s[0].tid);
     S.st = FM.Stadium.create({ W: w, dpr, tier: FM.stadiumTier(home), home, away: FM.T(m.s[1].tid), fill: S.fill, wx: m.wx });
-    c.width = w * dpr; c.height = S.st.H * dpr; c.style.height = S.st.H + 'px';
+    c.width = w * dpr; c.height = S.st.H * dpr; c.style.height = S.st.H + 'px'; c.parentElement.style.setProperty('--cvh', S.st.H + 'px');
     S.W = w; S.H = S.st.H; S.dpr = dpr;
   }
   function drawGoals(g) {
@@ -448,7 +462,7 @@
     else if (dt > 0) {
       S.t += dt;
       if (S.kickT > 0) S.kickT -= dt;
-      if (S.choreoA > 0) S.choreoA = Math.max(0, S.choreoA - dt * .035);
+      if (S.choreoA > .28) S.choreoA = Math.max(.28, S.choreoA - dt * .035);
       if (S.discA > 0) S.discA = Math.max(0, S.discA - dt * .7);
       tickScript(dt);
       const live = S.phase === 'play';
@@ -514,7 +528,7 @@
     const a = b.dataset.mv, side = S.m.s[S.user];
     FM.Audio.init();
     if (a === 'pause') { S.paused = !S.paused; b.innerHTML = FM.icon(S.paused ? 'play' : 'pause'); b.setAttribute('aria-label', S.paused ? 'Devam ettir' : 'Duraklat'); }
-    else if (a === 'speed') { S.speed = +b.dataset.v; document.querySelectorAll('[data-mv=speed]').forEach(x => x.classList.toggle('on', x === b)); }
+    else if (a === 'speedc') { S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 4 : 1; b.textContent = S.speed + 'x'; $('mvSpd').textContent = '▷▷ ' + S.speed + 'x'; }
     else if (a === 'ment') { side.ment = +b.dataset.v; FM.T(side.tid).ment = side.ment; tacPanel(); }
     else if (a === 'tac') { side.tac[b.dataset.k] = +b.dataset.v; FM.T(side.tid).tac[b.dataset.k] = +b.dataset.v; tacPanel(); }
     else if (a === 'skip') skip();
@@ -557,26 +571,30 @@
       el.innerHTML = `
         <div class="mv">
           <div class="mv-pitch">
-            <div class="tvb-wrap" style="--h1:${h.c1};--a1:${a.c1}"><div class="tvb" id="tvb" role="status" aria-label="Skor">
+            <canvas id="mvCanvas" aria-label="Canlı maç sahası"></canvas>
+            <div class="tvb" id="tvb" role="status" aria-label="Skor">
               <div class="tvb-logo"><img src="assets/logo.svg" alt="" width="30" height="30"></div>
               <div class="tvb-t" style="--k1:${h.c1};--k2:${h.c2}"><i></i><span>${h.short}</span></div>
               <div class="tvb-c"><div><span class="tvb-sc"><b id="mvH">0</b><em>-</em><b id="mvA">0</b></span><span class="tvb-goal" id="tvbGoal">GOOOL</span></div></div>
               <div class="tvb-t away" style="--k1:${a.c1};--k2:${a.c2}"><span>${a.short}</span><i></i></div>
-              <div class="tvb-min" id="mvMin">0'</div>
+              <div class="tvb-min"><span id="mvMin">0'</span><small id="mvSpd">▷▷ 1x</small></div>
               <div class="mv-bar" id="mvBar"></div>
               <div class="tvb-sub" id="tvbSub"></div>
-            </div></div>
-            <canvas id="mvCanvas" aria-label="Canlı maç sahası"></canvas>
-            <div class="mv-cer" id="mvCer"><p class="eyebrow">${esc(info.comp)}</p><strong>${esc(h.stadium)}</strong><span>${FM.Stadium.TIERS[tier]} · ${Math.round(cap * fill).toLocaleString('tr-TR')} seyirci · ${FM.WX_TR[m.wx.t]}${m.wx.n ? ', gece maçı' : ''}</span><button class="btn" data-mv="cerskip">Seremoniyi geç</button></div>
+            </div>
+            <div class="mv-talk" id="mvTalk" aria-hidden="true"></div>
             <div class="mv-pens" id="mvPens" hidden></div><div class="mv-tag" id="mvTag" hidden></div>
-            <div class="mv-overlay" id="mvOverlay" hidden></div></div>
-          <div class="mv-ctl">
-            <button class="btn icon" data-mv="pause" aria-label="Duraklat">${FM.icon('pause')}</button>
-            <div class="seg" role="group" aria-label="Hız">${[1, 2, 4].map(v => `<button data-mv="speed" data-v="${v}" class="${v === 1 ? 'on' : ''}">${v}x</button>`).join('')}</div>
-            <button class="btn" data-mv="tacp">${FM.icon('tactics')} Taktik</button>
-            <button class="btn" data-mv="sub">${FM.icon('swap')} Değişiklik <b id="mvSubs">5</b></button>
-            <button class="btn" data-mv="skip">${FM.icon('skip')} Sonuca git</button>
-            <button class="btn icon" data-mv="sound" aria-label="Ses">${FM.icon(A.muted ? 'mute' : 'sound')}</button>
+            <div class="mv-ctl">
+              <button class="btn icon" data-mv="pause" aria-label="Duraklat">${FM.icon('pause')}</button>
+              <button class="btn icon" data-mv="speedc" id="mvSpdBtn" aria-label="Hızı değiştir">1x</button>
+              <button class="btn icon" data-mv="sound" aria-label="Ses">${FM.icon(A.muted ? 'mute' : 'sound')}</button>
+              <button class="btn cer" data-mv="cerskip" id="mvCerBtn">Seremoniyi atla ${FM.icon('skip')}</button>
+              <button class="btn" data-mv="skip" id="mvSkipBtn" hidden>${FM.icon('skip')}<span>Sonuca git</span></button>
+              <button class="btn chipb" data-mv="tacp"><small>Mentalite</small><b id="mvChMent"></b></button>
+              <button class="btn chipb wide" data-mv="tacp"><small>Pres</small><b id="mvChPress"></b></button>
+              <button class="btn chipb wide" data-mv="tacp"><small>Taktik</small><b>${m.s[user].formation}</b></button>
+              <button class="btn chipb" data-mv="sub"><small>Kenar</small><b><span id="mvSubs">5</span> hak</b></button>
+            </div>
+            <div class="mv-overlay" id="mvOverlay" hidden></div>
           </div>
           <div class="mv-bottom"><div id="mvStats"></div><ol class="mv-feed" id="mvFeed" aria-live="polite"></ol></div>
         </div>`;
@@ -588,7 +606,7 @@
         m, onDone, user, cv, g: cv.getContext('2d'), t: 0, ct: 0, speed: 1, slow: 1, paused: false, acc: 0, queue: [], script: null, second: false, phase: 'cer',
         poss: 0, holder: null, passT: 1, kickT: 0, dots: [], ball: { x: .5, y: 1.1, z: 0 }, conf: [], pops: [], last: {}, shake: 0, shakeSide: 0,
         disp: [0, 0], ended: false, fill, cheer: [0, 0], choreo: 0, choreoA: 1, goals: [], rep: 0, pk: [[], []], htPending: false, wasPaused: false,
-        rt: 0, discA: 1, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
+        rt: 0, discA: 1, said: 0, info: { stadium: h.stadium, home: h.name, away: a.name, att: Math.round(cap * fill).toLocaleString('tr-TR') }, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
         kits: [{ ...kit(h), gk: '#ffc93c' }, { ...kit(a, clash), gk: '#58c4dd' }]
       };
       for (let s = 0; s < 2; s++) for (let i = 0; i < 11; i++) S.dots.push({ s, i, x: .5, y: 1.2, ph: Math.random() * 6.28, ov: null });

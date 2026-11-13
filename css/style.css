@@ -434,4 +434,38 @@ textarea { font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vert
 }
 
 @media (max-width: 560px) { .mv-cer { padding: 5px 10px; bottom: 4px; } .mv-cer .eyebrow { display: none; } .mv-cer span { font-size: 11px; } .mv-cer .btn { min-height: 28px; margin-top: 2px; } }
+/* Maç HUD'u: stadyum üstünde skor bandı, spiker balonları, kontrol çubuğu */
+.mv { max-width: min(1240px, calc((100vh - 70px) / .765)); }
+.mv-pitch { background: #05070c; }
+.mv-pitch .tvb { position: absolute; left: 10px; top: 10px; height: 32px; z-index: 2; }
+.mv-pitch .tvb-logo { width: 34px; } .mv-pitch .tvb-logo img { width: 24px; height: 24px; }
+.mv-pitch .tvb-t { font-size: 20px; padding: 0 16px 0 9px; gap: 7px; } .mv-pitch .tvb-t.away { padding: 0 9px 0 16px; } .mv-pitch .tvb-t i { height: 20px; width: 5px; }
+.mv-pitch .tvb-c { min-width: 90px; margin: -3px -11px; } .mv-pitch .tvb-c > div { font-size: 22px; } .mv-pitch .tvb-goal { font-size: 18px; }
+.mv-pitch .tvb-min { min-width: 0; padding: 0 10px; display: flex; gap: 8px; align-items: center; font-size: 19px; } .tvb-min small { font: 700 13px var(--display); opacity: .75; white-space: nowrap; }
+.mv-pitch .tvb-sub { left: 34px; right: 0; font-size: 16px; height: 24px; }
+.mv-talk { position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); width: min(92%, 640px); display: grid; gap: 6px; pointer-events: none; z-index: 2; }
+.tk { display: grid; grid-template-columns: 44px 1fr; align-items: center; background: #fff; color: #1c2472; border-radius: 4px; overflow: hidden; font-weight: 600; font-size: 14px; box-shadow: 0 6px 18px rgba(0, 0, 0, .5); animation: tkIn .35s cubic-bezier(.2, 1.2, .4, 1) both; transition: opacity .35s, transform .35s; }
+.tk b { align-self: stretch; display: grid; place-items: center; background: #dbe7fb; font: 800 15px var(--display); }
+.tk span { padding: 7px 12px; }
+.tk.out { opacity: 0; transform: translateY(8px); }
+@keyframes tkIn { from { opacity: 0; transform: translateY(14px); } }
+.mv-pitch .mv-ctl { position: absolute; left: 0; right: 0; bottom: 10px; z-index: 2; gap: 7px; flex-wrap: nowrap; padding: 0 8px; }
+.mv-pitch .mv-ctl .btn { min-height: 40px; background: #fff; color: #1c2472; border: 2px solid #58a8e6; border-radius: 99px; font-weight: 700; padding: 4px 14px; box-shadow: 0 4px 12px rgba(0, 0, 0, .45); }
+.mv-pitch .mv-ctl .btn.icon { min-width: 40px; padding: 4px; font: 800 15px var(--display); }
+.mv-pitch .mv-ctl .btn:hover:not(:disabled) { background: #eaf2fd; border-color: #1c2472; }
+.mv-pitch .mv-ctl .btn.cer { background: #c8102e; color: #fff; border-color: #c8102e; border-radius: 6px; }
+.mv-pitch .mv-ctl .chipb { display: grid; gap: 0; justify-items: center; line-height: 1.05; padding: 3px 14px; border-radius: 10px; }
+.chipb small { font: 700 9.5px var(--body); letter-spacing: .1em; text-transform: uppercase; opacity: .7; } .chipb b { background: none; padding: 0; font: 800 15px var(--display); white-space: nowrap; }
+@media (max-width: 760px) {
+  .mv { padding-left: 0; padding-right: 0; } .mv-bottom { padding: 0 var(--gut-r) 0 var(--gut-l); } .mv-pitch { border-radius: 0; border-left: 0; border-right: 0; }
+  .mv-pitch .mv-ctl { position: static; padding: 8px; background: #0a1322; flex-wrap: wrap; } .mv-pitch .mv-ctl .wide, .mv-pitch .mv-ctl #mvSkipBtn span { display: none; }
+  .mv-talk { bottom: auto; top: calc(var(--cvh, 240px) - 6px); transform: translate(-50%, -100%); }
+  .mv-pitch .tvb { left: 6px; top: 6px; height: 26px; } .mv-pitch .tvb-logo { width: 26px; } .mv-pitch .tvb-logo img { width: 18px; height: 18px; }
+  .mv-pitch .tvb-t { font-size: 16px; padding: 0 13px 0 6px; gap: 5px; } .mv-pitch .tvb-t.away { padding: 0 6px 0 13px; } .mv-pitch .tvb-t i { height: 16px; width: 4px; }
+  .mv-pitch .tvb-c { min-width: 70px; margin: -2px -9px; } .mv-pitch .tvb-c > div { font-size: 17px; } .mv-pitch .tvb-goal { font-size: 14px; }
+  .mv-pitch .tvb-min { font-size: 15px; padding: 0 7px; gap: 5px; } .tvb-min small { font-size: 11px; } .mv-pitch .tvb-sub { left: 26px; font-size: 13px; height: 20px; }
+  .tk { font-size: 12.5px; grid-template-columns: 34px 1fr; } .tk span { padding: 5px 8px; }
+  .tk:not(:last-child) { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

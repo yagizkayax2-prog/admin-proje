@@ -9,7 +9,7 @@
 
   /* o: { W, dpr, tier, home, away, fill (0-1), wx: {t, n} } */
   function create(o) {
-    const W = o.W, dpr = o.dpr || 1, t = o.tier, H0 = W * .72, cut = H0 * [0, .15, .13, .08, 0, 0][t], H = Math.round(H0 - cut), wx = o.wx || { t: 'clear', n: 0 };
+    const W = o.W, dpr = o.dpr || 1, t = o.tier, H0 = W * .72, cut = H0 * [0, .15, .13, .08, 0, 0][t], H = Math.round(H0 * 1.06 - cut), wx = o.wx || { t: 'clear', n: 0 };
     const cx = W / 2, Yf = H0 * .4 - cut, Yn = H0 * .8 - cut, Wn = W * .74, pa = 1 / .74 - 1, Hp = Yn - Yf;
     const snow = wx.t === 'snow', night = !!wx.n;
     /* saha koordinatı (x: 0 sol kale → 1 sağ kale, y: 0 uzak çizgi → 1 yakın çizgi) → ekran */
@@ -18,7 +18,8 @@
     const ap = [proj(-.07, -.13), proj(1.07, -.13), proj(1.09, 1.16), proj(-.09, 1.16)];
     const inApron = (X, Y) => { if (Y < ap[0].Y || Y > ap[2].Y) return false; const k = (Y - ap[0].Y) / (ap[2].Y - ap[0].Y); return X > ap[0].X + (ap[3].X - ap[0].X) * k && X < ap[1].X + (ap[2].X - ap[1].X) * k; };
     const roofH = t >= 4 ? H0 * .13 : H0 * .07;
-    const H1 = rgb(o.home.c1), H2 = rgb(o.home.c2), A1 = rgb(o.away.c1), A2 = rgb(o.away.c2), CARD = [239, 234, 224];
+    const dkHex = lum(o.home.c1) <= lum(o.home.c2) ? o.home.c1 : o.home.c2, ltHex = dkHex === o.home.c1 ? o.home.c2 : o.home.c1, inkHex = Math.abs(lum(dkHex) - lum(ltHex)) < 70 ? '#f3efe4' : ltHex;
+    const DK = rgb(dkHex), LT = rgb(ltHex), H1 = rgb(o.home.c1), H2 = rgb(o.home.c2), A1 = rgb(o.away.c1), A2 = rgb(o.away.c2), CARD = [239, 234, 224];
     const mk = () => { const cv = document.createElement('canvas'); cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr); return [cv, g]; };
     const [bg, g] = mk(), [crowdN, gn] = mk(), [crowdT, gt] = mk();
 
@@ -47,33 +48,48 @@
       if (t === 4 && rho > 1.24) continue;
       const gap = upper && rho < R1 + .028, ang = Math.atan2(ey, ex) * 13 / Math.PI, aisle = Math.abs(ang - Math.round(ang)) < .022;
       if (gap || aisle) { g.fillStyle = gap ? '#0c1018' : '#141a25'; g.fillRect(i * c, j * c, c, c); continue; }
-      const dim = (near ? .36 : far ? .92 : .8) * (night ? 1 : 1.12), jit = .8 + Math.random() * .32;
+      const dim = (near ? .42 : far ? .95 : .85) * (night ? 1 : 1.12), jit = .8 + Math.random() * .32;
       const awayB = !near && ex > .64 && ey < -.05;
       // normal seyirci
       let col;
-      if (Math.random() > o.fill * (awayB ? .85 : 1)) col = shade([38, 46, 62], dim);
-      else { const pal = awayB ? [A1, A1, A2, [60, 68, 90]] : [H1, H1, H1, H2, H2, [216, 194, 168], [43, 49, 64], [84, 96, 122]]; col = shade(pal[(Math.random() * pal.length) | 0], dim * jit * .85); }
+      if (Math.random() > o.fill * (awayB ? .85 : 1)) col = shade([30, 36, 50], dim * .7);
+      else { const pal = awayB ? [A1, A1, A2, [60, 68, 90]] : [H1, H1, H1, H2, H2, [216, 194, 168], [43, 49, 64], [84, 96, 122]]; col = shade(pal[(Math.random() * pal.length) | 0], dim * jit * .4); }
       gn.fillStyle = '#080b11'; gn.fillRect(i * c, j * c, c, c); gn.fillStyle = col; gn.fillRect(i * c, j * c, c - .7, c - .7);
       // kart mozaiği
       let tc;
       if (awayB) tc = Math.floor((X + Y) / (c * 5)) % 2 ? A1 : A2;
-      else if (far && !upper && Math.abs(ex) < .56 && Y > bandTop) tc = CARD;
+      else if (far && Math.abs(ex) < .5 && (upper || Y > bandTop)) tc = DK;
       else if (near) tc = Math.floor(X / (W * .11)) % 2 ? H1 : H2;
-      else tc = Math.floor((X + (upper ? 1.3 : -1.3) * Y + (upper ? 0 : W * .9)) / (W * .085)) % 2 ? H1 : H2;
+      else tc = Math.floor(rho * 12.5) % 2 ? LT : DK;
       gt.fillStyle = '#080b11'; gt.fillRect(i * c, j * c, c, c);
       gt.fillStyle = Math.random() < .03 ? shade([20, 24, 32], 1) : shade(tc, dim * (.84 + Math.random() * .26)); gt.fillRect(i * c, j * c, c - .7, c - .7);
     }
-    // tribün yazısı (kartların üstüne, sonra hücre ızgarasıyla parçalanır)
-    const bh = bandBot - bandTop, slogan = bh >= 16 ? 'ÖLÜMÜNE ' + o.home.name.split(' ')[0].toLocaleUpperCase('tr') : o.home.name.toLocaleUpperCase('tr');
-    if (bh > 8) {
-      const ink = lum(o.home.c1) < 150 ? o.home.c1 : lum(o.home.c2) < 150 ? o.home.c2 : '#14202f';
-      gt.fillStyle = ink; gt.textAlign = 'center'; gt.textBaseline = 'middle';
-      gt.font = `800 ${Math.max(8, bh * .56)}px 'Barlow Condensed', Impact, sans-serif`;
-      gt.fillText(slogan, cx, bandBot - bh * .36, W * .5);
-      gt.strokeStyle = 'rgba(8,11,17,.55)'; gt.lineWidth = .7; gt.beginPath();
-      for (let x = Math.floor(W * .22 / c) * c; x < W * .78; x += c) { gt.moveTo(x - .35, bandTop); gt.lineTo(x - .35, bandBot + c); }
-      for (let y = Math.floor(bandTop / c) * c; y < bandBot + c; y += c) { gt.moveTo(W * .22, y - .35); gt.lineTo(W * .78, y - .35); }
+    // tribün yazıları (kartların üstüne, sonra hücre ızgarasıyla parçalanır)
+    const up1 = o.home.name.split(' ')[0].toLocaleUpperCase('tr');
+    function sloganLine(text, top, bot) {
+      const bh = bot - top; if (bh < 7) return;
+      gt.fillStyle = inkHex; gt.textAlign = 'center'; gt.textBaseline = 'middle';
+      gt.font = `800 ${Math.max(7, bh * .66)}px 'Barlow Condensed', Impact, sans-serif`;
+      gt.fillText(text, cx, top + bh * .54, W * .44);
+      gt.strokeStyle = 'rgba(8,11,17,.5)'; gt.lineWidth = .7; gt.beginPath();
+      for (let x = Math.floor(W * .26 / c) * c; x < W * .74; x += c) { gt.moveTo(x - .35, top); gt.lineTo(x - .35, bot); }
+      for (let y = Math.floor(top / c) * c; y < bot; y += c) { gt.moveTo(W * .26, y - .35); gt.lineTo(W * .74, y - .35); }
       gt.stroke();
+    }
+    sloganLine(bandBot - bandTop >= 16 ? 'ÖLÜMÜNE ' + up1 + '!' : up1, bandTop + c, bandBot + c * .5);
+    if (t >= 4) sloganLine('BURASI ' + o.home.stadium.toLocaleUpperCase('tr'), roofH + c, cyE - (R1 + .03) * H0 * .36 - c * .5);
+    // dev bayrak (sol tribünde açılır)
+    const flag = document.createElement('canvas'); flag.width = 300; flag.height = 200;
+    { const q = flag.getContext('2d'); q.fillStyle = dkHex; q.fillRect(0, 0, 300, 200); q.fillStyle = ltHex; q.beginPath(); q.moveTo(0, 150); q.lineTo(300, 40); q.lineTo(300, 95); q.lineTo(0, 200); q.fill();
+      q.beginPath(); q.arc(150, 100, 70, 0, 6.29); q.fillStyle = '#f3efe4'; q.fill(); q.lineWidth = 8; q.strokeStyle = dkHex; q.stroke();
+      q.translate(150, 100); q.rotate(-.35); q.fillStyle = dkHex; q.fillRect(-64, -22, 128, 44); q.fillStyle = '#f3efe4'; q.textAlign = 'center'; q.textBaseline = 'middle'; q.font = "800 40px 'Barlow Condensed', Impact, sans-serif"; q.fillText(o.home.short, 0, 2); }
+    // ön sıra: kolları havada taraftar siluetleri
+    const [front, gf] = mk();
+    for (let row = 0; row < 3; row++) for (let x = (row % 2) * c * 1.6; x < W; x += c * 3.2) {
+      const y = H - (2 - row) * c * 2.6 - c * 1.2 + Math.random() * c, k = .16 + row * .06, col = shade(Math.random() < .6 ? H1 : H2, k + Math.random() * .08);
+      gf.fillStyle = col; gf.strokeStyle = col; gf.lineWidth = c * .5; gf.lineCap = 'round';
+      gf.beginPath(); gf.arc(x, y, c * .75, 0, 6.29); gf.fill(); gf.fillRect(x - c * .9, y + c * .6, c * 1.8, c * 3.2);
+      if (Math.random() < .55) { gf.beginPath(); gf.moveTo(x - c * .8, y + c); gf.lineTo(x - c * 1.5, y - c * 1.3); gf.moveTo(x + c * .8, y + c); gf.lineTo(x + c * 1.5, y - c * 1.3); gf.stroke(); }
     }
 
     /* ---- çatı ve projektörler ---- */
@@ -130,6 +146,14 @@
         ctx.save(); ctx.beginPath(); ctx.rect(cx - W / 2 * rv, 0, W * rv, H); ctx.clip();
         ctx.globalAlpha = clamp(al, 0, 1); layer(ctx, crowdT, .22 + amp * .8, time, 3.2); ctx.restore();
       }
+      // dev bayrak
+      const fk = t >= 3 ? clamp((ch - .45) / .45, 0, 1) * clamp((al - .5) * 4, 0, 1) : 0;
+      if (fk > 0) {
+        const fw = W * .135, fh = H0 * .2 * fk, fx = W * .012, fy = cyE - H0 * .13;
+        ctx.save(); ctx.transform(1, -.1, -.14, 1, fx + H0 * .03, fy + W * .012);
+        for (let x = 0; x < fw; x += 4) ctx.drawImage(flag, x / fw * 300, 0, 4 / fw * 300, 200 * fk, x, Math.sin(time * 2.6 + x * .07) * 2.2, 4.4, fh);
+        ctx.restore();
+      }
       // flaşlar
       ctx.fillStyle = 'rgba(255,255,255,.9)';
       for (let i = 0; i < 5; i++) { const x = Math.random() * W, y = roofH + Math.random() * (H - roofH); if (!inApron(x, y)) ctx.fillRect(x, y, 1.6, 1.6); }
@@ -146,6 +170,7 @@
     }
     /* Projektör parlaması, yağmur, kar */
     function drawFx(ctx, time) {
+      ctx.drawImage(front, 0, Math.sin(time * 2.2) * 1.2, W, H);
       if (night) {
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < lamps.length; i++) { const [x, y, k] = lamps[i], r = c * 4.2 * k * (1 + Math.sin(time * 3 + i) * .06); ctx.drawImage(glow, x - r, y - r, r * 2, r * 2); }
