@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs><radialGradient id="g" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#e8e4d8"/><stop offset="1" stop-color="#a9a595"/></radialGradient>
+  <clipPath id="c"><circle cx="50" cy="50" r="46"/></clipPath></defs>
+  <circle cx="50" cy="50" r="46" fill="url(#g)" stroke="#14202f" stroke-width="3"/>
+  <g clip-path="url(#c)" fill="#14202f" stroke="#14202f" stroke-width="2.5" stroke-linejoin="round">
+    <polygon points="50,33 66,45 60,64 40,64 34,45"/>
+    <polygon points="50,2 64,8 62,18 50,22 38,18 36,8"/>
+    <polygon points="93,30 99,50 92,58 80,50 82,36"/>
+    <polygon points="76,82 62,97 52,94 54,80 68,74"/>
+    <polygon points="24,82 38,97 48,94 46,80 32,74"/>
+    <polygon points="7,30 1,50 8,58 20,50 18,36"/>
+    <g fill="none"><path d="M50 22V33M66 45l16-9M60 64l8 10M40 64l-8 10M34 45l-16-9"/></g>
+  </g>
+</svg>

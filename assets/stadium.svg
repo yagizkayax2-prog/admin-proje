@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" preserveAspectRatio="xMidYMax slice">
+  <style>.flare{animation:f 3.2s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}.beams{animation:b 5s ease-in-out infinite alternate}@keyframes f{from{opacity:.65;transform:scale(.9)}to{opacity:1;transform:scale(1.12)}}@keyframes b{from{opacity:.55}to{opacity:1}}</style>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a1322"/><stop offset="1" stop-color="#1d3250"/></linearGradient>
+    <radialGradient id="glow"><stop offset="0" stop-color="#fff3c4" stop-opacity=".95"/><stop offset=".25" stop-color="#ffc93c" stop-opacity=".45"/><stop offset="1" stop-color="#ffc93c" stop-opacity="0"/></radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c4" stop-opacity=".28"/><stop offset="1" stop-color="#fff3c4" stop-opacity="0"/></linearGradient>
+    <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f9e5b"/><stop offset="1" stop-color="#1c6b3c"/></linearGradient>
+    <pattern id="crowd" width="14" height="10" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="2" fill="#3a5a86"/><circle cx="10" cy="7" r="2" fill="#51749f"/><circle cx="10" cy="2" r="1.500" fill="#ffc93c" opacity=".5"/></pattern>
+  </defs>
+  <rect width="800" height="300" fill="url(#sky)"/>
+  <g fill="#f3efe4" opacity=".7"><circle cx="90" cy="40" r="1.200"/><circle cx="240" cy="22" r="1"/><circle cx="410" cy="48" r="1.400"/><circle cx="560" cy="18" r="1"/><circle cx="700" cy="52" r="1.200"/><circle cx="330" cy="76" r="1"/><circle cx="630" cy="84" r="1"/></g>
+  <g class="beams"><polygon points="120,58 20,300 320,300" fill="url(#beam)"/><polygon points="680,58 480,300 780,300" fill="url(#beam)"/></g>
+  <g stroke="#0a1322" stroke-width="6"><path d="M120 60V200M680 60V200"/></g>
+  <g fill="#14202f"><rect x="92" y="44" width="56" height="26" rx="4"/><rect x="652" y="44" width="56" height="26" rx="4"/></g>
+  <g fill="#fff3c4"><circle cx="106" cy="57" r="5"/><circle cx="120" cy="57" r="5"/><circle cx="134" cy="57" r="5"/><circle cx="666" cy="57" r="5"/><circle cx="680" cy="57" r="5"/><circle cx="694" cy="57" r="5"/></g>
+  <circle class="flare" cx="120" cy="57" r="70" fill="url(#glow)"/><circle class="flare" cx="680" cy="57" r="70" fill="url(#glow)"/>
+  <path d="M0 210Q400 110 800 210V260H0z" fill="#14202f"/>
+  <path d="M0 216Q400 122 800 216V260H0z" fill="url(#crowd)"/>
+  <path d="M0 246Q400 206 800 246V300H0z" fill="url(#grass)"/>
+  <g stroke="#f3efe4" stroke-opacity=".55" stroke-width="2" fill="none"><ellipse cx="400" cy="282" rx="90" ry="16"/><path d="M400 232V300"/></g>
+</svg>
