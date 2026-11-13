@@ -12,6 +12,8 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Maç içinde hız, taktik talimatları (pres, tempo, savunma hattı, hücum yönü), 5 oyuncu değişikliği
 - Diziliş, ilk 11, duran top görevlileri, oyuncu rolleri ve özel yetenekler
 - Transfer dönemleri, pazarlık, serbest kalma bedeli, kiralama, sözleşme yenileme, scout raporları, altyapı
+- Gelen kutusu: yardımcı antrenör, sağlık ekibi, scout, finans direktörü, yönetim, gazeteciler ve menajerlerden gelen mesajlar; karar isteyen mesajlar (kulis bilgisi, soyunma odası krizi, süre isteyen oyuncu, transfer teklifleri, kiralık fırsatları, sponsor ve kulüp sahibi parası), arama ve filtreler
+- Takvim tarihi, “Devam et” düğmesi ve alt bantta kayan sonuç/haber şeridi
 - Basın toplantıları, oyuncu görüşmeleri, yönetim güveni ve taraftar desteği, görevden alınma ve iş teklifleri
 - Kulüp müzesi: kupalar, rekorlar, efsaneler, başarımlar
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
@@ -22,6 +24,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | --- | --- |
 | `js/data.js` | Kulüpler, isimler, dizilişler, spiker metinleri |
 | `js/core.js` | Oyun çekirdeği: maç motoru, lig, transfer, finans |
+| `js/inbox.js` | Gelen kutusu: mesaj şablonları, kararlar ve etkileri, takvim |
 | `js/gfx.js` | Üretilen armalar, oyuncu portreleri, ikonlar, sentezlenen sesler |
 | `js/stadium3d.js` | Three.js ile 3D stadyum (saha, tribünler, çatı, kaleler, bayrak) |
 | `js/stadium.js` | WebGL olmayan cihazlar için 2D stadyum; kulüp sayfasındaki önizleme |

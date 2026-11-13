@@ -378,6 +378,7 @@
     const me = T(G.teamId), opp = T(m.s[1 - us].tid), gf = m.score[us], ga = m.score[1 - us];
     const d = m.cup && gf === ga ? (winnerSide(m) === us ? 1 : -1) : gf - ga;
     const gap = (opp.rep - opp.div * 2) - (me.rep - me.div * 2);
+    if (d > 0 && G.winBonus && G.winBonus.s === G.season) { G.fin.balance += G.winBonus.amt; news(`Sponsor galibiyet primi: ${money(G.winBonus.amt)}.`, 'good'); }
     if (d > 0) { G.board += 3 + (gap > 0 ? 2 : 0); G.fans += 2 + (gap > 0 ? 2 : 0); unlock('firstWin'); if (gf - ga >= 5) unlock('bigWin'); if (gap >= 2) unlock('giant'); }
     else if (d === 0) { G.board += gap > 0 ? 1 : gap < 0 ? -1 : 0; }
     else { G.board -= gap > 0 ? 2 : gap < 0 ? 6 : 4; G.fans -= 3; }
@@ -390,6 +391,7 @@
     for (const l of m.log) if (l.type === 'goal' && l.side === us) { const n = P(l.pid).name; cnt[n] = (cnt[n] || 0) + 1; G.legends[n] = (G.legends[n] || 0) + 1; }
     if (Object.values(cnt).some(v => v >= 3)) unlock('hattrick');
     G.board = clamp(G.board, 0, 100); G.fans = clamp(G.fans, 0, 100);
+    if (FM.Inbox) FM.Inbox.onMatch(m, us);
   }
   function unlock(id) {
     if (G.ach[id]) return;
@@ -500,6 +502,7 @@
     setupClub(me);
     G.fixtures = [0, 1].map(d => makeFixtures(divTeams(d).map(t => t.id)));
     G.cup = newCup();
+    FM.Inbox.ensure(); FM.Inbox.make('welcome');
     news(`${G.manager}, ${me.name} teknik direktörlüğüne getirildi. Yönetim hedefi: ${FM.DIV_TR[me.div]}'nde ${expectation(me)}. sıra veya üstü.`, 'club');
     save();
     return G;
@@ -512,7 +515,7 @@
   }
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) { /* kayıt yoksa oyun yine çalışır */ } }
   function load() {
-    try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const g = JSON.parse(s); if (g && g.v === 2) { G = g; return G; } } catch (e) { /* bozuk kayıt */ }
+    try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const g = JSON.parse(s); if (g && g.v === 2) { G = g; if (FM.Inbox) FM.Inbox.ensure(); return G; } } catch (e) { /* bozuk kayıt */ }
     return null;
   }
   function reset() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* yok say */ } G = null; }
@@ -521,7 +524,7 @@
     try {
       const g = JSON.parse(text);
       if (!g || g.v !== 2 || !Array.isArray(g.teams) || !g.players || !g.fixtures || g.teamId == null) return { ok: false, msg: 'Bu metin geçerli bir Saha Kenarı kaydı değil.' };
-      G = g; save();
+      G = g; if (FM.Inbox) FM.Inbox.ensure(); save();
       return { ok: true, msg: 'Kariyer yüklendi.' };
     } catch (e) { return { ok: false, msg: 'Kayıt okunamadı: metin eksik ya da bozuk.' }; }
   }
@@ -574,15 +577,17 @@
       } else if (p.age <= 23) trainPlayer(p, p.loan && p.loan.own === G.teamId ? 1.1 : .6, 'bal');
     }
     if (improved.length) news(`Antrenmanda gelişenler: ${improved.slice(0, 4).join(', ')}${improved.length > 4 ? ' ve ' + (improved.length - 4) + ' oyuncu daha' : ''}.`, 'good');
-    for (const id of G.scoutQ) { const p = P(id); if (p) { p.sc = 1; news(`Scout raporu hazır: ${p.name} — güç ${p.ovr}, potansiyel ${p.pot}.`, 'info'); } }
+    for (const id of G.scoutQ) { const p = P(id); if (p) { p.sc = 1; news(`Scout raporu hazır: ${p.name} — güç ${p.ovr}, potansiyel ${p.pot}.`, 'info'); FM.Inbox.make('scoutRep', { pid: id }); } }
     G.scoutQ = []; G.cool = {}; G.offers = [];
     G.week++;
     if (G.week >= WEEK_COUNT) { seasonEnd(); save(); return; }
-    if (windowOpen() && R() < (deadline() ? .7 : .22) && me.players.length > 16) {
+    const listed = me.players.some(id => P(id).listed === G.season);
+    if (windowOpen() && R() < (deadline() ? .7 : listed ? .5 : .22) && me.players.length > 16) {
       const cands = me.players.filter(id => !P(id).loan);
       if (cands.length) {
-        const p = P(wpick(cands, id => P(id).ovr - 40)), buyer = pick(G.teams.filter(t => t.id !== G.teamId));
-        G.offers.push({ pid: p.id, tid: buyer.id, amt: r10k(p.value * (.9 + R() * .45) * (deadline() ? 1.15 : 1)) });
+        const p = P(wpick(cands, id => (P(id).ovr - 40) * (P(id).listed === G.season ? 4 : 1))), buyer = pick(G.teams.filter(t => t.id !== G.teamId));
+        const o = { pid: p.id, tid: buyer.id, amt: r10k(p.value * (.9 + R() * .45) * (deadline() ? 1.15 : 1) * (p.listed === G.season ? .85 : 1)) };
+        G.offers.push(o); FM.Inbox.make('bid', o);
         news(`${deadline() ? 'Son gün teklifi! ' : ''}${buyer.name}, ${p.name} için teklif gönderdi.`, 'offer');
       }
     }
@@ -591,7 +596,7 @@
     if (G.week === 10) news('Ara transfer dönemi açıldı (4 hafta).', 'club');
     if (deadline()) news('Transfer döneminin son haftası!', 'offer');
     if (G.week === 16) { const ex = me.players.map(P).filter(p => p.con <= 1 && !p.loan); if (ex.length) news(`Sözleşmesi sezon sonunda bitecekler: ${ex.map(p => p.name).join(', ')}.`, 'offer'); }
-    if (R() < .4) G.press = { q: ri(0, FM.PRESS.length - 1) }; else G.press = null;
+    G.press = null; FM.Inbox.week();
     if (CUP_AFTER.includes(G.week) && !G.cup.winner) drawCup();
     if (G.board <= 10 && G.week >= 8) sack();
     save();
@@ -728,8 +733,9 @@
   /* ---------- Transfer, sözleşme, scout ---------- */
   const isClause = p => p.tid != null && T(p.tid).players.length <= 18;
   function askPrice(p) {
-    if (p.tid == null) return r10k(p.value * .25);
-    return r10k(p.value * (isClause(p) ? 2.2 : T(p.tid).lineup.includes(p.id) ? 1.5 : 1.15));
+    const k = p.disc && p.disc.s === G.season ? p.disc.k : 1;
+    if (p.tid == null) return r10k(p.value * .25 * k);
+    return r10k(k * p.value * (isClause(p) ? 2.2 : T(p.tid).lineup.includes(p.id) ? 1.5 : 1.15));
   }
   function marketList() {
     const out = G.free.map(P);
@@ -859,6 +865,6 @@
     WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, injSub, finishMatch, doSub, ratings, winnerSide,
     table, userFixture, newGame, save, load, reset, exportSave, importSave, endWeek, startNewSeason, simOthers, askPrice, isClause, marketList, buy, sellOffer, sell,
     loanIn, loanOut, loanedOut, renew, renewTerms, scout, known, est, avgRating, talk, answerPress, takeJob, windowOpen, deadline, cupTie, playCupRound,
-    youthIntake, upgrade, facCost, FAC, money, wageBill, expectation, stadiumCap, stadiumTier, squadValue, slotRole, divTeams
+    youthIntake, upgrade, facCost, FAC, money, news, wageBill, expectation, stadiumCap, stadiumTier, squadValue, slotRole, divTeams
   });
 })();

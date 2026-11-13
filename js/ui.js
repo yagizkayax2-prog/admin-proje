@@ -3,8 +3,8 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const { P, T, money } = FM;
-  const U = { view: 'home', fxWeek: null, fxTab: 'lig', tblDiv: null, sel: null, tf: { pos: 'ALL', afford: false }, pickTeam: 0, confirmReset: false, shownBal: null };
-  const TABS = [['home', 'Ana Sayfa'], ['squad', 'Kadro'], ['tactics', 'Taktik'], ['fixtures', 'Fikstür'], ['table', 'Lig'], ['transfer', 'Transfer'], ['training', 'Antrenman'], ['club', 'Kulüp']];
+  const U = { view: 'home', fxWeek: null, fxTab: 'lig', tblDiv: null, sel: null, tf: { pos: 'ALL', afford: false }, pickTeam: 0, confirmReset: false, shownBal: null, ib: { sel: null, f: 'all', q: '', pick: null, open: false } };
+  const TABS = [['home', 'Ana Sayfa'], ['inbox', 'Gelen Kutusu'], ['squad', 'Kadro'], ['tactics', 'Taktik'], ['fixtures', 'Fikstür'], ['table', 'Lig'], ['transfer', 'Transfer'], ['training', 'Antrenman'], ['club', 'Kulüp']];
   const me = () => T(FM.G.teamId);
   const stars = n => `<span class="stars" aria-label="${n} yıldız">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
   const posChip = pos => `<span class="pos ${pos}">${FM.POS_TR[pos]}</span>`;
@@ -48,14 +48,16 @@
 
   /* ---------- Kabuk ---------- */
   function shell(inner) {
-    const G = FM.G, t = me();
+    const G = FM.G, t = me(), unr = FM.Inbox.unread(), pend = FM.Inbox.pending().length;
     return `<header class="top"><div class="top-in">
         <div class="club">${FM.crest(t, 38)}<div><strong>${t.name}</strong><span>${esc(G.manager)} · ${G.season}. sezon · Hafta ${Math.min(G.week + 1, FM.WEEK_COUNT)}/${FM.WEEK_COUNT}</span></div></div>
         <div class="top-r"><div class="bal"><span>Bütçe</span><b id="bal" class="${G.fin.balance < 0 ? 'neg' : ''}">${money(G.fin.balance)}</b></div>
+        <div class="today"><b>${FM.Inbox.fmtDate(G.season, FM.Inbox.today())}</b><span>${FM.Inbox.fmtDate(G.season, FM.Inbox.today(), true).split(' ').pop()}</span></div>
+        <button class="btn primary go" data-a="continue">${pend ? `<b>${pend}</b>` : ''}<span>Devam et</span>${FM.icon('play')}</button>
         <button class="btn icon" data-a="sound" aria-label="Ses aç/kapat">${FM.icon(FM.Audio.muted ? 'mute' : 'sound')}</button></div>
       </div>
-      <nav class="tabs" aria-label="Bölümler"><div class="tabs-in">${TABS.map(([k, n]) => `<button data-a="tab" data-v="${k}" class="${U.view === k ? 'on' : ''}" ${U.view === k ? 'aria-current="page"' : ''}>${FM.icon(k)}<span>${n}</span></button>`).join('')}</div></nav>
-    </header><main class="view enter" id="view">${inner}</main>`;
+      <nav class="tabs" aria-label="Bölümler"><div class="tabs-in">${TABS.map(([k, n]) => `<button data-a="tab" data-v="${k}" class="${U.view === k ? 'on' : ''}" ${U.view === k ? 'aria-current="page"' : ''}>${FM.icon(k)}<span>${n}</span>${k === 'inbox' && unr ? `<em class="badge" aria-label="${unr} okunmamış">${unr}</em>` : ''}</button>`).join('')}</div></nav>
+    </header><main class="view enter ${U.view === 'inbox' ? 'wide' : ''}" id="view">${inner}</main>${ticker()}`;
   }
   function fxRow(f, big) {
     const h = T(f.h), a = T(f.a), mine = f.h === FM.G.teamId || f.a === FM.G.teamId;
@@ -83,11 +85,9 @@
           <p class="chips">${wxChip(fx.wx || { t: 'clear', n: 0 })}<span class="chip">${cup && G.cup.final ? 'Tarafsız saha' : fx.h === G.teamId ? 'İç saha' : 'Deplasman'}</span><span class="chip">${FM.Stadium.TIERS[FM.stadiumTier(h)]}</span>${cup ? '<span class="chip">Eleme: uzatma ve penaltılar</span>' : `<span class="chip">Rakip ${FM.DIV_TR[opp.div]}'nde ${FM.table(opp.div).findIndex(r => r.id === opp.id) + 1}.</span>`}</p></div>
       </section>`;
     }
-    const pr = G.press ? FM.PRESS[G.press.q] : null;
     const last = G.week > 0 ? G.fixtures[t.div][G.week - 1] : null;
     return hero +
-      (pr ? `<section class="card press"><p class="eyebrow">Basın toplantısı</p><h3>“${pr.q}”</h3><div class="opts">${pr.a.map((x, i) => `<button class="opt" data-a="press" data-v="${i}"><strong>${x[0]}</strong></button>`).join('')}</div></section>` : '') +
-      G.offers.map(o => { const p = P(o.pid); return `<section class="card offer"><div>${FM.avatar(p, 40)}<p><strong>${T(o.tid).name}</strong>, ${esc(p.name)} için <b>${money(o.amt)}</b> teklif ediyor. <small>Piyasa değeri ${money(p.value)}</small></p></div><div class="row"><button class="btn" data-a="offer-no" data-id="${o.pid}">Reddet</button><button class="btn primary" data-a="offer-yes" data-id="${o.pid}">Kabul et</button></div></section>`; }).join('') +
+      inboxPreview() +
       `<div class="grid2">
         <section class="card"><h2>Puan durumu</h2>${tableHtml(tb.slice(from, from + 5), from, true, t.div)}<button class="link" data-a="tab" data-v="table">Tüm tablo</button></section>
         <section class="card"><h2>Durum</h2>${gauge('Yönetim güveni', G.board)}${gauge('Taraftar desteği', G.fans)}<p class="chips"><span class="chip ${FM.windowOpen() ? 'on' : ''}">Transfer dönemi ${FM.windowOpen() ? (FM.deadline() ? 'son hafta!' : 'açık') : 'kapalı'}</span>${G.cup.winner != null ? `<span class="chip">Kupa: ${T(G.cup.winner).name}</span>` : `<span class="chip">Kupada ${G.cup.alive.includes(G.teamId) ? 'devam' : 'elendin'}</span>`}</p></section>
@@ -99,6 +99,96 @@
     return `<div class="scroll"><table class="tbl lg"><thead><tr><th>#</th><th class="l">Takım</th><th>O</th>${compact ? '' : '<th>G</th><th>B</th><th>M</th><th>A</th><th>Y</th>'}<th>AV</th><th>P</th>${compact ? '' : '<th class="l">Form</th>'}</tr></thead><tbody>` +
       rows.map((r, i) => { const t = T(r.id), n = offset + i + 1, zone = div === 1 && n <= 2 ? 'up' : div === 0 && n >= 11 ? 'down' : ''; return `<tr class="${r.id === FM.G.teamId ? 'mine' : ''} ${zone}" data-a="team" data-id="${r.id}" tabindex="0"><td class="rk r${n}">${n}</td><td class="l tm">${FM.crest(t, 22)}${t.name}</td><td>${r.pl}</td>${compact ? '' : `<td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td>`}<td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td><b>${r.pts}</b></td>${compact ? '' : `<td class="l form">${r.form.slice(-5).map(x => `<i class="f${x}">${x}</i>`).join('')}</td>`}</tr>`; }).join('') + '</tbody></table></div>';
   }
+
+  /* ---------- Gelen kutusu ---------- */
+  const IB = () => FM.G.inbox;
+  const rich = s => esc(s).replace(/\{p:(\d+)\}/g, (_, id) => { const p = P(+id); return p ? `<button class="lnk" data-a="player" data-id="${id}">${esc(p.name)}</button>` : 'eski bir oyuncu'; })
+    .replace(/\{t:(\d+)\}/g, (_, id) => `<button class="lnk" data-a="team" data-id="${id}">${esc(T(+id).name)}</button>`);
+  const plain = s => s.replace(/\{p:(\d+)\}/g, (_, id) => (P(+id) ? P(+id).name : 'eski bir oyuncu')).replace(/\{t:(\d+)\}/g, (_, id) => T(+id).name);
+  const mKey = m => m.s * 1000 + m.d;
+  function ibFiltered() {
+    const q = U.ib.q.trim().toLocaleLowerCase('tr');
+    return IB().filter(m => (U.ib.f === 'todo' ? m.opts && m.ch == null : U.ib.f === 'unread' ? !m.read : true) &&
+      (!q || (m.title + ' ' + m.from + ' ' + m.cat + ' ' + plain(m.body)).toLocaleLowerCase('tr').includes(q)))
+      .sort((a, b) => mKey(b) - mKey(a) || b.id - a.id);
+  }
+  function dayLabel(m) {
+    const G = FM.G, t = FM.Inbox.today(), full = FM.Inbox.fmtDate(m.s, m.d, true);
+    if (m.s === G.season && m.d === t) return 'Bugün · ' + full;
+    if (m.s === G.season && m.d === t - 1) return 'Dün · ' + full;
+    return full;
+  }
+  const ibItem = m => `<li><button class="ib-it ${m.read ? '' : 'new'} ${U.ib.sel === m.id ? 'on' : ''}" data-a="ib-open" data-id="${m.id}" ${U.ib.sel === m.id ? 'aria-current="true"' : ''}>
+      <span class="ib-ic">${FM.icon(m.ic)}</span><span class="ib-tx"><strong>${esc(m.title)}</strong><small>${esc(m.from)}</small></span>
+      <span class="ib-meta"><em class="cat c-${m.cat}">${m.cat}</em>${m.opts ? `<small class="${m.ch == null ? 'todo' : 'done'}">${m.ch == null ? 'Karar' : m.exp ? 'Süresi doldu' : 'Yanıtlandı'}</small>` : ''}</span></button></li>`;
+  function ibListHtml() {
+    const list = ibFiltered();
+    if (!list.length) return `<p class="muted ib-empty">${U.ib.q ? 'Aramana uyan mesaj yok.' : U.ib.f === 'todo' ? 'Bekleyen kararın yok.' : 'Okunmamış mesajın yok.'}</p>`;
+    let out = '', last = null;
+    for (const m of list) { const k = mKey(m); if (k !== last) { out += `${last != null ? '</ul>' : ''}<h4 class="ib-day">${dayLabel(m)}</h4><ul class="ib-ul">`; last = k; } out += ibItem(m); }
+    return out + '</ul>';
+  }
+  function ibCard(m) {
+    const p = m.pid != null ? P(m.pid) : null;
+    if (p) {
+      const t = p.tid != null ? T(p.tid) : null;
+      return `<p class="ib-lbl">Oyuncu</p><button class="ib-card" data-a="player" data-id="${p.id}">${posChip(p.pos)}${FM.avatar(p, 40)}
+        <span class="ib-cn"><strong>${esc(p.name)}</strong><small>${p.age} yaş · ${t ? esc(t.name) : 'Serbest'}${p.inj ? ' · Sakat ' + p.inj + ' hafta' : ''}</small></span>
+        <span class="ib-st"><span>Genel güç</span>${ovrB(p)}</span><span class="ib-st"><span>Değer</span><b>${money(p.value)}</b></span>
+        <span class="ib-st hide-s"><span>Sözleşme</span><b>${p.tid == null ? '—' : p.con + ' sezon'}</b></span><span class="ib-st hide-s"><span>Bu sezon</span><b>${p.apps} maç · ${fmtR(FM.avgRating(p))}</b></span></button>`;
+    }
+    return '';
+  }
+  function ibDetailHtml() {
+    const m = IB().find(x => x.id === U.ib.sel);
+    if (!m) return `<div class="ib-none">${FM.icon('inbox')}<p>Okumak için bir mesaj seç.</p></div>`;
+    const decided = m.ch != null, pick = decided ? m.ch : U.ib.pick, link = m.pid != null && P(m.pid) ? `data-a="player" data-id="${m.pid}"` : m.tid != null ? `data-a="team" data-id="${m.tid}"` : '';
+    return `<button class="ib-back link" data-a="ib-back">${FM.icon('back')} Gelen kutusu</button>
+      <header class="ib-h"><span class="ib-ic big">${FM.icon(m.ic)}</span><div><p class="ib-from">${esc(m.from)} · ${esc(m.role)}</p><h3>${rich(m.title)}</h3></div>
+        <div class="ib-hr"><em class="cat c-${m.cat}">${m.cat}</em><small>${FM.Inbox.fmtDate(m.s, m.d)}</small></div></header>
+      <p class="ib-body">${rich(m.body)}</p>
+      ${ibCard(m)}
+      ${m.opts ? `<p class="ib-lbl">Kararın</p><div class="ib-opts" role="radiogroup" aria-label="Kararın">${m.opts.map((o, i) => `<button role="radio" aria-checked="${pick === i}" class="ib-opt ${pick === i ? 'on' : ''}" data-a="ib-pick" data-v="${i}" ${decided ? 'disabled' : ''}>${decided && pick === i ? FM.icon('check') : ''}${esc(o)}</button>`).join('')}</div>
+        <div class="ib-foot ${decided ? 'done' : ''}">${decided ? `<p>${FM.icon('check')}<span><b>${m.exp ? 'Süresi doldu' : 'Karar verildi'}.</b> ${esc(m.res || '')}</span></p>`
+          : `<p class="wait">${FM.icon('clock')} Karar bekliyor <small>Hafta sonuna kadar cevap vermezsen son seçenek geçerli olur.</small></p><div class="row">${link ? `<button class="btn" ${link}>İncele</button>` : ''}<button class="btn primary" data-a="ib-decide" ${pick == null ? 'disabled' : ''}>Kararı ver</button></div>${pick == null ? '<small class="muted">Önce bir cevap seç</small>' : ''}`}</div>` : ''}`;
+  }
+  function viewInbox() {
+    const all = IB(), todo = FM.Inbox.pending().length, unr = FM.Inbox.unread();
+    if (U.ib.sel == null && all.length && !window.matchMedia('(max-width: 760px)').matches) openMsg(ibFiltered()[0] || all[0], true);
+    const f = (k, n, c) => `<button data-a="ib-filter" data-v="${k}" class="${U.ib.f === k ? 'on' : ''}">${n}${c != null ? ` <b>${c}</b>` : ''}</button>`;
+    return `<div class="ib ${U.ib.open ? 'open' : ''}">
+      <section class="card ib-list"><div class="ib-top"><h2>Gelen kutusu <small>${unr} okunmamış</small></h2>${unr ? '<button class="link" data-a="ib-allread">Tümünü okundu say</button>' : ''}</div>
+        <label class="ib-q">${FM.icon('scout')}<input id="ibq" type="search" placeholder="Mesajlarda ara" value="${esc(U.ib.q)}" autocomplete="off" aria-label="Mesajlarda ara"></label>
+        <div class="seg">${f('all', 'Tümü')}${f('todo', 'İşler', todo)}${f('unread', 'Okunmamış', unr)}</div>
+        <div id="ibList" class="ib-scroll">${ibListHtml()}</div></section>
+      <section class="card ib-detail" id="ibDetail" aria-live="polite">${ibDetailHtml()}</section></div>`;
+  }
+  function openMsg(m, silent) {
+    if (!m) return;
+    U.ib.sel = m.id; U.ib.pick = null; U.ib.open = !silent;
+    if (!m.read) { m.read = true; FM.save(); }
+  }
+  function inboxPreview() {
+    const pend = FM.Inbox.pending(), news = IB().filter(m => !m.read && !(m.opts && m.ch == null)), list = pend.concat(news).slice(0, 4);
+    if (!list.length) return '';
+    return `<section class="card ib-prev"><div class="ib-top"><h2>Gelen kutusu</h2><span class="muted">${pend.length ? `<b class="todo">${pend.length} karar bekliyor</b> · ` : ''}${FM.Inbox.unread()} okunmamış</span></div>
+      <ul class="ib-ul">${list.map(ibItem).join('')}</ul><button class="link" data-a="tab" data-v="inbox">Tüm mesajlar</button></section>`;
+  }
+  function ticker() {
+    const G = FM.G, items = [];
+    const wk = G.week - 1;
+    if (wk >= 0) for (let d = 0; d < 2; d++) for (const f of G.fixtures[d][wk]) if (f.hs != null) items.push(`<span class="tk-i"><em>Sonuç</em>${esc(T(f.h).name)} <b>${f.hs}-${f.as}</b> ${esc(T(f.a).name)}</span>`);
+    for (const n of G.news.slice(0, 8)) items.push(`<span class="tk-i ${n.kind}"><em>Haber</em>${esc(n.text)}</span>`);
+    if (!items.length) return '';
+    const run = items.join('');
+    return `<div class="ticker" aria-label="Son sonuçlar ve haberler"><div class="tk-run" style="--n:${items.length}">${run}<span aria-hidden="true" class="tk-dup">${run}</span></div></div>`;
+  }
+  function refreshInbox(listOnly) {
+    if (U.view !== 'inbox' || !$('ibList')) return render(true);
+    $('ibList').innerHTML = ibListHtml();
+    if (!listOnly) { $('ibDetail').innerHTML = ibDetailHtml(); document.querySelector('.ib').classList.toggle('open', U.ib.open); }
+  }
+  function goInbox(m) { U.view = 'inbox'; U.ib.f = 'all'; U.ib.q = ''; openMsg(m); render(); window.scrollTo(0, 0); }
 
   /* ---------- Kadro ---------- */
   const ORDER = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
@@ -288,7 +378,7 @@
   }
 
   /* ---------- Çizim ve akış ---------- */
-  const VIEWS = { home: viewHome, squad: viewSquad, tactics: viewTactics, fixtures: viewFixtures, table: viewTable, transfer: viewTransfer, training: viewTraining, club: viewClub };
+  const VIEWS = { home: viewHome, inbox: viewInbox, squad: viewSquad, tactics: viewTactics, fixtures: viewFixtures, table: viewTable, transfer: viewTransfer, training: viewTraining, club: viewClub };
   function render(keepScroll) {
     const G = FM.G, app = $('app'), y = window.scrollY;
     if (!G) { app.innerHTML = startScreen(); return; }
@@ -323,8 +413,10 @@
       host.appendChild(c);
     }
   }
-  function playMatch() {
-    const G = FM.G, t = me(), cup = G.cupDue;
+  function playMatch(force) {
+    const G = FM.G, t = me(), cup = G.cupDue, pend = FM.Inbox.pending();
+    if (pend.length && !force) return modal(`<h3>${pend.length} karar bekliyor</h3><p class="muted">Cevap vermediğin mesajlarda hafta sonunda son seçenek geçerli olur.</p>
+      <ul class="ib-ul">${pend.map(ibItem).join('')}</ul><div class="row end"><button class="btn" data-a="play-anyway">Yine de maça çık</button><button class="btn primary" data-a="ib-open" data-id="${pend[pend.length - 1].id}">Gelen kutusuna git</button></div>`, true);
     if (cup && !FM.cupTie()) { const name = G.cup.name, ties = FM.playCupRound(); render(); return cupModal(name, ties); }
     const fx = cup ? FM.cupTie() : FM.userFixture();
     const changed = FM.ensureLineup(t);
@@ -364,7 +456,15 @@
     switch (a) {
       case 'pick-team': U.pickTeam = +d.id; { const v = $('mgr').value, y = window.scrollY; render(); $('mgr').value = v; window.scrollTo(0, y); } break;
       case 'start': FM.Audio.init(); FM.newGame(U.pickTeam, $('mgr').value.trim()); U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); break;
-      case 'tab': U.view = d.v; U.sel = null; U.fxWeek = null; U.confirmReset = false; render(); window.scrollTo(0, 0); break;
+      case 'tab': U.view = d.v; U.sel = null; U.fxWeek = null; U.confirmReset = false; U.ib.open = false; render(); window.scrollTo(0, 0); break;
+      case 'ib-open': { closeModal(); const m = IB().find(x => x.id === +d.id); if (U.view !== 'inbox') { goInbox(m); break; } openMsg(m); refreshInbox(); if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo(0, 0); } break;
+      case 'ib-back': U.ib.open = false; refreshInbox(); break;
+      case 'ib-pick': U.ib.pick = +d.v; refreshInbox(); break;
+      case 'ib-decide': { if (U.ib.pick == null) break; const r = FM.Inbox.decide(U.ib.sel, U.ib.pick); if (!r.ok) { toast(r.msg, 'bad'); break; } U.ib.pick = null; render(true); } break;
+      case 'ib-filter': U.ib.f = d.v; refreshInbox(true); document.querySelectorAll('[data-a="ib-filter"]').forEach(b => b.classList.toggle('on', b.dataset.v === d.v)); break;
+      case 'ib-allread': for (const m of IB()) m.read = true; FM.save(); render(true); break;
+      case 'continue': { const p = FM.Inbox.pending(); if (p.length) { goInbox(p[p.length - 1]); toast(p.length === 1 ? 'Bir karar seni bekliyor.' : p.length + ' karar seni bekliyor.'); } else playMatch(); } break;
+      case 'play-anyway': closeModal(); playMatch(true); break;
       case 'sound': el.innerHTML = FM.icon(FM.Audio.toggle() ? 'mute' : 'sound'); break;
       case 'play': playMatch(); break;
       case 'close': closeModal(); break;
@@ -426,6 +526,7 @@
     if (e.target.id === 'loadFile' && e.target.files[0]) { const rd = new FileReader(); rd.onload = () => { $('loadText').value = rd.result; }; rd.readAsText(e.target.files[0]); return; }
     const el = e.target.closest('input[data-a], select[data-a]'); if (el) act(el.dataset.a, el.dataset, el);
   });
+  document.addEventListener('input', e => { if (e.target.id === 'ibq') { U.ib.q = e.target.value; refreshInbox(true); } });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('modal').hidden) closeModal();
     if (e.key === 'Enter' && e.target.matches('tr[data-a]')) act(e.target.dataset.a, e.target.dataset, e.target);

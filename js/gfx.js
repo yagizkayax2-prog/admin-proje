@@ -55,7 +55,19 @@
     play: '<path d="M7 4v16l13-8z" fill="currentColor"/>',
     pause: '<path d="M7 4v16M17 4v16"/>',
     swap: '<path d="M7 4v16l-4-4M17 20V4l4 4"/>',
-    skip: '<path d="M4 5l9 7-9 7zM13 5l9 7-9 7z" fill="currentColor"/>'
+    skip: '<path d="M4 5l9 7-9 7zM13 5l9 7-9 7z" fill="currentColor"/>',
+    inbox: '<path d="M3 13h5l1.500 3h5L16 13h5M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/>',
+    staff: '<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.500 18c.700-2.300 2.300-3.500 4.500-3.500s3.800 1.200 4.500 3.500"/>',
+    press: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M8 6V4h8v2"/>',
+    board: '<path d="M12 3l8 3v6c0 4.500-3.300 8-8 9-4.700-1-8-4.500-8-9V6z"/>',
+    med: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>',
+    scout: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.500-4.500"/>',
+    fin: '<circle cx="12" cy="12" r="9"/><path d="M15 9.500c-.500-1-1.600-1.500-3-1.500-1.700 0-3 .800-3 2s1.300 1.700 3 2 3 .800 3 2-1.300 2-3 2c-1.400 0-2.500-.500-3-1.500M12 6v2M12 16v2"/>',
+    agent: '<circle cx="9" cy="8" r="3.500"/><path d="M2 20c0-4 3-6.500 7-6.500 1.500 0 2.800.300 3.900.900M16 14l2 2 4-4"/>',
+    player: '<path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c0 1.700-1.300 3-3 3S8 4.700 8 3z"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    check: '<path d="M4 12l5 5L20 6"/>',
+    back: '<path d="M15 5l-7 7 7 7"/>'
   };
   FM.tacSegs = (tac, attr) => Object.keys(FM.TAC).map(k => `<div class="tac-row" title="${FM.TAC[k][2]}"><span>${FM.TAC[k][0]}</span><div class="seg">${FM.TAC[k][1].map((n, i) => `<button ${attr}="tac" data-k="${k}" data-v="${i}" class="${tac[k] === i ? 'on' : ''}">${n}</button>`).join('')}</div></div>`).join('');
   FM.icon = n => `<svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;
