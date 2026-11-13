@@ -186,7 +186,9 @@
 
     /* ---- seremoni platformu ---- */
     const [dc, dg] = cv2(512, 512);
-    const paintDisc = img => { dg.clearRect(0, 0, 512, 512); for (const [r, c] of [[250, '#f3efe4'], [182, home.c1], [128, '#f3efe4']]) { dg.beginPath(); dg.arc(256, 256, r, 0, 6.29); dg.fillStyle = c; dg.fill(); } if (img) dg.drawImage(img, 156, 156, 200, 200); };
+    const paintDisc = img => { dg.clearRect(0, 0, 512, 512); for (const [r, c] of [[250, '#f3efe4'], [182, home.c1], [128, '#f3efe4']]) { dg.beginPath(); dg.arc(256, 256, r, 0, 6.29); dg.fillStyle = c; dg.fill(); } if (img && cleanImg(img)) dg.drawImage(img, 156, 156, 200, 200); };
+    // file:// ile açılınca görsel tuvali kalıcı olarak kirletir (WebGL yükleyemez): önce ayrı tuvalde sına
+    function cleanImg(img) { const [, g] = cv2(1, 1); try { g.drawImage(img, 0, 0, 1, 1); g.getImageData(0, 0, 1, 1); return true; } catch (e) { return false; } }
     paintDisc(null);
     const discTex = tex(dc), discGeo = new T3.CircleGeometry(9.6, 48); discGeo.rotateX(-Math.PI / 2);
     const disc = add(discGeo, mat({ map: discTex, transparent: true, depthWrite: false }), 0, .08, 0);
