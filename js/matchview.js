@@ -232,7 +232,7 @@
       A.whistle(1);
       return run([wait(.9)], true);
     }
-    if (e.type === 'inj') { A.whistle(1); return run([wait(.7)], true); }
+    if (e.type === 'inj') { A.whistle(1); if (e.need && e.side === S.user) return injPanel(e); return run([wait(.7)], true); }
     if (e.type === 'ht') { A.whistle(2); S.htPending = true; return htOverlay(); }
     if (e.type === 'et') { A.whistle(2); S.pops.push({ x: .5, y: .45, text: 'UZATMALAR', color: '#ffc93c', t: -1 }); S.second = false; kickoff(0); return run([wait(1.6)], true); }
     if (e.type === 'pens') return playPens();
@@ -248,13 +248,15 @@
     A.whistle(3); A.crowd(false);
     S.ended = true; S.paused = true; S.phase = 'end'; S.script = null; S.queue = [];
     const ws = FM.winnerSide(m), res = m.cup && ws >= 0 ? (ws === S.user ? 1 : -1) : m.score[S.user] - m.score[1 - S.user];
-    const head = res > 0 ? (m.cup ? 'Tur atladın!' : 'Galibiyet!') : res < 0 ? (m.cup ? 'Kupaya veda' : 'Mağlubiyet') : 'Beraberlik';
+    if (S.fin && ws >= 0) S.cheer[ws] = 1;
+    $('mvOverlay').classList.toggle('fin', S.fin);
+    const head = res > 0 ? (S.fin ? 'KUPA SENİN!' : m.cup ? 'Tur atladın!' : 'Galibiyet!') : res < 0 ? (m.cup ? 'Kupaya veda' : 'Mağlubiyet') : 'Beraberlik';
     const goals = m.log.filter(l => l.type === 'goal').map(l => `<li class="${l.side ? 'r' : 'l'}">${esc(FM.P(l.pid) ? FM.P(l.pid).name : '')} ${l.min}'${l.kind === 'pen' ? ' (P)' : ''}</li>`).join('');
     // puanları önizle (kesin değerler maç kaydedilince yazılır)
     const side = m.s[S.user], d = m.score[S.user] - m.score[1 - S.user];
     const rts = side.played.map(id => ({ p: FM.P(id), r: clamp(m.rt[id] + (d > 0 ? .3 : d < 0 ? -.2 : 0), 3, 10) })).filter(x => x.p).sort((a, b) => b.r - a.r);
     let best = null; for (const s of m.s) for (const id of s.played) if (FM.P(id) && (best == null || m.rt[id] > m.rt[best])) best = id;
-    S.ftHtml = `<h3 class="${res > 0 ? 'win' : res < 0 ? 'loss' : ''}">${head}</h3><p class="ft-score">${m.score[0]} – ${m.score[1]}${m.pens ? ` <small>(pen. ${m.pens.sc[0]}–${m.pens.sc[1]})</small>` : ''}</p><ul class="ft-goals">${goals}</ul>
+    S.ftHtml = `${S.fin && ws >= 0 ? `<img class="trophy won" src="assets/trophy.svg" alt="" width="84" height="98"><p class="eyebrow">Kupa şampiyonu: ${esc(FM.T(m.s[ws].tid).name)}</p>` : ''}<h3 class="${res > 0 ? 'win' : res < 0 ? 'loss' : ''}">${head}</h3><p class="ft-score">${m.score[0]} – ${m.score[1]}${m.pens ? ` <small>(pen. ${m.pens.sc[0]}–${m.pens.sc[1]})</small>` : ''}</p><ul class="ft-goals">${goals}</ul>
       ${best != null ? `<p class="motm">Maçın adamı: <b>${esc(FM.P(best).name)}</b></p>` : ''}
       <div class="rts">${rts.map(x => `<span class="rt ${x.r >= 7.5 ? 'hi' : x.r < 6 ? 'lo' : ''}"><b>${x.r.toFixed(1)}</b>${esc(x.p.name.split(' ').pop())}</span>`).join('')}</div>
       ${statsHtml()}<div class="row">${S.goals.length ? `<button class="btn" data-mv="replay">${FM.icon('play')} Golleri izle</button>` : ''}<button class="btn primary" data-mv="done">Devam et</button></div>`;
@@ -287,6 +289,12 @@
     const on = side.on.map((id, i) => (id == null ? '' : row(id, 'out', side.slots[i][0]))).join('');
     const bench = side.bench.map(id => row(id, 'in')).join('') || '<p class="muted">Yedek kalmadı.</p>';
     overlay(`<h3>Oyuncu değişikliği <small>(${side.subsLeft} hak)</small></h3><div class="sb"><div><h4>Çıkan</h4>${on}</div><div><h4>Giren</h4>${bench}</div></div><div class="row"><button class="btn" data-mv="pclose">Vazgeç</button><button class="btn primary" data-mv="subok" id="mvSubOk" disabled>Değiştir</button></div>`);
+  }
+  function injPanel(e) {
+    const side = S.m.s[S.user], p = FM.P(e.pid);
+    S.wasPaused = S.paused; S.paused = true; S.injSlot = e.slot;
+    const rows = side.bench.map(id => { const b = FM.P(id); return `<button class="sb-row" data-mv="injpick" data-id="${id}"><span class="pos ${b.pos}">${FM.POS_TR[b.pos]}</span><span class="nm">${esc(b.name)}</span><span class="ov">${b.ovr}</span><span class="fit"><i style="width:${Math.round(b.fit)}%"></i></span></button>`; }).join('');
+    overlay(`<h3 class="loss">Sakatlık</h3><p>${esc(p.name)} (${FM.POS_TR[side.slots[e.slot][0]]}) devam edemiyor. Yerine kimi alıyorsun?</p><div class="sb one"><div>${rows}</div></div><div class="row"><button class="btn" data-mv="injno">10 kişi devam et</button></div>`);
   }
   function tacPanel() {
     const side = S.m.s[S.user];
@@ -338,7 +346,7 @@
     const g = S.g, w = S.W, h = S.H, G = S.st.geom, ph = G.y1 - G.y0, cy = (G.y0 + G.y1) / 2;
     g.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
     g.drawImage(S.st.bg, 0, 0, w, h);
-    S.st.drawCrowd(g, S.t + S.ct, { choreo: S.choreo, alpha: S.choreoA, cheer: S.cheer, dt });
+    S.st.drawCrowd(g, S.rt, { choreo: S.choreo, alpha: S.choreoA, cheer: S.cheer, dt });
     for (const sx of [0, 1]) {
       const off = S.shake > 0 && S.shakeSide === sx ? Math.sin(S.t * 40) * 4 * S.shake : 0;
       const x0 = sx ? G.x1 : G.x0, d = sx ? 1 : -1, gw = G.gd * .8 + Math.abs(off), y0 = cy - ph * .06, gh = ph * .12;
@@ -390,7 +398,18 @@
       g.save(); g.translate(px(c.x), py(c.y)); g.rotate(c.r); g.globalAlpha = clamp(c.life, 0, 1);
       g.fillStyle = c.c; g.fillRect(-3, -1.5, 6, 3); g.restore();
     }
-    S.st.drawFx(g, S.t + S.ct);
+    S.st.drawFx(g, S.rt);
+    for (const f of S.fw) { g.globalAlpha = clamp(f.life, 0, 1); g.fillStyle = f.c; g.fillRect(f.x - 1.5, f.y - 1.5, 3, 3); }
+    g.globalAlpha = 1;
+  }
+  function fireworks(raw) {
+    S.fwT -= raw;
+    if (S.fwT <= 0) {
+      S.fwT = .35 + Math.random() * .5;
+      const x = S.W * (.1 + Math.random() * .8), y = S.H * (.1 + Math.random() * .5), c = ['#ffc93c', '#ef5350', '#58c4dd', '#4cc38a', '#ffffff'][Math.floor(Math.random() * 5)];
+      for (let i = 0; i < 34; i++) { const a = i / 34 * 6.28, v = 40 + Math.random() * 70; S.fw.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, c, life: 1.2 }); }
+    }
+    S.fw = S.fw.filter(f => { f.x += f.vx * raw; f.y += f.vy * raw; f.vy += 60 * raw; f.vx *= .985; f.life -= raw * .8; return f.life > 0; });
   }
 
   /* ---------- Döngü ---------- */
@@ -398,6 +417,8 @@
     if (!S) return;
     const raw = Math.min(.05, (ts - (S.lastTs || ts)) / 1000); S.lastTs = ts;
     const dt = S.paused ? 0 : raw * S.speed * S.slow;
+    S.rt += raw;
+    if (S.fin && S.ended) fireworks(raw);
     if (dt > 0 && S.phase === 'cer') ceremony(dt);
     else if (dt > 0) {
       S.t += dt;
@@ -439,7 +460,7 @@
       S.pops = S.pops.filter(p => (p.t += dt) < 1.6);
       S.conf = S.conf.filter(c => { c.x += c.vx * dt; c.y += c.vy * dt; c.r += dt * 6; c.life -= dt; return c.life > 0 && c.y < 1.1; });
     }
-    draw(dt);
+    draw(raw);
     S.raf = requestAnimationFrame(frame);
   }
 
@@ -447,8 +468,9 @@
     const m = S.m;
     if (S.phase === 'cer') endCeremony();
     if (S.ended || S.phase === 'pens' || S.phase === 'replay') return;
-    S.script = null; clearOv(); S.htPending = false;
-    for (const e of S.queue) { if (e.type === 'chance' && e.out === 'goal') S.goals.push(e); if (e.type !== 'ft' && e.type !== 'chance' && e.type !== 'pens') feed(e); }
+    S.script = null; clearOv(); S.htPending = false; m.auto = true;
+    if (S.injSlot != null) { const x = FM.injSub(m, S.user, S.injSlot); if (x) feed(x); S.injSlot = null; }
+    for (const e of S.queue) { if (e.need) { const x = FM.injSub(m, e.side, e.slot); if (x) feed(x); } if (e.type === 'chance' && e.out === 'goal') S.goals.push(e); if (e.type !== 'ft' && e.type !== 'chance' && e.type !== 'pens') feed(e); }
     const hadPens = S.queue.some(e => e.type === 'pens');
     S.queue = [];
     let pens = hadPens;
@@ -481,6 +503,11 @@
       $('mvSubOk').disabled = S.sel.out == null || S.sel.in == null;
     }
     else if (a === 'pclose') closeOverlay();
+    else if (a === 'injpick' || a === 'injno') {
+      const e = a === 'injpick' ? FM.doSub(S.m, S.user, S.injSlot, +b.dataset.id) : null;
+      if (e) feed(e);
+      S.injSlot = null; paintUi(); closeOverlay();
+    }
     else if (a === 'subok') {
       const i = side.on.indexOf(S.sel.out), e = i >= 0 ? FM.doSub(S.m, S.user, i, S.sel.in) : null;
       if (e) feed(e);
@@ -532,7 +559,7 @@
         m, onDone, user, cv, g: cv.getContext('2d'), t: 0, ct: 0, speed: 1, slow: 1, paused: false, acc: 0, queue: [], script: null, second: false, phase: 'cer',
         poss: 0, holder: null, passT: 1, kickT: 0, dots: [], ball: { x: .5, y: 1.1, z: 0 }, conf: [], pops: [], last: {}, shake: 0, shakeSide: 0,
         disp: [0, 0], ended: false, fill, cheer: [0, 0], choreo: 0, choreoA: 1, goals: [], rep: 0, pk: [[], []], htPending: false, wasPaused: false,
-        refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
+        rt: 0, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
         kits: [{ ...kit(h), gk: '#ffc93c' }, { ...kit(a, clash), gk: '#58c4dd' }]
       };
       for (let s = 0; s < 2; s++) for (let i = 0; i < 11; i++) S.dots.push({ s, i, x: .5, y: 1.2, ph: Math.random() * 6.28, ov: null });

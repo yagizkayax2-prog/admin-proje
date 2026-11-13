@@ -389,6 +389,11 @@ textarea { font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vert
 .rt { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; padding: 2px 8px 2px 2px; background: var(--bg-2); border-radius: 99px; }
 .rt b { font: 700 13px var(--display); background: var(--muted); color: #0a1322; border-radius: 99px; padding: 0 6px; } .rt.hi b { background: var(--ok); } .rt.lo b { background: var(--red); color: #fff; }
 .ov-card .tacs { width: 100%; text-align: left; }
+.tbl.lg tbody tr { cursor: pointer; } .tbl.lg tbody tr:hover td { background: var(--surface-2); }
+.scroll.tall { max-height: 46vh; overflow-y: auto; }
+.sb.one { grid-template-columns: minmax(0, 1fr); }
+.mv-overlay.fin { background: rgba(5, 10, 20, .45); }
+.ov-card .trophy { animation: float 3s infinite ease-in-out, popIn .6s cubic-bezier(.2, 1.4, .4, 1); }
 
 @media (max-width: 560px) {
   .hide-s { display: none; }

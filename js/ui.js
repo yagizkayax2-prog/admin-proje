@@ -79,6 +79,7 @@
         <div class="next-in"><p class="eyebrow">${cup ? 'Kupa · ' + G.cup.name : FM.DIV_TR[t.div] + ' · ' + (G.week + 1) + '. hafta'} · ${h.stadium}</p>
           <div class="vs"><div class="vt">${FM.crest(h, 72)}<strong>${h.name}</strong><span class="form">${form(h.id)}</span></div><b>VS</b><div class="vt">${FM.crest(a, 72)}<strong>${a.name}</strong><span class="form">${form(a.id)}</span></div></div>
           <button class="btn primary big pulse" data-a="play">${FM.icon('play')} Maça çık</button>
+          <button class="link" data-a="team" data-id="${opp.id}">Rakip analizi: ${opp.name}</button>
           <p class="chips">${wxChip(fx.wx || { t: 'clear', n: 0 })}<span class="chip">${cup && G.cup.final ? 'Tarafsız saha' : fx.h === G.teamId ? 'İç saha' : 'Deplasman'}</span><span class="chip">${FM.Stadium.TIERS[FM.stadiumTier(h)]}</span>${cup ? '<span class="chip">Eleme: uzatma ve penaltılar</span>' : `<span class="chip">Rakip ${FM.DIV_TR[opp.div]}'nde ${FM.table(opp.div).findIndex(r => r.id === opp.id) + 1}.</span>`}</p></div>
       </section>`;
     }
@@ -96,7 +97,7 @@
   }
   function tableHtml(rows, offset, compact, div) {
     return `<div class="scroll"><table class="tbl lg"><thead><tr><th>#</th><th class="l">Takım</th><th>O</th>${compact ? '' : '<th>G</th><th>B</th><th>M</th><th>A</th><th>Y</th>'}<th>AV</th><th>P</th>${compact ? '' : '<th class="l">Form</th>'}</tr></thead><tbody>` +
-      rows.map((r, i) => { const t = T(r.id), n = offset + i + 1, zone = div === 1 && n <= 2 ? 'up' : div === 0 && n >= 11 ? 'down' : ''; return `<tr class="${r.id === FM.G.teamId ? 'mine' : ''} ${zone}"><td class="rk r${n}">${n}</td><td class="l tm">${FM.crest(t, 22)}${t.name}</td><td>${r.pl}</td>${compact ? '' : `<td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td>`}<td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td><b>${r.pts}</b></td>${compact ? '' : `<td class="l form">${r.form.slice(-5).map(x => `<i class="f${x}">${x}</i>`).join('')}</td>`}</tr>`; }).join('') + '</tbody></table></div>';
+      rows.map((r, i) => { const t = T(r.id), n = offset + i + 1, zone = div === 1 && n <= 2 ? 'up' : div === 0 && n >= 11 ? 'down' : ''; return `<tr class="${r.id === FM.G.teamId ? 'mine' : ''} ${zone}" data-a="team" data-id="${r.id}" tabindex="0"><td class="rk r${n}">${n}</td><td class="l tm">${FM.crest(t, 22)}${t.name}</td><td>${r.pl}</td>${compact ? '' : `<td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td>`}<td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td><b>${r.pts}</b></td>${compact ? '' : `<td class="l form">${r.form.slice(-5).map(x => `<i class="f${x}">${x}</i>`).join('')}</td>`}</tr>`; }).join('') + '</tbody></table></div>';
   }
 
   /* ---------- Kadro ---------- */
@@ -132,6 +133,17 @@
       <div class="kpis sm"><div><span>Maç</span><b>${p.apps}</b></div><div><span>Gol / Asist</span><b>${p.g} / ${p.as}</b></div><div><span>Ort. puan</span><b>${fmtR(FM.avgRating(p))}</b></div><div><span>Moral</span><b>${Math.round(p.mor)}</b></div><div><span>Değer</span><b>${money(p.value)}</b></div><div><span>Sözleşme</span><b>${p.tid == null ? '—' : p.con + ' sezon'}</b></div></div>
       ${p.form.length ? `<div class="formr"><span>Son maç puanları</span>${p.form.map(v => `<i class="${v >= 7.5 ? 'hi' : v < 6 ? 'lo' : ''}" style="--h:${Math.round((v - 3) / 7 * 100)}%"><b>${v.toFixed(1)}</b></i>`).join('')}</div>` : ''}
       <div class="pm-act" id="pmAct">${act}</div>`);
+  }
+
+  function teamModal(id) {
+    const t = T(id), G = FM.G, tb = FM.table(t.div), row = tb.find(r => r.id === id), pos = tb.indexOf(row) + 1, tier = FM.stadiumTier(t);
+    const list = t.players.map(P).sort((a, b) => ORDER[a.pos] - ORDER[b.pos] || FM.est(b)[0] - FM.est(a)[0]);
+    const xi = t.lineup.filter(x => x != null).map(P), star = xi.slice().sort((a, b) => b.g - a.g || FM.est(b)[0] - FM.est(a)[0])[0];
+    const tac = id === G.teamId || true ? Object.keys(FM.TAC).map(k => `<span class="chip">${FM.TAC[k][0]}: ${FM.TAC[k][1][t.tac[k]]}</span>`).join('') : '';
+    modal(`<div class="pm-head">${FM.crest(t, 72)}<div><h3>${t.name}</h3><p>${FM.DIV_TR[t.div]} · ${pos}. sıra · ${row.pts} puan</p><p class="muted">${esc(t.stadium)} · ${FM.Stadium.TIERS[tier]} · ${FM.stadiumCap(t).toLocaleString('tr-TR')} kişilik</p></div><div class="pm-ovr"><b class="ovr o3">${t.formation}</b><span>Diziliş</span></div></div>
+      <p class="chips">${tac}<span class="chip">Form: ${row.form.slice(-5).join(' ') || '—'}</span></p>
+      <div class="kpis sm"><div><span>Kadro değeri</span><b>${money(FM.squadValue(t))}</b></div><div><span>Attığı / yediği</span><b>${row.gf} / ${row.ga}</b></div>${star ? `<div><span>Dikkat edilecek isim</span><b>${esc(star.name)}</b></div>` : ''}</div>
+      <div class="scroll tall"><table class="tbl pls">${P_HEAD(id !== G.teamId)}<tbody>${playerRows(list, id !== G.teamId)}</tbody></table></div>`, true);
   }
 
   /* ---------- Taktik ---------- */
@@ -357,6 +369,7 @@
       case 'play': playMatch(); break;
       case 'close': closeModal(); break;
       case 'player': playerModal(+d.id); break;
+      case 'team': teamModal(+d.id); break;
       case 'slot': tacticClick('slot', +d.i); break;
       case 'bench': tacticClick('bench', +d.id); break;
       case 'formation': me().formation = d.v; FM.autoPick(me()); U.sel = null; FM.save(); render(true); break;

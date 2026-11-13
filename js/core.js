@@ -319,9 +319,8 @@
         const p = wpick(pl2, q => (q.trait === 'glass' ? 3 : 1)), i = side.on.indexOf(p.id), role = side.slots[i][0];
         p.inj = ri(2, 6);
         ev.push({ type: 'inj', min: m.min, side: s, pid: p.id, text: txt('inj', { p: p.name }) });
-        const rep = bestBenchFor(side, role) ?? (role !== 'GK' ? side.bench.find(id => P(id).pos !== 'GK') : null);
-        const e = rep != null ? doSub(m, s, i, rep) : null;
-        if (e) ev.push(e); else side.on[i] = null;
+        if (side.user && !m.auto && side.subsLeft > 0 && side.bench.length) { side.on[i] = null; ev[ev.length - 1].need = true; ev[ev.length - 1].slot = i; }
+        else { const e = injSub(m, s, i); if (e) ev.push(e); else side.on[i] = null; }
       }
       const drain = [.85, 1, 1.25][tac.press] * [.95, 1, 1.1][tac.tempo] * wxD;
       for (const p of pl2) p.fit = Math.max(20, p.fit - (slotRole(side, p.id) === 'GK' ? .06 : (.19 + side.ment * .025) * drain * (p.trait === 'iron' ? .7 : 1)));
@@ -343,7 +342,12 @@
     else if ((m.min >= 90 && !m.et) || m.min >= 120) { m.done = true; ev.push({ type: 'ft', min: m.min, text: txt('ft', {}) }); }
     return ev;
   }
-  function simFull(m) { while (!m.done) simMinute(m); return m; }
+  function injSub(m, s, i) {
+    const side = m.s[s], role = side.slots[i][0];
+    const rep = bestBenchFor(side, role) ?? (role !== 'GK' ? side.bench.find(id => P(id).pos !== 'GK') : null);
+    return rep != null ? doSub(m, s, i, rep) : null;
+  }
+  function simFull(m) { m.auto = true; while (!m.done) simMinute(m); return m; }
   const winnerSide = m => (m.score[0] !== m.score[1] ? (m.score[0] > m.score[1] ? 0 : 1) : m.pens ? (m.pens.sc[0] > m.pens.sc[1] ? 0 : 1) : -1);
 
   function finishMatch(m) {
@@ -582,6 +586,7 @@
         news(`${deadline() ? 'Son gün teklifi! ' : ''}${buyer.name}, ${p.name} için teklif gönderdi.`, 'offer');
       }
     }
+    if (windowOpen()) aiTransfers();
     if (G.week === 4 || G.week === 14) news('Transfer dönemi kapandı. Yalnızca serbest oyuncularla anlaşabilirsin.', 'info');
     if (G.week === 10) news('Ara transfer dönemi açıldı (4 hafta).', 'club');
     if (deadline()) news('Transfer döneminin son haftası!', 'offer');
@@ -590,6 +595,31 @@
     if (CUP_AFTER.includes(G.week) && !G.cup.winner) drawCup();
     if (G.board <= 10 && G.week >= 8) sack();
     save();
+  }
+  /* Diğer kulüpler de transfer yapar: serbest oyuncu imzalar, birbirinden oyuncu alır */
+  function aiTransfers() {
+    const others = G.teams.filter(t => t.id !== G.teamId);
+    if (R() < .4 && G.free.length) {
+      const club = pick(others.filter(t => t.players.length < 26));
+      const cands = club ? G.free.map(P).filter(p => p.ovr >= teamQ(club) - 3 && p.ovr <= teamQ(club) + 8) : [];
+      if (cands.length) {
+        const p = cands.sort((a, b) => b.ovr - a.ovr)[0];
+        G.free = G.free.filter(id => id !== p.id); addToTeam(p, club); p.con = ri(2, 4); autoPick(club);
+        news(`${club.name}, serbest oyuncu ${p.name} ile anlaştı.`, 'info');
+      }
+    }
+    if (R() < .25) {
+      const seller = pick(others.filter(t => t.players.length > 20));
+      const buyer = seller && pick(others.filter(t => t !== seller && t.players.length < 26 && (t.rep - t.div * 2) >= (seller.rep - seller.div * 2)));
+      if (buyer) {
+        const cands = seller.players.map(P).filter(p => !p.loan && !seller.lineup.includes(p.id) && p.ovr >= teamQ(buyer) - 4);
+        if (cands.length) {
+          const p = pick(cands);
+          removeFromTeam(p); addToTeam(p, buyer); p.con = ri(2, 4); autoPick(seller); autoPick(buyer);
+          news(`${p.name}, ${money(r10k(p.value * 1.15))} karşılığında ${seller.name} takımından ${buyer.name} takımına transfer oldu.`, 'info');
+        }
+      }
+    }
   }
   function sack() {
     const me = T(G.teamId);
@@ -826,7 +856,7 @@
   }
 
   Object.assign(FM, {
-    WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, finishMatch, doSub, ratings, winnerSide,
+    WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, injSub, finishMatch, doSub, ratings, winnerSide,
     table, userFixture, newGame, save, load, reset, exportSave, importSave, endWeek, startNewSeason, simOthers, askPrice, isClause, marketList, buy, sellOffer, sell,
     loanIn, loanOut, loanedOut, renew, renewTerms, scout, known, est, avgRating, talk, answerPress, takeJob, windowOpen, deadline, cupTie, playCupRound,
     youthIntake, upgrade, facCost, FAC, money, wageBill, expectation, stadiumCap, stadiumTier, squadValue, slotRole, divTeams
