@@ -45,6 +45,9 @@
     postMotm: ['{p} maçın adamı seçildi. Performansını nasıl değerlendiriyorsunuz?', [['Harikaydı, her övgüyü hak ediyor.', { pmor: 7 }], ['İyiydi ama daha fazlasını yapabilir.', { pmor: -2, board: 2 }], ['Bireysel değil, takım başarısı.', { mor: 2 }]]],
     postRed: ['{p} kırmızı kart gördü. Karar hakkında ne düşünüyorsunuz?', [['Hakem doğru karar verdi, oyuncumla konuşacağım.', { pmor: -4, board: 2 }], ['Karar çok sertti.', { pmor: 3, fans: 2, board: -2 }], ['Yorum yapmayacağım.', {}]]],
     postCupOut: ['Kupaya {opp} karşısında veda ettiniz. Hayal kırıklığı büyük mü?', [['Üzgünüz ama ligde telafi edeceğiz.', { board: 2, mor: 1 }], ['Taraftarımızdan özür dileriz.', { fans: 4, mor: -1 }], ['Kupa zaten önceliğimiz değildi.', { board: 1, fans: -4 }]]],
+    preDerby: ['{opp} ile {der} öncesi şehir alev alev. Bu maç sizin için ne ifade ediyor?', [['Sezonun en önemli maçı, her şeyimizi vereceğiz.', { fans: 6, mor: 2, board: -1 }], ['Sonuçta üç puan, sakin kalmalıyız.', { board: 3, fans: -3 }], ['Rakibe saygı duyuyoruz ama şehir bizim.', { fans: 4, mor: 1 }]]],
+    postDerbyW: ['{der} sizin! Taraftara ne söylemek istersiniz?', [['Bu galibiyet sizin için.', { fans: 6 }], ['Takımımla gurur duyuyorum.', { mor: 4 }], ['Kutlayalım ama sezon bitmedi.', { board: 3, mor: 1 }]]],
+    postDerbyL: ['{der} kaybedildi. Tribünler öfkeli, ne diyeceksiniz?', [['Taraftarımızdan özür dileriz.', { fans: 3, mor: -2 }], ['Hakem maçı belirledi.', { fans: 4, board: -3 }], ['Bu yenilgiden güçlenerek çıkacağız.', { board: 2, mor: 2 }]]],
     trBuy: ['{p} için {amt} ödediniz. Bu bedel yüksek değil mi?', [['Kalitesi bedelini fazlasıyla karşılayacak.', { pmor: 5, fans: 2 }], ['Bu piyasada makul bir rakam.', { board: 2 }], ['Zaman gösterecek.', { pmor: -2, board: 1 }]]],
     trRole: ['{p} takıma ne katacak?', [['Hemen ilk 11\'e girecek bir oyuncu.', { pmor: 6, mor: -2 }], ['Kadromuza derinlik kazandıracak.', { mor: 1, board: 1 }], ['Rekabeti artıracak, kimsenin yeri garanti değil.', { mor: -1, board: 2, pmor: 1 }]]],
     trFree: ['{p} bedelsiz geldi. Bu bir fırsat transferi mi?', [['Doğru zamanda doğru hamle.', { board: 3 }], ['Kendini kanıtlaması gerekecek.', { pmor: -2, mor: 1 }], ['Onun gibi bir oyuncuyu bedelsiz bulmak büyük şans.', { pmor: 5, fans: 2 }]]],
@@ -56,7 +59,7 @@
   const sumMine = () => T(FM.G.teamId).players.map(P);
   const xiAvg = t => { const xi = t.lineup.filter(x => x != null).map(P); return xi.length ? xi.reduce((s, p) => s + p.ovr, 0) / xi.length : 60; };
   function fill(k, ctx) {
-    const [q, a] = Q[k], sub = s => s.replace(/\{opp\}/g, ctx.opp || '').replace(/\{p\}/g, ctx.p ? P(ctx.p).name : '').replace(/\{score\}/g, ctx.score || '').replace(/\{amt\}/g, ctx.amt ? FM.money(ctx.amt) : '');
+    const [q, a] = Q[k], sub = s => s.replace(/\{opp\}/g, ctx.opp || '').replace(/\{p\}/g, ctx.p ? P(ctx.p).name : '').replace(/\{score\}/g, ctx.score || '').replace(/\{amt\}/g, ctx.amt ? FM.money(ctx.amt) : '').replace(/\{der\}/g, ctx.der || 'derbi');
     return { q: sub(q), a: a.map(([t, fx]) => [sub(t), fx]), pid: ctx.p != null ? ctx.p : null, ans: null, res: '' };
   }
   function journos(n) { ensure(); const pool = FM.G.journos.slice().sort(() => R() - .5); return pool.slice(0, n).map(j => j.id); }
@@ -71,11 +74,11 @@
 
   /* Maç öncesi: hafta sonunda bir sonraki maç için */
   function pre() {
-    const G = FM.G, me = T(G.teamId), cup = G.cupDue && FM.cupTie(), fx = cup || FM.userFixture();
+    const G = FM.G, me = T(G.teamId), cup = (G.euroDue && FM.Career && FM.Career.euroTie()) || (G.cupDue && FM.cupTie()), fx = cup || FM.userFixture();
     if (!fx || R() > (cup ? .8 : .55)) return;
     const opp = T(fx.h === G.teamId ? fx.a : fx.h), edge = xiAvg(me) - xiAvg(opp) + (fx.h === G.teamId ? 2 : -2);
     const row = FM.table().find(r => r.id === G.teamId), form = row ? row.form.slice(-3) : [];
-    const keys = [cup ? 'preCup' : edge >= 3 ? 'preFav' : edge <= -3 ? 'preDog' : 'preEven'], ctx = { opp: opp.name };
+    const der = !cup && FM.Career && FM.Career.isDerby(fx), keys = [der ? 'preDerby' : cup ? 'preCup' : edge >= 3 ? 'preFav' : edge <= -3 ? 'preDog' : 'preEven'], ctx = { opp: opp.name, der };
     if (form.filter(x => x === 'M').length >= 2) keys.push('preBad'); else if (form.length === 3 && form.every(x => x === 'G')) keys.push('preGood');
     const inj = sumMine().filter(p => p.inj && p.ovr >= xiAvg(me)).sort((a, b) => b.ovr - a.ovr)[0], star = sumMine().filter(p => p.g >= 3).sort((a, b) => b.g - a.g)[0];
     if (keys.length < 2 && inj) { keys.push('preInj'); ctx.p = inj.id; } else if (keys.length < 2 && star) { keys.push('preStar'); ctx.p = star.id; }
@@ -91,6 +94,7 @@
     else if (won) keys.push(gf - ga >= 3 ? 'postBig' : 'postWin');
     else if (!lost) keys.push('postDraw');
     else keys.push(G.board < 35 || ga - gf >= 3 ? 'postResign' : 'postLoss');
+    const der = FM.Career && FM.Career.isDerby(m.fx); if (der && (won || lost)) { keys[0] = won ? 'postDerbyW' : 'postDerbyL'; ctx.der = der; }
     const red = m.log.find(l => l.type === 'red' && l.side === us), motm = m.motm != null && P(m.motm) && P(m.motm).tid === G.teamId ? m.motm : null;
     if (red) { keys.push('postRed'); ctx.p = red.pid; } else if (motm != null && R() < .7) { keys.push('postMotm'); ctx.p = motm; }
     const verb = won ? 'galibiyeti' : lost ? 'yenilgisi' : 'beraberliği';

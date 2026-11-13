@@ -252,9 +252,40 @@
     if (e.type === 'pens') return playPens();
     if (e.type === 'ft') return fullTime();
   }
+  /* Devre arası konuşması ve kenardan talimatlar: kullanıcı tarafının maç gücünü etkiler */
+  const HT = [['praise', 'Harika gidiyorsunuz, devam!'], ['demand', 'Bu yetmez, daha fazlasını istiyorum'], ['calm', 'Sakin olun, plana sadık kalın'], ['angry', 'Bu oyun kabul edilemez!']];
+  const SHOUTS = [['attack', 'Öne çıkın!', { att: 1.08, def: .95 }], ['tight', 'Arkayı kapatın!', { def: 1.08, att: .94 }], ['focus', 'Konsantre olun!', { ctl: 1.06 }], ['enc', 'Hadi, yapabilirsiniz!', { att: 1.03, def: 1.03, ctl: 1.03 }]];
+  function htTalk(k) {
+    const side = S.m.s[S.user], d = S.m.score[S.user] - S.m.score[1 - S.user];
+    let f, txt;
+    if (k === 'praise') { f = d > 0 ? 1.025 : d < 0 ? .985 : 1.01; txt = d > 0 ? 'Oyuncular övgüyle coştu.' : d < 0 ? 'Geride olmalarına rağmen övülmek oyuncuları rahatlattı, belki fazla.' : 'Oyuncular moral buldu.'; }
+    else if (k === 'demand') { f = d <= 0 ? 1.04 : .995; txt = d <= 0 ? 'Mesaj alındı, takım daha istekli çıkıyor.' : 'Öndeyken bu baskı oyuncuları şaşırttı.'; }
+    else if (k === 'calm') { f = 1.015; txt = 'Takım sakinleşti, plana odaklandı.'; }
+    else { f = d < 0 ? (Math.random() < .55 ? 1.06 : .97) : .97; txt = f > 1 ? 'Öfken işe yaradı, oyuncular hırslandı!' : 'Sert sözler bazı oyuncuları kırdı.'; }
+    side.mod = (side.mod || 1) * f;
+    for (const id of side.on) if (id != null) { const p = FM.P(id); p.mor = clamp(p.mor + (f > 1.01 ? 3 : f < 1 ? -3 : 1), 20, 100); }
+    S.htTalk = txt + (f > 1 ? ' (ikinci yarı gücü ↑)' : f < 1 ? ' (ikinci yarı gücü ↓)' : '');
+    feed({ min: 45, type: 'talk', text: 'Devre arası: ' + txt });
+    htOverlay();
+  }
+  function shoutPanel() {
+    const side = S.m.s[S.user], cd = S.shoutCd && S.m.min < S.shoutCd;
+    if (!S.htPending) S.wasPaused = S.paused; S.paused = true;
+    overlay(`<h3>Kenardan talimat</h3><p class="muted">${cd ? `Oyuncular son talimatını uyguluyor. Yeni talimat ${S.shoutCd}. dakikadan sonra.` : 'Etkisi 10 dakika sürer. Sonraki talimat için 15 dakika beklemen gerekir.'}</p>
+      <div class="ht-talk">${SHOUTS.map(([k, n]) => `<button class="btn" data-mv="shout" data-v="${k}" ${cd ? 'disabled' : ''}>${n}</button>`).join('')}</div>${side.shout ? `<p class="ht-res">Etkin: “${SHOUTS.find(x => x[0] === side.shout.k)[1]}” (${side.shout.until}. dakikaya kadar)</p>` : ''}
+      <div class="row end"><button class="btn" data-mv="pclose">Kapat</button></div>`);
+  }
+  function shout(k) {
+    const side = S.m.s[S.user], sh = SHOUTS.find(x => x[0] === k);
+    side.shout = { ...sh[2], k, until: S.m.min + 10 }; S.shoutCd = S.m.min + 15;
+    feed({ min: S.m.min, type: 'talk', text: `Teknik direktör kenardan bağırıyor: “${sh[1]}”` });
+    const b = $('mvShout'); if (b) b.classList.add('on');
+    closeOverlay();
+  }
   function htOverlay() {
     S.paused = true;
-    overlay(`<h3>Devre arası</h3>${statsHtml()}<div class="row"><button class="btn" data-mv="tacp">Taktik</button><button class="btn" data-mv="sub">Değişiklik</button><button class="btn primary" data-mv="second">İkinci yarıyı başlat</button></div>`);
+    const talk = S.htTalk ? `<p class="ht-res">${S.htTalk}</p>` : `<p class="ht-lbl">Soyunma odası konuşması</p><div class="ht-talk">${HT.map(([k, n]) => `<button class="btn" data-mv="httalk" data-v="${k}">${n}</button>`).join('')}</div>`;
+    overlay(`<h3>Devre arası</h3>${statsHtml()}${talk}<div class="row"><button class="btn" data-mv="tacp">Taktik</button><button class="btn" data-mv="sub">Değişiklik</button><button class="btn primary" data-mv="second">İkinci yarıyı başlat</button></div>`);
   }
   function fullTime() {
     const m = S.m, A = FM.Audio;
@@ -541,6 +572,9 @@
     else if (a === 'ment') { side.ment = +b.dataset.v; FM.T(side.tid).ment = side.ment; tacPanel(); }
     else if (a === 'tac') { side.tac[b.dataset.k] = +b.dataset.v; FM.T(side.tid).tac[b.dataset.k] = +b.dataset.v; tacPanel(); }
     else if (a === 'skip') skip();
+    else if (a === 'httalk') htTalk(b.dataset.v);
+    else if (a === 'shoutp') { if (S.phase === 'play' && !S.ended && ($('mvOverlay').hidden || S.htPending)) shoutPanel(); }
+    else if (a === 'shout') shout(b.dataset.v);
     else if (a === 'cerskip') endCeremony();
     else if (a === 'sound') { b.innerHTML = FM.icon(FM.Audio.toggle() ? 'mute' : 'sound'); }
     else if (a === 'tacp') { if (S.phase === 'play' && !S.ended) tacPanel(); }
@@ -576,7 +610,7 @@
     start(m, onDone, info) {
       const el = $('match'), h = FM.T(m.s[0].tid), a = FM.T(m.s[1].tid), A = FM.Audio, G = FM.G;
       const user = m.s[0].user ? 0 : 1, tier = FM.stadiumTier(h), cap = FM.stadiumCap(h);
-      const fill = clamp((h.id === G.teamId ? .3 + G.fans / 100 * .65 : .45 + h.rep * .09) + (m.cup ? .08 : 0), .25, 1);
+      const fill = clamp((h.id === G.teamId ? .3 + G.fans / 100 * .65 : .45 + h.rep * .09) + (m.cup ? .08 : 0) + (info && info.derby ? .15 : 0), .25, 1);
       el.innerHTML = `
         <div class="mv">
           <div class="mv-pitch">
@@ -602,6 +636,7 @@
               <button class="btn chipb wide" data-mv="tacp"><small>Pres</small><b id="mvChPress"></b></button>
               <button class="btn chipb wide" data-mv="tacp"><small>Taktik</small><b>${m.s[user].formation}</b></button>
               <button class="btn chipb" data-mv="sub"><small>Kenar</small><b><span id="mvSubs">5</span> hak</b></button>
+              <button class="btn chipb" data-mv="shoutp" id="mvShout"><small>Talimat</small><b>Bağır</b></button>
             </div>
             <div class="mv-overlay" id="mvOverlay" hidden></div>
           </div>
@@ -614,7 +649,7 @@
       const uk = info && info.kit != null ? info.kit : null, hk = user === 0 && uk != null ? uk : 0, hf = kit(h, hk).fill;
       const ak = user === 1 && uk != null ? uk : cdist(hf, a.c1) < 150 ? (cdist(hf, a.c2) < 150 ? 2 : 1) : 0;
       S = {
-        m, onDone, user, cv, g: cv.getContext('2d'), t: 0, ct: 0, speed: 1, slow: 1, paused: false, acc: 0, queue: [], script: null, second: false, phase: 'cer',
+        m, onDone, user, cv, g: cv.getContext('2d'), t: 0, ct: 0, speed: (FM.Settings && FM.Settings.get('speed')) || 1, slow: 1, no3d: FM.Settings ? !FM.Settings.get('gfx3d') : false, paused: false, acc: 0, queue: [], script: null, second: false, phase: 'cer',
         poss: 0, holder: null, passT: 1, kickT: 0, dots: [], ball: { x: .5, y: 1.1, z: 0 }, conf: [], pops: [], last: {}, shake: 0, shakeSide: 0,
         disp: [0, 0], ended: false, fill, cheer: [0, 0], choreo: 0, choreoA: 1, goals: [], rep: 0, pk: [[], []], htPending: false, wasPaused: false,
         rt: 0, discA: 1, said: 0, info: { stadium: h.stadium, home: h.name, away: a.name, att: Math.round(cap * fill).toLocaleString('tr-TR') }, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
@@ -624,6 +659,7 @@
       S.onResize = () => { if (S) resize(); };
       window.addEventListener('resize', S.onResize);
       resize();
+      $('mvSpdBtn').textContent = S.speed + 'x'; $('mvSpd').textContent = '▷▷ ' + S.speed + 'x';
       paintUi();
       A.init(); A.crowd(true); A.anthem();
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { S.ct = 6.9; }

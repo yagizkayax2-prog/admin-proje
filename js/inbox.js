@@ -304,5 +304,6 @@
   }
 
   FM.ek = ek;
-  FM.Inbox = { add, todo, ensure, make, decide, pending, unread, week, onMatch, fmtDate, today, date, CAT };
+  const extend = o => { for (const k in o) TPL[k] = { gen: o[k] }; };
+  FM.Inbox = { extend, add, todo, ensure, make, decide, pending, unread, week, onMatch, fmtDate, today, date, CAT };
 })();

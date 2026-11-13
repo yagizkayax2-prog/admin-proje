@@ -67,20 +67,21 @@
     player: '<path d="M8 3l-5 3 2 4 2-1v12h10V9l2 1 2-4-5-3c0 1.700-1.300 3-3 3S8 4.700 8 3z"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     check: '<path d="M4 12l5 5L20 6"/>',
-    back: '<path d="M15 5l-7 7 7 7"/>'
+    back: '<path d="M15 5l-7 7 7 7"/>',
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>'
   };
   FM.tacSegs = (tac, attr) => Object.keys(FM.TAC).map(k => `<div class="tac-row" title="${FM.TAC[k][2]}"><span>${FM.TAC[k][0]}</span><div class="seg">${FM.TAC[k][1].map((n, i) => `<button ${attr}="tac" data-k="${k}" data-v="${i}" class="${tac[k] === i ? 'on' : ''}">${n}</button>`).join('')}</div></div>`).join('');
   FM.icon = n => `<svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;
 
   /* ---------- Ses (WebAudio ile sentezlenir, dosya gerekmez) ---------- */
   FM.Audio = (function () {
-    let ctx = null, master = null, crowdG = null, muted = false;
+    let ctx = null, master = null, crowdG = null, muted = false, vol = .7;
     try { muted = localStorage.getItem('saha-kenari-mute') === '1'; } catch (e) { /* yok say */ }
     function init() {
       if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
       try {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
-        master = ctx.createGain(); master.gain.value = muted ? 0 : .7; master.connect(ctx.destination);
+        master = ctx.createGain(); master.gain.value = muted ? 0 : vol; master.connect(ctx.destination);
       } catch (e) { ctx = null; }
     }
     function noise(sec) {
@@ -142,9 +143,10 @@
       toggle() {
         muted = !muted;
         try { localStorage.setItem('saha-kenari-mute', muted ? '1' : '0'); } catch (e) { /* yok say */ }
-        if (master) master.gain.value = muted ? 0 : .7;
+        if (master) master.gain.value = muted ? 0 : vol;
         return muted;
-      }
+      },
+      setVol(v) { vol = v; if (master) master.gain.value = muted ? 0 : vol; }
     };
   })();
 })();

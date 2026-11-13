@@ -18,6 +18,14 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Basın toplantıları: maç öncesi, maç sonrası ve önemli transferlerden sonra; çizimli basın salonu, kalıcı gazeteciler (yayın organı, tarz, seninle ilişkisi), çok sorulu toplantılar
 - Oyuncu görüşmeleri, yönetim güveni ve taraftar desteği, görevden alınma ve iş teklifleri
 - Kulüp müzesi: kupalar, rekorlar, efsaneler, başarımlar
+- Oyun menüsü: devam et, yeni kariyer, 3 kayıt yuvası, ayarlar (ses, maç hızı, 3D/2D, sakin mod, haber şeridi, otomatik kayıt), rehber ve ilk kariyerde tanıtım turu
+- Sözleşme pazarlığı: transferde ve sözleşme uzatmada menajerle maaş, süre ve imza parası görüşmesi; menajerin sabrı sınırlı
+- Soyunma odası: oyuncu kişilikleri, takım uyumu, gruplar ve liderleri, kaptan seçimi; uyum maç gücünü etkiler
+- Maç içinde devre arası konuşması ve 10 dakikalık kenardan talimatlar
+- İzleme listesi ve profil bazlı scout görevleri; altyapı akademisi (her sezon alım günü, A takıma alma)
+- Teknik ekip (yardımcı antrenör, kaleci antrenörü, fizyoterapist, baş scout) ve haftalık antrenman takvimi
+- Finans: bilet fiyatı, sezonluk gelir-gider tablosu, yönetimden ek bütçe isteme
+- Derbiler, Kıta Kupası (ligin ilk ikisi ve 8 yabancı kulüpten 6'sı), sezon ödülleri ve yılın 11'i, oyuncu kariyer geçmişi, kulüp efsaneleri, sosyal akış
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
 ## Dosyalar
@@ -28,6 +36,10 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | `js/core.js` | Oyun çekirdeği: maç motoru, lig, transfer, finans |
 | `js/inbox.js` | Gelen kutusu: mesaj şablonları, kararlar ve etkileri, takvim |
 | `js/press.js` | Basın toplantıları: gazeteciler, soru bankası, cevap etkileri, salon çizimi |
+| `js/career.js` | Kariyer sistemleri: pazarlık, soyunma odası, scout, altyapı, teknik ekip, antrenman takvimi, finans, derbi, Kıta Kupası, ödüller, sosyal akış |
+| `js/settings.js` | Oyun ayarları |
+| `js/ui-more.js` | Oyun menüsü, ayarlar, rehber ve tur, yeni ekranlar |
+| `js/boot.js` | Açılış |
 | `js/gfx.js` | Üretilen armalar, oyuncu portreleri, ikonlar, sentezlenen sesler |
 | `js/stadium3d.js` | Three.js ile 3D stadyum (saha, tribünler, çatı, kaleler, bayrak) |
 | `js/stadium.js` | WebGL olmayan cihazlar için 2D stadyum; kulüp sayfasındaki önizleme |
