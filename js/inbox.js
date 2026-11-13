@@ -30,7 +30,7 @@
   /* ---------- Mesaj ekleme ---------- */
   function add(m) {
     const G = FM.G;
-    const msg = Object.assign({ id: G.nextMsg++, s: G.season, d: msgDay(), read: false, ch: null }, m);
+    const msg = Object.assign({ id: G.nextMsg++, s: G.season, d: msgDay(), born: G.season * 100 + G.week, read: false, ch: null }, m);
     msg.cat = CAT[msg.cat] || msg.cat;
     G.inbox.unshift(msg);
     if (G.inbox.length > 80) G.inbox.length = 80;
@@ -46,6 +46,7 @@
     if (G.nextMsg == null) G.nextMsg = 1;
     if (!G.staff) G.staff = { asst: name(), med: name(), scout: name(), chair: name(), owner: name(), fin: name() };
     if (!G.ibCool) G.ibCool = {};
+    if (FM.Press) FM.Press.ensure();
   }
 
   /* ---------- Şablonlar: gen() mesajı üretir, act(m, i) kararın etkisini uygular ve sonuç metnini döner ---------- */
@@ -265,7 +266,8 @@
     FM.save();
     return { ok: true, msg: r };
   }
-  const pending = () => (FM.G && FM.G.inbox ? FM.G.inbox.filter(m => m.opts && m.ch == null) : []);
+  const todo = m => (m.conf ? !m.conf.done : !!m.opts && m.ch == null);
+  const pending = () => (FM.G && FM.G.inbox ? FM.G.inbox.filter(todo) : []);
   const unread = () => (FM.G && FM.G.inbox ? FM.G.inbox.filter(m => !m.read).length : 0);
 
   function cool(k, w) { const G = FM.G, key = G.season * 100 + G.week; if (G.ibCool[k] && key - G.ibCool[k] < w) return false; G.ibCool[k] = key; return true; }
@@ -274,7 +276,11 @@
   function week() {
     ensure();
     const G = FM.G;
-    for (const m of pending()) decide(m.id, m.opts.length - 1, true);   // cevapsız kalanlar: son seçenek
+    const cur = G.season * 100 + G.week;
+    for (const m of pending()) {
+      if (m.conf) { if (m.conf.type !== 'pre' && m.born === cur - 1) continue; FM.Press.expire(m); }   // maç sonrası/transfer toplantısı bir hafta daha açık
+      else decide(m.id, m.opts.length - 1, true);   // cevapsız kalanlar: son seçenek
+    }
     for (const p of mine()) if (p.prom && G.week >= p.prom.w) {
       const ok = p.apps >= p.prom.apps; delete p.prom;
       if (ok) mor(p, 6); else { mor(p, -16); for (const q of mine()) mor(q, -2); }
@@ -283,7 +289,7 @@
     if (G.week === 1) make('sponsor');
     if (G.week % 6 === 3) make('youthRep');
     if (G.week % 6 === 0 && G.week >= 6) make('review');
-    if (R() < .4) make('press');
+    FM.Press.pre();
     const pool = [['leak', .3, 4], ['split', .14, 6], ['mins', .22, 3], ['agent', .2, 4], ['loan', .3, 2], ['owner', .05, 30]];
     let n = 0;
     for (const [k, pr, w] of pool.sort(() => R() - .5)) if (n < 2 && R() < pr && cool(k, w) && make(k)) n++;
@@ -294,8 +300,9 @@
     const fresh = now.filter(id => !known.has(id) && played.has(id)).map(P);
     G.injKnown = now;
     if (fresh.length) { const p = fresh.sort((a, b) => b.inj - a.inj)[0]; make('injury', { pid: p.id, more: fresh.length - 1 }); }
+    FM.Press.post(m, us);
   }
 
   FM.ek = ek;
-  FM.Inbox = { ensure, make, decide, pending, unread, week, onMatch, fmtDate, today, date, CAT };
+  FM.Inbox = { add, todo, ensure, make, decide, pending, unread, week, onMatch, fmtDate, today, date, CAT };
 })();

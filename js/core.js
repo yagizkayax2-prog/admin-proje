@@ -596,8 +596,9 @@
     if (G.week === 10) news('Ara transfer dönemi açıldı (4 hafta).', 'club');
     if (deadline()) news('Transfer döneminin son haftası!', 'offer');
     if (G.week === 16) { const ex = me.players.map(P).filter(p => p.con <= 1 && !p.loan); if (ex.length) news(`Sözleşmesi sezon sonunda bitecekler: ${ex.map(p => p.name).join(', ')}.`, 'offer'); }
-    G.press = null; FM.Inbox.week();
+    G.press = null;
     if (CUP_AFTER.includes(G.week) && !G.cup.winner) drawCup();
+    FM.Inbox.week();
     if (G.board <= 10 && G.week >= 8) sack();
     save();
   }
@@ -752,6 +753,7 @@
     const p = P(pid), me = T(G.teamId), err = canDeal(p);
     if (err) return { ok: false, msg: err };
     let price = askPrice(p);
+    const wasFree = p.tid == null;
     if (haggle) {
       if (isClause(p)) return { ok: false, msg: 'Serbest kalma bedelinde pazarlık olmaz.' };
       price = r10k(price * .85);
@@ -764,6 +766,7 @@
     addToTeam(p, me);
     G.fin.balance -= price; p.mor = 80; p.con = 3; p.wage = Math.max(p.wage, Math.round(p.value / 260 / 100) * 100);
     news(`${p.name} ${money(price)} karşılığında 3 yıllık sözleşmeyle kadroya katıldı.`, 'good');
+    if (FM.Press) FM.Press.transfer(wasFree ? 'free' : 'buy', p, price);
     save();
     return { ok: true, msg: `${p.name} artık takımında!`, price };
   }
@@ -777,6 +780,7 @@
     removeFromTeam(p); autoPick(old); p.loan = { own: old.id }; addToTeam(p, T(G.teamId));
     G.fin.balance -= fee; p.mor = 75;
     news(`${p.name}, ${old.name} takımından sezon sonuna kadar kiralandı (${money(fee)}).`, 'good');
+    if (FM.Press) FM.Press.transfer('loan', p, fee);
     save();
     return { ok: true, msg: `${p.name} sezon sonuna kadar kiralandı.` };
   }
@@ -808,6 +812,7 @@
     ensureLineup(T(G.teamId));
     if (amt >= 8000000) unlock('seller');
     news(`${p.name}, ${money(amt)} karşılığında ${buyer.name} takımına satıldı.`, 'info');
+    if (FM.Press) FM.Press.transfer('sell', p, amt);
     save();
   }
   function renewTerms(p) { return { wage: Math.round(Math.max(p.wage, p.value / 260) * (1.08 + (p.id % 7) * .03) / 100) * 100, years: 2, bonus: r10k(p.value * .04) }; }

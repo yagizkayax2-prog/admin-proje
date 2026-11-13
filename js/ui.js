@@ -108,7 +108,7 @@
   const mKey = m => m.s * 1000 + m.d;
   function ibFiltered() {
     const q = U.ib.q.trim().toLocaleLowerCase('tr');
-    return IB().filter(m => (U.ib.f === 'todo' ? m.opts && m.ch == null : U.ib.f === 'unread' ? !m.read : true) &&
+    return IB().filter(m => (U.ib.f === 'todo' ? FM.Inbox.todo(m) : U.ib.f === 'unread' ? !m.read : true) &&
       (!q || (m.title + ' ' + m.from + ' ' + m.cat + ' ' + plain(m.body)).toLocaleLowerCase('tr').includes(q)))
       .sort((a, b) => mKey(b) - mKey(a) || b.id - a.id);
   }
@@ -120,7 +120,7 @@
   }
   const ibItem = m => `<li><button class="ib-it ${m.read ? '' : 'new'} ${U.ib.sel === m.id ? 'on' : ''}" data-a="ib-open" data-id="${m.id}" ${U.ib.sel === m.id ? 'aria-current="true"' : ''}>
       <span class="ib-ic">${FM.icon(m.ic)}</span><span class="ib-tx"><strong>${esc(m.title)}</strong><small>${esc(m.from)}</small></span>
-      <span class="ib-meta"><em class="cat c-${m.cat}">${m.cat}</em>${m.opts ? `<small class="${m.ch == null ? 'todo' : 'done'}">${m.ch == null ? 'Karar' : m.exp ? 'Süresi doldu' : 'Yanıtlandı'}</small>` : ''}</span></button></li>`;
+      <span class="ib-meta"><em class="cat c-${m.cat}">${m.cat}</em>${m.conf ? `<small class="${m.conf.done ? 'done' : 'todo'}">${m.conf.done ? (m.conf.exp ? 'Kaçırıldı' : 'Tamamlandı') : 'Toplantı'}</small>` : m.opts ? `<small class="${m.ch == null ? 'todo' : 'done'}">${m.ch == null ? 'Karar' : m.exp ? 'Süresi doldu' : 'Yanıtlandı'}</small>` : ''}</span></button></li>`;
   function ibListHtml() {
     const list = ibFiltered();
     if (!list.length) return `<p class="muted ib-empty">${U.ib.q ? 'Aramana uyan mesaj yok.' : U.ib.f === 'todo' ? 'Bekleyen kararın yok.' : 'Okunmamış mesajın yok.'}</p>`;
@@ -147,7 +147,7 @@
       <header class="ib-h"><span class="ib-ic big">${FM.icon(m.ic)}</span><div><p class="ib-from">${esc(m.from)} · ${esc(m.role)}</p><h3>${rich(m.title)}</h3></div>
         <div class="ib-hr"><em class="cat c-${m.cat}">${m.cat}</em><small>${FM.Inbox.fmtDate(m.s, m.d)}</small></div></header>
       <p class="ib-body">${rich(m.body)}</p>
-      ${ibCard(m)}
+      ${m.conf ? '' : ibCard(m)}${m.conf ? confDetail(m) : ''}
       ${m.opts ? `<p class="ib-lbl">Kararın</p><div class="ib-opts" role="radiogroup" aria-label="Kararın">${m.opts.map((o, i) => `<button role="radio" aria-checked="${pick === i}" class="ib-opt ${pick === i ? 'on' : ''}" data-a="ib-pick" data-v="${i}" ${decided ? 'disabled' : ''}>${decided && pick === i ? FM.icon('check') : ''}${esc(o)}</button>`).join('')}</div>
         <div class="ib-foot ${decided ? 'done' : ''}">${decided ? `<p>${FM.icon('check')}<span><b>${m.exp ? 'Süresi doldu' : 'Karar verildi'}.</b> ${esc(m.res || '')}</span></p>`
           : `<p class="wait">${FM.icon('clock')} Karar bekliyor <small>Hafta sonuna kadar cevap vermezsen son seçenek geçerli olur.</small></p><div class="row">${link ? `<button class="btn" ${link}>İncele</button>` : ''}<button class="btn primary" data-a="ib-decide" ${pick == null ? 'disabled' : ''}>Kararı ver</button></div>${pick == null ? '<small class="muted">Önce bir cevap seç</small>' : ''}`}</div>` : ''}`;
@@ -169,7 +169,7 @@
     if (!m.read) { m.read = true; FM.save(); }
   }
   function inboxPreview() {
-    const pend = FM.Inbox.pending(), news = IB().filter(m => !m.read && !(m.opts && m.ch == null)), list = pend.concat(news).slice(0, 4);
+    const pend = FM.Inbox.pending(), news = IB().filter(m => !m.read && !FM.Inbox.todo(m)), list = pend.concat(news).slice(0, 4);
     if (!list.length) return '';
     return `<section class="card ib-prev"><div class="ib-top"><h2>Gelen kutusu</h2><span class="muted">${pend.length ? `<b class="todo">${pend.length} karar bekliyor</b> · ` : ''}${FM.Inbox.unread()} okunmamış</span></div>
       <ul class="ib-ul">${list.map(ibItem).join('')}</ul><button class="link" data-a="tab" data-v="inbox">Tüm mesajlar</button></section>`;
@@ -413,6 +413,38 @@
       host.appendChild(c);
     }
   }
+  /* ---------- Basın toplantısı ekranı ---------- */
+  const confMsg = id => IB().find(x => x.id === id);
+  const fxChips = parts => parts.map(([n, v]) => `<span class="fxc ${v > 0 ? 'up' : 'down'}">${esc(n)} ${v > 0 ? '+' : '−'}${Math.abs(v)}</span>`).join('');
+  const confLastDay = m => { const bw = m.born % 100; return FM.Inbox.fmtDate(m.s, (bw + (m.conf.type === 'pre' ? 0 : 1)) * 7); };
+  function pressHtml() {
+    const G = FM.G, m = confMsg(U.press.id), c = m.conf, last = U.press.last;
+    const qi = last ? last.qi : Math.min(c.cur, c.qs.length - 1), q = c.qs[qi], j = G.journos[q.j], first = j.name.split(' ')[0];
+    const { svg, tip } = FM.Press.room(m, qi);
+    const answers = q.a.map(([t], i) => { const sel = last ? q.ans === i : U.press.pick === i; return `<button class="pr-a ${sel ? 'on' : ''}" data-a="press-pick" data-v="${i}" role="radio" aria-checked="${sel}" ${last ? 'disabled' : ''}>${sel && last ? FM.icon('check') : ''}${esc(t)}</button>`; }).join('');
+    const foot = last
+      ? `<div class="pr-res"><p>${FM.icon('press')} ${esc(q.res)}</p><div class="fxs">${fxChips(q.fx)}</div><button class="btn primary" data-a="press-next">${c.done ? 'Toplantıyı bitir' : 'Sonraki soru'} ${FM.icon('play')}</button></div>`
+      : `<div class="pr-foot"><button class="btn" data-a="press-close">Sonra</button><button class="btn primary" data-a="press-answer" ${U.press.pick == null ? 'disabled' : ''}>Cevabı ver</button>${U.press.pick == null ? '<small class="muted">Önce bir cevap seç</small>' : ''}</div>`;
+    return `<div class="pr">
+      <header class="pr-h"><button class="btn icon" data-a="press-close" aria-label="Geri">${FM.icon('back')}</button><div><h2>Basın toplantısı</h2><p class="muted">${esc(c.sub)}</p></div></header>
+      <div class="pr-room">${svg}${tip ? `<div class="pr-tip" style="left:${tip.x}%;top:${tip.y}%"><strong>${esc(j.name)}</strong><span>${esc(j.outlet)} · ${j.style} · İlişki: <b>${FM.Press.relTxt(j.rel)}</b></span><small>${(j.n - (last ? 1 : 0)) ? 'Daha önce ' + (j.n - (last ? 1 : 0)) + ' kez söz aldı' : 'İlk kez söz alıyor'}</small></div>` : ''}</div>
+      <section class="pr-panel">
+        <div class="pr-top"><p><b>${esc(G.manager.toLocaleUpperCase('tr'))}</b> Buyurun ${esc(first)}, sizi dinliyorum.</p><small class="muted">Soru ${qi + 1}/${c.qs.length} · Son gün ${confLastDay(m)}</small></div>
+        <blockquote class="pr-q"><span class="qm" aria-hidden="true">“</span><div><small>${esc(j.name)} · ${esc(j.outlet)}</small><p>${esc(q.q)}</p></div></blockquote>
+        <div class="pr-as" role="radiogroup" aria-label="Cevabın">${answers}</div>${foot}</section></div>`;
+  }
+  function showPress() { const el = $('press'); el.innerHTML = pressHtml(); el.hidden = false; document.body.classList.add('noscroll'); }
+  function openPress(id) { closeModal(); const m = confMsg(id); if (!m || !m.conf) return; if (m.conf.done) { U.view = 'inbox'; openMsg(m); render(); return; } U.press = { id, pick: null, last: null }; m.read = true; FM.save(); showPress(); }
+  function closePress() { $('press').hidden = true; $('press').innerHTML = ''; U.press = null; if ($('pre').hidden) document.body.classList.remove('noscroll'); if (!$('pre').hidden) showPre(); else render(true); }
+  const openConf = type => IB().find(m => m.conf && !m.conf.done && (!type || m.conf.type === type));
+  const confBtn = type => { const m = openConf(type); return m ? `<button class="btn" data-a="press-open" data-id="${m.id}">${FM.icon('press')} Basın toplantısına git</button>` : ''; };
+  function confDetail(m) {
+    const c = m.conf;
+    return `<p class="ib-lbl">${c.qs.length} soru · ${c.type === 'pre' ? 'Maç öncesi' : c.type === 'post' ? 'Maç sonrası' : 'Transfer'}</p>
+      <ol class="cf-qs">${c.qs.map(q => { const j = FM.G.journos[q.j]; return `<li class="${q.ans != null ? 'done' : ''}"><small>${esc(j.name)} · ${esc(j.outlet)}</small><p>${esc(q.q)}</p>${q.ans != null ? `<p class="cf-a">${FM.icon('check')} ${esc(q.a[q.ans][0])}</p><div class="fxs">${fxChips(q.fx || [])}</div>` : ''}</li>`; }).join('')}</ol>
+      <div class="ib-foot ${c.done ? 'done' : ''}">${c.done ? `<p>${FM.icon('check')}<span><b>${c.exp ? 'Kaçırıldı' : 'Tamamlandı'}.</b> ${esc(m.res || '')}</span></p>` : `<p class="wait">${FM.icon('clock')} Basın seni bekliyor <small>Son gün ${confLastDay(m)}. Katılmazsan taraftar ve yönetim tepki gösterir.</small></p><div class="row"><button class="btn primary" data-a="press-open" data-id="${m.id}">${c.cur ? 'Toplantıya dön' : 'Basın salonuna gir'}</button></div>`}</div>`;
+  }
+
   /* ---------- Maç öncesi ekranı ---------- */
   const cdist = (a, b) => { const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16); return Math.abs((x >> 16) - (y >> 16)) + Math.abs(((x >> 8) & 255) - ((y >> 8) & 255)) + Math.abs((x & 255) - (y & 255)); };
   const lumH = h => { const n = parseInt(h.slice(1), 16); return (n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114; };
@@ -465,6 +497,7 @@
           <button data-a="pre-tactics">Kadro ve taktik</button>
           <button data-a="pre-panel" data-v="talk" ${pr.talk ? 'disabled' : ''}>Takım konuşması${pr.talk ? ' ✓' : ''}</button>
           <button data-a="team" data-id="${opp.id}">Rakip</button>
+          ${openConf('pre') ? `<button class="prs" data-a="press-open" data-id="${openConf('pre').id}">Basın toplantısı <i class="dot" aria-label="bekliyor"></i></button>` : ''}
           <button class="go" data-a="pre-go">Onayla ${FM.icon('play')}</button>
           <button class="back" data-a="pre-close">${FM.icon('back')} Geri dön</button>
           ${talk}</nav>
@@ -525,12 +558,12 @@
     const G = FM.G, l = G.fin.last;
     modal(`<h3>${wk + 1}. hafta sonuçları</h3><ul class="fxl">${G.fixtures[me().div][wk].map(f => fxRow(f)).join('')}</ul>
       <p class="fin-line">Haftalık bilanço: <b class="${l.net >= 0 ? 'pos-v' : 'neg-v'}">${l.net >= 0 ? '+' : ''}${money(l.net)}</b>${l.att ? ` · ${l.att.toLocaleString('tr-TR')} seyirci` : ''}</p>
-      <div class="row end"><button class="btn primary" data-a="close">Tamam</button></div>`, true);
+      <div class="row end">${confBtn('post')}<button class="btn primary" data-a="close">Tamam</button></div>`, true);
   }
   function cupModal(name, ties) {
     const c = FM.G.cup;
     modal(`<h3>Kupa · ${name}</h3><ul class="fxl">${ties.map(f => fxRow(f)).join('')}</ul>${c.winner != null ? `<p class="fin-line"><img src="assets/trophy.svg" alt="" width="28" height="32"> Kupa ${T(c.winner).name} takımının!</p>` : ''}
-      <div class="row end"><button class="btn primary" data-a="close">Tamam</button></div>`, true);
+      <div class="row end">${confBtn('post')}<button class="btn primary" data-a="close">Tamam</button></div>`, true);
   }
   function exportModal() {
     modal(`<h3>Kaydı dışa aktar</h3><p class="muted">Bu metni kopyalayıp sakla. Başka cihazda “Kayıt yükle” ile yapıştır.</p><textarea id="saveText" readonly rows="6">${esc(FM.exportSave())}</textarea><div class="row end"><button class="btn primary" data-a="copy-save">Kopyala</button></div>`, true);
@@ -557,6 +590,11 @@
       case 'pre-panel': U.pre.panel = d.v; showPre(); break;
       case 'pre-talk': teamTalk(d.v); showPre(); break;
       case 'pre-go': startMatch(); break;
+      case 'press-open': openPress(+d.id); break;
+      case 'press-close': closePress(); break;
+      case 'press-pick': U.press.pick = +d.v; showPress(); break;
+      case 'press-answer': { if (U.press.pick == null) break; const m = confMsg(U.press.id), qi = m.conf.cur, r = FM.Press.answer(U.press.id, U.press.pick); if (r) { U.press.last = { qi }; U.press.pick = null; showPress(); } } break;
+      case 'press-next': { const m = confMsg(U.press.id); U.press.last = null; if (m.conf.done) { toast('Basın toplantısı tamamlandı.', 'good'); closePress(); } else showPress(); } break;
       case 'pre-close': closePre(); break;
       case 'pre-tactics': closePre(); U.view = 'tactics'; U.sel = null; render(); window.scrollTo(0, 0); break;
       case 'pre-back': playMatch(true); break;
@@ -624,6 +662,7 @@
   document.addEventListener('input', e => { if (e.target.id === 'ibq') { U.ib.q = e.target.value; refreshInbox(true); } });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('modal').hidden) closeModal();
+    else if (e.key === 'Escape' && !$('press').hidden) closePress();
     else if (e.key === 'Escape' && !$('pre').hidden) { if (U.pre && U.pre.panel) { U.pre.panel = ''; showPre(); } else closePre(); }
     if (e.key === 'Enter' && e.target.matches('tr[data-a]')) act(e.target.dataset.a, e.target.dataset, e.target);
     if (e.key === 'Enter' && e.target.id === 'mgr') act('start', {}, e.target);

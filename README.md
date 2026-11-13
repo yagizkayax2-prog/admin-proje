@@ -15,7 +15,8 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Gelen kutusu: yardımcı antrenör, sağlık ekibi, scout, finans direktörü, yönetim, gazeteciler ve menajerlerden gelen mesajlar; karar isteyen mesajlar (kulis bilgisi, soyunma odası krizi, süre isteyen oyuncu, transfer teklifleri, kiralık fırsatları, sponsor ve kulüp sahibi parası), arama ve filtreler
 - Maç öncesi ekranı: iki takımın dizilişi perspektif sahada, forma seçimi (iç saha, deplasman, üçüncü), takım konuşması, rakip analizi, maç tarihi ve saati
 - Takvim tarihi, “Devam et” düğmesi ve alt bantta kayan sonuç/haber şeridi
-- Basın toplantıları, oyuncu görüşmeleri, yönetim güveni ve taraftar desteği, görevden alınma ve iş teklifleri
+- Basın toplantıları: maç öncesi, maç sonrası ve önemli transferlerden sonra; çizimli basın salonu, kalıcı gazeteciler (yayın organı, tarz, seninle ilişkisi), çok sorulu toplantılar
+- Oyuncu görüşmeleri, yönetim güveni ve taraftar desteği, görevden alınma ve iş teklifleri
 - Kulüp müzesi: kupalar, rekorlar, efsaneler, başarımlar
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
@@ -26,6 +27,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | `js/data.js` | Kulüpler, isimler, dizilişler, spiker metinleri |
 | `js/core.js` | Oyun çekirdeği: maç motoru, lig, transfer, finans |
 | `js/inbox.js` | Gelen kutusu: mesaj şablonları, kararlar ve etkileri, takvim |
+| `js/press.js` | Basın toplantıları: gazeteciler, soru bankası, cevap etkileri, salon çizimi |
 | `js/gfx.js` | Üretilen armalar, oyuncu portreleri, ikonlar, sentezlenen sesler |
 | `js/stadium3d.js` | Three.js ile 3D stadyum (saha, tribünler, çatı, kaleler, bayrak) |
 | `js/stadium.js` | WebGL olmayan cihazlar için 2D stadyum; kulüp sayfasındaki önizleme |
