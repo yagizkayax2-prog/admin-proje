@@ -57,7 +57,7 @@
     if (t.cap == null || !t.players.includes(t.cap)) t.cap = pickCaptain(t);
     if (!G.teams.some(x => x.div === 9)) addForeign();
     if (!G.euro) startEuro(true);
-    if (!G.youth.length && G.season === 1 && G.week === 0) intake(true);
+    if (!G.youth.length && G.season === 1 && G.week === 0) FM.Career.intake(true);
   }
   function addForeign() {
     const G = G_();
@@ -147,7 +147,7 @@
   function scoutReport() {
     const G = G_(), t = G.stask, q = G.staffQ.scout.q;
     const pool = FM.marketList().filter(p => (t.pos === 'ALL' || p.pos === t.pos) && p.age <= t.maxAge && p.tid !== G.teamId && p.pot >= t.minPot - (5 - q));
-    const found = pool.sort((a, b) => (b.pot + R() * (12 - q * 2)) - (a.pot + R() * (12 - q * 2))).slice(0, 2 + Math.floor(q / 2));
+    const found = pool.sort((a, b) => (b.pot + R() * (12 - q * 2)) - (a.pot + R() * (12 - q * 2))).slice(0, 2 + Math.floor(q / 2) + Math.max(0, (me().fac.scout || 3) - 3));
     found.forEach(p => { p.sc = 1; });
     G.stask = null;
     const posTr = t.pos === 'ALL' ? 'her mevkiden' : FM.POS_LONG[t.pos].toLocaleLowerCase('tr');
@@ -352,7 +352,7 @@
   function newSeason() {
     const G = G_();
     for (const id of G.youth.slice()) { const p = P(id); if (!p) continue; p.age++; if (p.age >= 20) { FM.news(`Altyapıdan ${p.name} yaş sınırına takıldı ve kulüpten ayrıldı.`, 'info'); release(id); } }
-    intake(false);
+    FM.Career.intake(false);
     G.staffC = staffCands();
     G.fin.tot = { tickets: 0, sponsor: 0, wages: 0, staff: 0, trIn: 0, trOut: 0, prize: 0 };
     G.prep = 0;

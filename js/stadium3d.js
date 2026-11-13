@@ -82,7 +82,7 @@
         const awayB = !lower ? u > .3 && u < .41 : u > .31 && u < .36 && t < 4, aisle = i % 18 === 0;
         ng.fillStyle = '#080b11'; ng.fillRect(x, y, CELL, CELL); tg.fillStyle = '#080b11'; tg.fillRect(x, y, CELL, CELL);
         if (aisle) continue;
-        if (Math.random() > o.fill * (awayB ? .85 : 1)) ng.fillStyle = shade([30, 36, 50], dim * .7);
+        if (Math.random() > o.fill * (awayB ? .85 : 1)) ng.fillStyle = shade(o.seatFn && !awayB ? o.seatFn(u, j / (TH / CELL), lower) : [30, 36, 50], dim * (o.seatFn && !awayB ? .62 : .7));   // boş koltuk: kulübün koltuk deseni
         else { const pal = awayB ? [A1, A1, A2, [60, 68, 90]] : [H1, H1, H1, H2, H2, [216, 194, 168], [43, 49, 64], [84, 96, 122]]; ng.fillStyle = shade(pal[(Math.random() * pal.length) | 0], dim * (.8 + Math.random() * .3) * .42); }
         ng.fillRect(x, y, CELL - 1.2, CELL - 1.2);
         const tcol = awayB ? (Math.floor(i / 5 + j / 3) % 2 ? A1 : A2) : farS ? DK : nearS ? (Math.floor(i / 14) % 2 ? H1 : H2) : (Math.floor(j / 5 + (lower ? 0 : 1)) % 2 ? LT : DK);

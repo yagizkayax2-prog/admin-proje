@@ -584,7 +584,8 @@
     const tb = table(), myPos = tb.findIndex(r => r.id === G.teamId) + 1, cap = stadiumCap(me);
     const att = home ? Math.round(cap * clamp(.32 + G.fans / 100 * .5 + (12 - myPos) * .012 + R() * .06, .25, 1)) : 0;
     const tp = G.fin.tp || 1, att2 = Math.min(cap, Math.round(att * clamp(1.3 - tp * .3, .45, 1.12)));   // bilet fiyatı seyirciyi etkiler
-    const tickets = Math.round(att2 * (15 - me.div * 4) * tp), wages = wageBill(me), staff = hook('staffWages') || 0, sponsor = G.fin.sponsor;
+    const stHold = G.fin.stS === G.season ? G.fin.stSold || 0 : 0, tickets = Math.round(Math.max(0, att2 - stHold) * (15 - me.div * 4) * tp),   // kombine sahipleri bilet almaz
+      wages = wageBill(me), staff = hook('staffWages') || 0, sponsor = G.fin.sponsor;
     G.fin.last = { sponsor, tickets, wages, staff, att: att2, net: sponsor + tickets - wages - staff };
     G.fin.balance += G.fin.last.net;
     G.fin.hist.push(G.fin.balance);

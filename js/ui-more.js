@@ -210,8 +210,7 @@
   acts['yt-rel'] = d => { const p = P(+d.id); C.release(+d.id); toast(`${p.name} serbest bırakıldı.`); render(true); };
 
   /* ================= Kulüp: teknik ekip, finans, müze ekleri ================= */
-  const vClub = VIEWS.club;
-  VIEWS.club = () => {
+  UI.clubExtra = () => {
     const G = FM.G, s = G.staffQ, tot = G.fin.tot || {}, tp = G.fin.tp || 1;
     const stars = q => `<span class="stars" aria-label="${q}/5">${'★'.repeat(q)}<i>${'★'.repeat(5 - q)}</i></span>`;
     const staff = `<section class="card"><h2>Teknik ekip</h2><div class="staff">${Object.keys(C.ROLES).map(k => `<div class="stf"><div><small>${C.ROLES[k]}</small><strong>${esc(s[k].n)}</strong>${stars(s[k].q)}<span class="muted">${money(s[k].w)}/hafta · ${C.ROLE_FX[k]}</span></div>
@@ -224,7 +223,7 @@
     const extra = `<section class="card"><h2>Kulüp efsaneleri ve ödüller</h2><div class="grid2"><div><h3 class="rnd">Efsaneler <small>40+ maç</small></h3><ol class="rank">${leg.map((l, i) => `<li><span class="wk">${i + 1}</span><span class="nm">${esc(l.name)} <small class="clubn">${FM.POS_LONG[l.pos]}</small></span><b>${l.apps} maç · ${l.g} gol</b></li>`).join('') || '<li class="muted">Kulübünde 40 maça ulaşan oyuncular burada yer alır.</li>'}</ol></div>
       <div><h3 class="rnd">Sezon ödülleri</h3><ul class="recs">${aw.map(a => `<li><span>${a.s}. sezon</span><b>Yılın oyuncusu: ${esc(a.poy.name)} · Gol kralı: ${esc(a.top.name)} (${a.top.g})</b></li>`).join('') || '<li class="muted">İlk sezon sonunda açıklanır.</li>'}</ul>
       ${G.museum.euro.length ? `<div class="cups">${G.museum.euro.map(s => `<figure class="eurot"><img src="assets/trophy.svg" alt="" width="44" height="52"><figcaption>Kıta Kupası · ${s}. sezon</figcaption></figure>`).join('')}</div>` : ''}</div></div></section>`;
-    return `<div class="grid2">${staff}${fin}</div>` + vClub() + extra;
+    return { staff, fin, extra };
   };
   acts.hire = d => { say(C.hire(d.k, +d.i)); render(true); };
   acts['tp-set'] = (d, el) => { C.setTicket(+el.value); render(true); };

@@ -26,6 +26,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Teknik ekip (yardımcı antrenör, kaleci antrenörü, fizyoterapist, baş scout) ve haftalık antrenman takvimi
 - Finans: bilet fiyatı, sezonluk gelir-gider tablosu, yönetimden ek bütçe isteme
 - Derbiler, Kıta Kupası (ligin ilk ikisi ve 8 yabancı kulüpten 6'sı), sezon ödülleri ve yılın 11'i, oyuncu kariyer geçmişi, kulüp efsaneleri, sosyal akış
+- Kulüp sayfası alt sekmeleri: Tesisler (kampüs haritası ve yakınlaştırma, 5 tesis + yurt dışı akademi, seviye etkileri, uzun vadeli projeler), Stadyum (koltuk deseni 3D tribünlerde görünür, bilet ve kombine fiyatı tahminleri, stat adı sponsoru, stadyum adı ve büyütme), Forma ve sponsor (3 forma tasarımı maçta kullanılır, forma sponsoru), Maliye, Müze ve kayıt
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
 ## Dosyalar
@@ -39,6 +40,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | `js/career.js` | Kariyer sistemleri: pazarlık, soyunma odası, scout, altyapı, teknik ekip, antrenman takvimi, finans, derbi, Kıta Kupası, ödüller, sosyal akış |
 | `js/settings.js` | Oyun ayarları |
 | `js/ui-more.js` | Oyun menüsü, ayarlar, rehber ve tur, yeni ekranlar |
+| `js/club.js` | Kulüp yönetimi: tesisler ve kampüs haritası, stadyum, forma, sponsorlar |
 | `js/boot.js` | Açılış |
 | `js/gfx.js` | Üretilen armalar, oyuncu portreleri, ikonlar, sentezlenen sesler |
 | `js/stadium3d.js` | Three.js ile 3D stadyum (saha, tribünler, çatı, kaleler, bayrak) |

@@ -391,7 +391,7 @@
   /* ---------- Çizim (perspektifli) ---------- */
   function resize() {
     const c = S.cv, w = c.parentElement.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1), m = S.m, home = FM.T(m.s[0].tid);
-    const opt = { W: w, dpr, tier: FM.stadiumTier(home), home, away: FM.T(m.s[1].tid), fill: S.fill, wx: m.wx };
+    const opt = { W: w, dpr, tier: FM.stadiumTier(home), home, away: FM.T(m.s[1].tid), fill: S.fill, wx: m.wx, seatFn: home.id === FM.G.teamId && FM.Club ? FM.Club.seatFn() : null };
     if (S.st && S.st.dispose) S.st.dispose();
     S.st = (!S.no3d && FM.Stadium3D && FM.Stadium3D.create({ ...opt, canvas: $('mvGL'), logo: LOGO })) || null;
     if (!S.st) { S.no3d = true; S.st = FM.Stadium.create(opt); }
@@ -645,7 +645,7 @@
       el.hidden = false; el.scrollTop = 0;
       const cv = $('mvCanvas');
       /* forma: 0 iç saha (c1), 1 deplasman (c2), 2 üçüncü forma (koyu); kullanıcı seçimi info.kit ile gelir */
-      const kit = (t, k) => { const fl = k === 2 ? '#1b2433' : k ? t.c2 : t.c1, stroke = k === 1 ? t.c1 : k === 2 ? t.c1 : t.c2; return { fill: fl, stroke, text: lum(fl) > 150 ? '#14202f' : '#ffffff' }; };
+      const kit = (t, k) => { const uk = t.id === G.teamId && G.kits ? G.kits[k] : null, fl = uk ? uk.c1 : k === 2 ? '#1b2433' : k ? t.c2 : t.c1, stroke = uk ? uk.c2 : k === 1 ? t.c1 : k === 2 ? t.c1 : t.c2; return { fill: fl, stroke, text: lum(fl) > 150 ? '#14202f' : '#ffffff' }; };
       const uk = info && info.kit != null ? info.kit : null, hk = user === 0 && uk != null ? uk : 0, hf = kit(h, hk).fill;
       const ak = user === 1 && uk != null ? uk : cdist(hf, a.c1) < 150 ? (cdist(hf, a.c2) < 150 ? 2 : 1) : 0;
       S = {

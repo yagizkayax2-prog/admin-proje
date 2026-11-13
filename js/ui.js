@@ -337,21 +337,27 @@
     const facDesc = { training: 'Oyuncular daha hızlı gelişir.', youth: 'Altyapıdan daha yetenekli gençler çıkar.', stadium: 'Kapasiteyi artırır ve stadyumu bir üst kademeye yaklaştırır.' };
     const legends = Object.entries(G.legends).sort((a, b) => b[1] - a[1]).slice(0, 5);
     const cups = mu.titles.map(s => `<figure><img src="assets/trophy.svg" alt="" width="44" height="52"><figcaption>Lig · ${s}. sezon</figcaption></figure>`).join('') + mu.cups.map(s => `<figure class="cupt"><img src="assets/trophy.svg" alt="" width="44" height="52"><figcaption>Kupa · ${s}. sezon</figcaption></figure>`).join('');
-    return `<section class="card"><div class="st-head"><div><h2>${esc(t.stadium)}</h2><p class="muted">${FM.Stadium.TIERS[tier]} (${tier}/5) · ${FM.stadiumCap(t).toLocaleString('tr-TR')} kişilik · kadro değeri ${money(FM.squadValue(t))}</p></div><span class="lv big">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= tier ? 'on' : ''}"></i>`).join('')}</span></div>
+    const parts = {
+      stadium: `<section class="card"><div class="st-head"><div><h2>${esc(t.stadium)}</h2><p class="muted">${FM.Stadium.TIERS[tier]} (${tier}/5) · ${FM.stadiumCap(t).toLocaleString('tr-TR')} kişilik · kadro değeri ${money(FM.squadValue(t))}</p></div><span class="lv big">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= tier ? 'on' : ''}"></i>`).join('')}</span></div>
         <div class="st-prev"><canvas id="stPrev" aria-label="Stadyumun kuşbakışı görünümü"></canvas></div><p class="hint">Stadyum, kadro değerin ve stadyum yatırımın arttıkça büyür: tribünler, köşeler, çatı ve projektörler eklenir.</p></section>
-      <div class="grid2">
-      <section class="card"><h2>Finans</h2><div class="kpis sm"><div><span>Bütçe</span><b>${money(G.fin.balance)}</b></div><div><span>Haftalık maaş</span><b>${money(FM.wageBill(t))}</b></div><div><span>Sponsor</span><b>${money(G.fin.sponsor)}</b></div></div>
+`,
+      fin: `      <section class="card"><h2>Finans</h2><div class="kpis sm"><div><span>Bütçe</span><b>${money(G.fin.balance)}</b></div><div><span>Haftalık maaş</span><b>${money(FM.wageBill(t))}</b></div><div><span>Sponsor</span><b>${money(G.fin.sponsor)}</b></div></div>
         ${spark(G.fin.hist)}
         ${l ? `<table class="tbl fin"><tbody><tr><td class="l">Sponsor geliri</td><td class="r pos-v">+${money(l.sponsor)}</td></tr><tr><td class="l">Bilet geliri ${l.att ? '(' + l.att.toLocaleString('tr-TR') + ' seyirci)' : '(deplasman)'}</td><td class="r pos-v">+${money(l.tickets)}</td></tr><tr><td class="l">Maaşlar</td><td class="r neg-v">−${money(l.wages)}</td></tr><tr><td class="l"><b>Geçen hafta net</b></td><td class="r"><b>${money(l.net)}</b></td></tr></tbody></table>` : ''}</section>
-      <section class="card"><h2>Yönetim ve taraftar</h2><p>Hedef: ${FM.DIV_TR[t.div]}'nde <b>${exp}. sıra</b> veya üstü. Şu an <b>${pos}.</b> sıradasın.</p>${gauge('Yönetim güveni', G.board, G.board <= 25 ? 'Tehlike: güven 10\'un altına düşerse görevden alınırsın.' : G.board >= 70 ? 'Yönetim arkanda.' : 'Yönetim gidişatı izliyor.')}${gauge('Taraftar desteği', G.fans, 'Destek arttıkça tribünler dolar, iç saha avantajın büyür.')}
-        <h2>Geçmiş sezonlar</h2>${G.history.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Sezon</th><th class="l">Kulüp</th><th>Sıra</th><th>Puan</th><th class="l">Şampiyon</th><th class="l">Kupa</th></tr></thead><tbody>${G.history.map(h => `<tr><td>${h.season}</td><td class="l">${h.team || ''}</td><td>${h.pos}${h.div ? ' (alt lig)' : ''}</td><td>${h.pts}</td><td class="l">${h.champion}</td><td class="l">${h.cup || '—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">İlk sezonun devam ediyor.</p>'}</section></div>
-      <section class="card"><h2>Tesisler</h2><div class="facs">${Object.keys(FM.FAC).map(k => `<div class="fac"><div><strong>${FM.FAC[k].name}</strong><span class="lv">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= t.fac[k] ? 'on' : ''}"></i>`).join('')}</span><p>${facDesc[k]}</p></div><button class="btn" data-a="upgrade" data-v="${k}" ${t.fac[k] >= 5 ? 'disabled' : ''}>${t.fac[k] >= 5 ? 'En üst seviye' : 'Geliştir · ' + money(FM.facCost(k))}</button></div>`).join('')}</div></section>
-      <section class="card museum"><h2>Kulüp müzesi</h2>
+`,
+      board: `      <section class="card"><h2>Yönetim ve taraftar</h2><p>Hedef: ${FM.DIV_TR[t.div]}'nde <b>${exp}. sıra</b> veya üstü. Şu an <b>${pos}.</b> sıradasın.</p>${gauge('Yönetim güveni', G.board, G.board <= 25 ? 'Tehlike: güven 10\'un altına düşerse görevden alınırsın.' : G.board >= 70 ? 'Yönetim arkanda.' : 'Yönetim gidişatı izliyor.')}${gauge('Taraftar desteği', G.fans, 'Destek arttıkça tribünler dolar, iç saha avantajın büyür.')}
+        <h2>Geçmiş sezonlar</h2>${G.history.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Sezon</th><th class="l">Kulüp</th><th>Sıra</th><th>Puan</th><th class="l">Şampiyon</th><th class="l">Kupa</th></tr></thead><tbody>${G.history.map(h => `<tr><td>${h.season}</td><td class="l">${h.team || ''}</td><td>${h.pos}${h.div ? ' (alt lig)' : ''}</td><td>${h.pts}</td><td class="l">${h.champion}</td><td class="l">${h.cup || '—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">İlk sezonun devam ediyor.</p>'}</section>`,
+      facs: `      <section class="card"><h2>Tesisler</h2><div class="facs">${Object.keys(FM.FAC).map(k => `<div class="fac"><div><strong>${FM.FAC[k].name}</strong><span class="lv">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= t.fac[k] ? 'on' : ''}"></i>`).join('')}</span><p>${facDesc[k]}</p></div><button class="btn" data-a="upgrade" data-v="${k}" ${t.fac[k] >= 5 ? 'disabled' : ''}>${t.fac[k] >= 5 ? 'En üst seviye' : 'Geliştir · ' + money(FM.facCost(k))}</button></div>`).join('')}</div></section>
+`,
+      museum: `      <section class="card museum"><h2>Kulüp müzesi</h2>
         <div class="cups">${cups || '<p class="muted">Vitrin henüz boş. İlk kupanı kazan.</p>'}</div>
         <div class="grid2"><div><h3 class="rnd">Rekorlar</h3><ul class="recs"><li><span>En farklı galibiyet</span><b>${G.rec.bigWin ? G.rec.bigWin.text : '—'}</b></li><li><span>Bir sezonda en çok gol</span><b>${G.rec.goals ? `${G.rec.goals.name} (${G.rec.goals.g}) · ${G.rec.goals.s}. sezon` : '—'}</b></li><li><span>En yüksek puan</span><b>${G.rec.pts ? `${G.rec.pts.v} puan · ${G.rec.pts.s}. sezon` : '—'}</b></li></ul></div>
         <div><h3 class="rnd">Efsaneler</h3><ol class="rank">${legends.map(([n, g], i) => `<li><span class="wk">${i + 1}</span><span class="nm">${esc(n)}</span><b>${g} gol</b></li>`).join('') || '<li class="muted">Senin dönemindeki golcüler burada sıralanır.</li>'}</ol></div></div>
         <h3 class="rnd">Başarımlar <small>${Object.keys(G.ach).length}/${Object.keys(FM.ACH).length}</small></h3><div class="achs">${Object.keys(FM.ACH).map(k => `<div class="ach ${G.ach[k] ? 'on' : ''}"><strong>${FM.ACH[k][0]}</strong><span>${FM.ACH[k][1]}</span>${G.ach[k] ? `<em>${G.ach[k].s}. sezon</em>` : ''}</div>`).join('')}</div></section>
-      <section class="card"><h2>Kariyer kaydı</h2><p class="muted">Oyun bu tarayıcıda otomatik kaydedilir. Başka cihaza taşımak için kaydı dışa aktar.</p><div class="row"><button class="btn" data-a="export">Kaydı dışa aktar</button><button class="btn" data-a="import">Kayıt yükle</button>${U.confirmReset ? '' : '<button class="btn" data-a="reset">Yeni kariyere başla</button>'}</div>${U.confirmReset ? '<p>Tüm kariyer silinecek. Emin misin?</p><div class="row"><button class="btn" data-a="reset-no">Vazgeç</button><button class="btn danger" data-a="reset-yes">Kariyeri sil</button></div>' : ''}</section>`;
+`,
+      save: `      <section class="card"><h2>Kariyer kaydı</h2><p class="muted">Oyun bu tarayıcıda otomatik kaydedilir. Başka cihaza taşımak için kaydı dışa aktar.</p><div class="row"><button class="btn" data-a="export">Kaydı dışa aktar</button><button class="btn" data-a="import">Kayıt yükle</button>${U.confirmReset ? '' : '<button class="btn" data-a="reset">Yeni kariyere başla</button>'}</div>${U.confirmReset ? '<p>Tüm kariyer silinecek. Emin misin?</p><div class="row"><button class="btn" data-a="reset-no">Vazgeç</button><button class="btn danger" data-a="reset-yes">Kariyeri sil</button></div>' : ''}</section>`
+    };
+    return FM.ui.clubView ? FM.ui.clubView(parts) : Object.values(parts).join('');
   }
 
   /* ---------- Sezon sonu, görevden alınma ---------- */
@@ -450,8 +456,9 @@
   /* ---------- Maç öncesi ekranı ---------- */
   const cdist = (a, b) => { const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16); return Math.abs((x >> 16) - (y >> 16)) + Math.abs(((x >> 8) & 255) - ((y >> 8) & 255)) + Math.abs((x & 255) - (y & 255)); };
   const lumH = h => { const n = parseInt(h.slice(1), 16); return (n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114; };
-  const kitFill = (t, k) => (k === 2 ? '#1b2433' : k ? t.c2 : t.c1);
-  const kitLine = (t, k) => (k ? t.c1 : t.c2);
+  const ukit = (t, k) => (t.id === FM.G.teamId && FM.G.kits ? FM.G.kits[k] : null);
+  const kitFill = (t, k) => (ukit(t, k) ? ukit(t, k).c1 : k === 2 ? '#1b2433' : k ? t.c2 : t.c1);
+  const kitLine = (t, k) => (ukit(t, k) ? ukit(t, k).c2 : k ? t.c1 : t.c2);
   const TALKS = [
     ['calm', 'Sakin olun, kendi oyunumuzu oynayalım', 'Her durumda küçük bir moral artışı.'],
     ['fire', 'Bugün tarih yazacağız!', 'Güçlü rakibe karşı çok etkili, zayıf rakibe karşı sönük kalır.'],
@@ -656,7 +663,7 @@
   }
   document.addEventListener('click', e => {
     if (e.target.id === 'modal') return closeModal();
-    const el = e.target.closest('[data-a]'); if (!el || el.disabled || el.type === 'checkbox' || el.type === 'range' || el.tagName === 'SELECT') return;
+    const el = e.target.closest('[data-a]'); if (!el || el.disabled || el.type === 'checkbox' || el.type === 'range' || el.type === 'color' || el.tagName === 'SELECT') return;
     act(el.dataset.a, el.dataset, el);
   });
   document.addEventListener('change', e => {
@@ -673,5 +680,5 @@
   });
 
   /* Diğer arayüz modüllerinin (ui-more.js) kullandığı yardımcılar */
-  FM.ui = { U, $, esc, toast, modal, closeModal, render, me, stars, posChip, fitBar, status, ovrB, ovrCls, fmtR, meter, gauge, playerRows, P_HEAD, VIEWS, TABS, playerModal, teamModal, playMatch, openPre, showPre, closePre, fxRow, goInbox, openMsg, ibItem, refreshInbox, cupModal, weekModal, confBtn, ticker, inboxPreview, openPress, startMatch, acts: {} };
+  FM.ui = { spark, U, $, esc, toast, modal, closeModal, render, me, stars, posChip, fitBar, status, ovrB, ovrCls, fmtR, meter, gauge, playerRows, P_HEAD, VIEWS, TABS, playerModal, teamModal, playMatch, openPre, showPre, closePre, fxRow, goInbox, openMsg, ibItem, refreshInbox, cupModal, weekModal, confBtn, ticker, inboxPreview, openPress, startMatch, acts: {} };
 })();
