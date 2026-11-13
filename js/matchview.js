@@ -159,13 +159,15 @@
     const corner = toPitch(s, .9, flank < .5 ? .1 : .9);
     S.dots.forEach(d => { if (d.s === s && d.i > 0) d.ov = { x: corner.x + (Math.random() - .5) * .07, y: corner.y + (Math.random() - .5) * .1 }; });
     for (let i = 0; i < 90; i++) S.conf.push({ x: corner.x + (Math.random() - .5) * .3, y: -.05 - Math.random() * .4, vx: (Math.random() - .5) * .12, vy: .25 + Math.random() * .35, r: Math.random() * 6.28, c: [t.c1, t.c2, '#ffc93c'][i % 3], life: 3 });
-    banner(t, replay ? 'TEKRAR' : 'GOL!', `${p ? p.name : ''} · ${e.min}'`);
+    const nm = p ? p.name.split(' ') : ['']; banner(t, replay ? 'TEKRAR' : 'GOOOL', `${nm.length > 1 ? nm[0][0] + '. ' + nm.slice(1).join(' ') : nm[0]}  ${e.min}'`);
   }
+  /* TV skor bandı: ortadaki altıgen takım renginde yanar, altından golcü şeridi iner */
   function banner(t, head, sub) {
-    const b = $('mvBanner');
-    b.innerHTML = `<div class="gb-in" style="--k1:${t.c1};--k2:${t.c2}">${FM.crest(t, 46)}<div><strong>${head}</strong><span>${esc(sub)}</span></div></div>`;
-    b.hidden = false; b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
-    clearTimeout(S.bannerT); S.bannerT = setTimeout(() => { b.hidden = true; }, 2400 / S.speed + 300);
+    const el = $('tvb'), ink = lum(t.c1) > 150 ? '#14202f' : '#ffffff';
+    el.style.setProperty('--g1', t.c1); el.style.setProperty('--g2', lum(t.c1) > 150 && lum(t.c2) > 150 ? '#14202f' : t.c2); el.style.setProperty('--gi', ink);
+    $('tvbGoal').textContent = head; $('tvbSub').textContent = sub;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+    clearTimeout(S.bannerT); S.bannerT = setTimeout(() => { const x = $('tvb'); if (x) x.classList.remove('show'); }, 3000 / S.speed + 400);
   }
   function pop(d, text, color) { S.pops.push({ x: d.x, y: d.y, text, color, t: 0 }); }
 
@@ -531,16 +533,20 @@
       const fill = clamp((h.id === G.teamId ? .3 + G.fans / 100 * .65 : .45 + h.rep * .09) + (m.cup ? .08 : 0), .25, 1);
       el.innerHTML = `
         <div class="mv">
-          <div class="mv-score">
-            <div class="mv-team">${FM.crest(h, 44)}<span>${esc(h.name)}</span></div>
-            <div class="mv-mid"><div class="mv-num"><span id="mvH">0</span><i>–</i><span id="mvA">0</span></div><div class="mv-min" id="mvMin">0'</div></div>
-            <div class="mv-team away"><span>${esc(a.name)}</span>${FM.crest(a, 44)}</div>
-            <div class="mv-bar" id="mvBar"></div>
-          </div>
-          <div class="mv-pitch"><canvas id="mvCanvas" aria-label="Canlı maç sahası"></canvas>
+          <div class="mv-pitch">
+            <div class="tvb-wrap" style="--h1:${h.c1};--a1:${a.c1}"><div class="tvb" id="tvb" role="status" aria-label="Skor">
+              <div class="tvb-logo"><img src="assets/logo.svg" alt="" width="30" height="30"></div>
+              <div class="tvb-t" style="--k1:${h.c1};--k2:${h.c2}"><i></i><span>${h.short}</span></div>
+              <div class="tvb-c"><div><span class="tvb-sc"><b id="mvH">0</b><em>-</em><b id="mvA">0</b></span><span class="tvb-goal" id="tvbGoal">GOOOL</span></div></div>
+              <div class="tvb-t away" style="--k1:${a.c1};--k2:${a.c2}"><span>${a.short}</span><i></i></div>
+              <div class="tvb-min" id="mvMin">0'</div>
+              <div class="mv-bar" id="mvBar"></div>
+              <div class="tvb-sub" id="tvbSub"></div>
+            </div></div>
+            <canvas id="mvCanvas" aria-label="Canlı maç sahası"></canvas>
             <div class="mv-cer" id="mvCer"><p class="eyebrow">${esc(info.comp)}</p><strong>${esc(h.stadium)}</strong><span>${FM.Stadium.TIERS[tier]} · ${Math.round(cap * fill).toLocaleString('tr-TR')} seyirci · ${FM.WX_TR[m.wx.t]}${m.wx.n ? ', gece maçı' : ''}</span><button class="btn" data-mv="cerskip">Seremoniyi geç</button></div>
             <div class="mv-pens" id="mvPens" hidden></div><div class="mv-tag" id="mvTag" hidden></div>
-            <div class="mv-banner" id="mvBanner" hidden></div><div class="mv-overlay" id="mvOverlay" hidden></div></div>
+            <div class="mv-overlay" id="mvOverlay" hidden></div></div>
           <div class="mv-ctl">
             <button class="btn icon" data-mv="pause" aria-label="Duraklat">${FM.icon('pause')}</button>
             <div class="seg" role="group" aria-label="Hız">${[1, 2, 4].map(v => `<button data-mv="speed" data-v="${v}" class="${v === 1 ? 'on' : ''}">${v}x</button>`).join('')}</div>

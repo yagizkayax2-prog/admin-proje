@@ -376,7 +376,7 @@ textarea { font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vert
 .sacked h1 { color: var(--red); }
 .start-body h2 { padding-top: 6px; }
 /* maç: seremoni kartı, penaltı sayacı, tekrar etiketi, puanlar */
-.mv-cer { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 4px; padding: 12px 20px; background: rgba(10, 19, 34, .86); border: 1px solid var(--flood); border-radius: 12px; text-align: center; width: max-content; max-width: 92%; animation: popIn .5s cubic-bezier(.2, 1.3, .4, 1); }
+.mv-cer { position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 4px; padding: 12px 20px; background: rgba(10, 19, 34, .86); border: 1px solid var(--flood); border-radius: 12px; text-align: center; width: max-content; max-width: 92%; animation: popIn .5s cubic-bezier(.2, 1.3, .4, 1); }
 .mv-cer strong { font: 800 clamp(20px, 5vw, 32px)/1 var(--display); text-transform: uppercase; } .mv-cer span { font-size: 13px; color: var(--muted); }
 .mv-cer .btn { min-height: 32px; padding: 4px 12px; font-size: 13px; margin-top: 4px; }
 .mv-pens { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; padding: 6px 14px; background: rgba(10, 19, 34, .9); border: 1px solid var(--line); border-radius: 99px; }
@@ -403,4 +403,34 @@ textarea { font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vert
   .offer { grid-template-columns: 1fr; } .bal span { display: none; }
   .hero-ball { width: 34px; height: 34px; }
 }
+/* TV skor bandı */
+.tvb-wrap { display: grid; justify-items: center; padding: 12px 8px 34px; background-color: #15121f;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--h1) 60%, transparent) 1.6px, transparent 2.2px), radial-gradient(circle, color-mix(in srgb, var(--a1) 60%, transparent) 1.6px, transparent 2.2px);
+  background-size: 10px 10px; background-position: 0 0, 5px 5px; }
+.tvb { --g1: #1c2472; --g2: #ffc93c; --gi: #fff; position: relative; display: flex; align-items: stretch; height: 40px; font-family: var(--display); filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .55)); animation: tvbIn .6s cubic-bezier(.2, 1.2, .4, 1) both; }
+@keyframes tvbIn { from { opacity: 0; transform: translateY(-16px); } }
+.tvb-logo { width: 42px; display: grid; place-items: center; background: #c8102e; }
+.tvb-t { display: flex; align-items: center; gap: 9px; padding: 0 22px 0 12px; background: #fff; color: #1c2472; font: 800 26px/1 var(--display); letter-spacing: .03em; }
+.tvb-t.away { padding: 0 12px 0 22px; }
+.tvb-t i { width: 6px; height: 24px; background: linear-gradient(var(--k1) 50%, var(--k2) 50%); outline: 1px solid rgba(0, 0, 0, .15); }
+.tvb-c { z-index: 1; min-width: 112px; margin: -4px -14px; padding: 3px; background: var(--g2); clip-path: polygon(13% 0, 87% 0, 100% 50%, 87% 100%, 13% 100%, 0 50%); transition: background .25s; }
+.tvb-c > div { height: 100%; display: grid; place-items: center; background: #1c2472; color: #fff; clip-path: polygon(13% 0, 87% 0, 100% 50%, 87% 100%, 13% 100%, 0 50%); font: 800 28px/1 var(--display); transition: background .25s, color .25s; }
+.tvb-c > div > span { grid-area: 1 / 1; }
+.tvb-sc { display: flex; gap: 7px; align-items: center; font-variant-numeric: tabular-nums; } .tvb-sc em { font-style: normal; opacity: .7; } .tvb-sc b { display: inline-block; }
+.tvb-sc b.bump { animation: bump .7s cubic-bezier(.2, 1.6, .4, 1); }
+.tvb-goal { opacity: 0; letter-spacing: .08em; font-size: 23px; }
+.tvb.show .tvb-c > div { background: var(--g1); color: var(--gi); }
+.tvb.show .tvb-sc { opacity: 0; } .tvb.show .tvb-goal { opacity: 1; animation: goolPulse .5s ease-in-out infinite alternate; }
+@keyframes goolPulse { from { transform: scale(.92); letter-spacing: .04em; } to { transform: scale(1.06); letter-spacing: .12em; } }
+.tvb-min { min-width: 66px; padding: 0 12px; display: grid; place-items: center; background: #dbe7fb; color: #1c2472; font: 800 24px/1 var(--display); font-variant-numeric: tabular-nums; border-radius: 0; }
+.tvb .mv-bar { top: 100%; bottom: auto; height: 3px; background: rgba(255, 255, 255, .25); }
+.tvb-sub { position: absolute; top: calc(100% + 3px); left: 42px; right: 66px; height: 26px; display: grid; place-items: center; background: var(--g1); color: var(--gi); font: 700 18px/1 var(--display); letter-spacing: .04em; white-space: pre; overflow: hidden; transform: scaleY(0); transform-origin: top; opacity: 0; transition: transform .28s cubic-bezier(.2, 1.3, .4, 1), opacity .2s; }
+.tvb.show .tvb-sub { transform: scaleY(1); opacity: 1; }
+@media (max-width: 560px) {
+  .tvb { height: 34px; } .tvb-logo { width: 34px; } .tvb-logo img { width: 24px; height: 24px; }
+  .tvb-t { font-size: 20px; padding: 0 16px 0 8px; gap: 6px; } .tvb-t.away { padding: 0 8px 0 16px; } .tvb-t i { height: 20px; width: 5px; }
+  .tvb-c { min-width: 88px; margin: -3px -11px; } .tvb-c > div { font-size: 22px; } .tvb-goal { font-size: 18px; }
+  .tvb-min { min-width: 50px; padding: 0 8px; font-size: 19px; } .tvb-sub { left: 34px; right: 50px; font-size: 16px; }
+}
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
