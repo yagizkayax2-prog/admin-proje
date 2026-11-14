@@ -4,7 +4,7 @@
   const { clamp } = FM.util;
   const lerp = (a, b, k) => a + (b - a) * k;
   const ease = k => (k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
-  const MIN_DUR = .55, CER_END = 8.4;
+  const MIN_DUR = 1.15, CER_END = 8.4;   // 1 oyun dakikası ≈ 1,15 sn (1x): pozisyonlar arasında oyun kurulur
   const $ = id => document.getElementById(id);
   const LOGO = new Image(); LOGO.src = 'assets/logo.svg';
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -90,59 +90,78 @@
     S.ball.x = .5; S.ball.y = .5; S.ball.z = 0;
     S.holder = S.dots.filter(d => d.s === s && active(d) && d.i > 0).pop() || dot(s, 0);
   }
+  /* Akan oyun: holder'ın bölgesine göre pas seçilir. Kendi yarısında sabırlı kurulum (yan ve geri pas), orta sahada ileri,
+     son bölümde ceza sahası çevresinde dolaştırma. Tek pasla en fazla ~20 metre ilerlenir; pozisyonlar maç motorundan gelir. */
   function ambientPass() {
     const h = S.holder; if (!h || !active(h)) { S.holder = S.dots.find(d => d.s === S.poss && active(d) && d.i > 4) || dot(S.poss, 0); return; }
     const s = h.s, share = S.m.st.poss[s] / Math.max(1, S.m.st.poss[0] + S.m.st.poss[1]);
     const mates = S.dots.filter(d => d.s === s && d !== h && active(d));
     if (!mates.length) return;
-    // top sürme: önü boşsa oyuncu topu ileri taşır, pas sonra gelir
     const tc = S.m.s[s].tac, ctr = S.ctr && S.ctr.s === s && S.t < S.ctr.until;
-    const hx = ownX(s, h.x), free = S.dots.filter(d => d.s !== s && active(d)).every(d => (S.pressers || []).includes(d) || pdist(d, h) > .05);
-    if (h.i > 0 && !h.cv && free && hx < .8 && Math.random() < (ctr ? .65 : [.32, .42, .3][tc.pass])) {
-      const fy = dirRight(s) ? h.y : 1 - h.y, ny = clamp(fy + (Math.random() - .5) * .12, .08, .92);
-      h.cv = toPitch(s, Math.min(.82, hx + .07 + Math.random() * .07), ny);
-      S.passT = .5 + Math.random() * .4; return;
+    const hx = ownX(s, h.x), zone = hx < .38 ? 0 : hx < .68 ? 1 : 2;
+    // kısa top sürme: önü boşsa birkaç adım taşır
+    const free = S.dots.filter(d => d.s !== s && active(d)).every(d => (S.pressers || []).includes(d) || pdist(d, h) > .06);
+    if (h.i > 0 && !h.cv && free && hx < .8 && Math.random() < (ctr ? .55 : [.22, .32, .18][zone] * [1, 1.15, .8][tc.pass])) {
+      const fy = dirRight(s) ? h.y : 1 - h.y, ny = clamp(fy + (Math.random() - .5) * .08, .08, .92);
+      h.cv = toPitch(s, Math.min(.8, hx + .035 + Math.random() * .045), ny);
+      S.passT = .45 + Math.random() * .35; return;
     }
     h.cv = null;
-    const wts = mates.map(d => {
-      const dist = Math.hypot(d.x - h.x, (d.y - h.y) * .65), fwd = ownX(s, d.x) - ownX(s, h.x);
-      const pref = [.12, .17, .32][tc.pass], fw = ctr ? 3.2 : tc.counter === 0 ? 1.15 : [1.25, 1.5, 2.3][tc.pass], role = S.m.s[s].slots[d.i][0];
-      return (d.i === 0 ? (tc.pass === 0 ? .3 : .12) : 1) * (1 / (.06 + Math.abs(dist - pref))) * (fwd > 0 ? fw : 1) * (tc.pass === 2 && role === 'FWD' ? 1.7 : 1) * (ctr && role === 'FWD' ? 1.8 : 1);
+    const maxAdv = ctr ? .32 : tc.pass === 2 ? .3 : [.17, .2, .14][zone];
+    let pool = mates.filter(d => { const ax = ownX(s, d.x) - hx; return ax <= maxAdv && ownX(s, d.x) <= .88 && (d.i !== 0 || zone === 0); });
+    if (!pool.length) pool = mates.filter(d => d.i > 0);
+    const wts = pool.map(d => {
+      const dist = pdist(d, h), fwd = ownX(s, d.x) - hx, role = S.m.s[s].slots[d.i][0];
+      const pref = [.12, .16, .28][tc.pass], fw = ctr ? 2.8 : tc.counter === 0 ? 1 : [[1.05, 1.3, .9], [1.15, 1.45, 1], [1.5, 1.9, 1.2]][tc.pass][zone];
+      const back = fwd < -.02 ? (zone === 2 ? .8 : zone === 0 ? .55 : .35) : 1;   // son bölümde geri pasla dolaştırma
+      const lateral = Math.abs(fwd) < .04 ? (zone === 1 ? .9 : 1.15) : 1;
+      return (d.i === 0 ? (tc.pass === 0 ? .25 : .08) : 1) * (1 / (.05 + Math.abs(dist - pref))) * (fwd > .02 ? fw : 1) * back * lateral * (tc.pass === 2 && role === 'FWD' ? 1.5 : 1) * (ctr && role === 'FWD' ? 1.8 : 1);
     });
-    let r = Math.random() * wts.reduce((a, b) => a + b, 0), rec = mates[0];
-    for (let i = 0; i < mates.length; i++) { r -= wts[i]; if (r <= 0) { rec = mates[i]; break; } }
-    const near = S.dots.filter(d => d.s !== s && active(d) && d.i > 0).reduce((mn, d) => Math.min(mn, Math.hypot(d.x - rec.x, (d.y - rec.y) * .65)), 1);
+    // ara sıra oyunu öbür kanada çevir
+    let rec = null;
+    if (zone > 0 && !ctr && Math.random() < .07) { const far = pool.filter(d => Math.abs(d.y - h.y) > .45 && d.i > 0); if (far.length) rec = far[Math.floor(Math.random() * far.length)]; }
+    if (!rec) { let r = Math.random() * wts.reduce((x, y) => x + y, 0); rec = pool[0]; for (let i = 0; i < pool.length; i++) { r -= wts[i]; if (r <= 0) { rec = pool[i]; break; } } }
+    const near = S.dots.filter(d => d.s !== s && active(d) && d.i > 0).reduce((mn, d) => Math.min(mn, pdist(d, rec)), 1);
     const otc = S.m.s[1 - s].tac;
-    if (Math.random() < (.05 + .3 * (1 - share) + Math.max(0, .1 - near) * 2.2 + (otc.press - 1) * .04) * [.85, 1, 1.18][otc.tackle] * [.85, 1, 1.12][tc.pass]) {
+    h.kick = .28;
+    if (Math.random() < (.03 + .2 * (1 - share) + Math.max(0, .08 - near) * 2.2 + (otc.press - 1) * .03) * [.85, 1, 1.18][otc.tackle] * [.85, 1, 1.12][tc.pass] * (zone === 2 ? 1.25 : 1)) {
       const opp = S.dots.filter(d => d.s !== s && active(d) && d.i > 0);
       if (opp.length) {
-        const thief = opp.reduce((a, b) => (Math.hypot(a.x - rec.x, a.y - rec.y) < Math.hypot(b.x - rec.x, b.y - rec.y) ? a : b));
-        run([mv(() => thief, .38 + pdist(thief, h) * .9, { end: () => { S.holder = thief; S.poss = thief.s; if (Math.random() < .3) pop(thief, otc.tackle === 2 && Math.random() < .5 ? 'SERT MÜDAHALE' : 'TOP KAPMA', '#58c4dd'); if (otc.counter === 2) { S.ctr = { s: thief.s, until: S.t + 2.6 }; S.ctrN = (S.ctrN || 0) + 1; S.passT = .25; if (Math.random() < .35) pop(thief, 'KONTRA!', '#ffc93c'); } else if (otc.counter === 0) S.passT = 1.1; } })], false);
+        const thief = opp.reduce((a, b) => (pdist(a, rec) < pdist(b, rec) ? a : b)), slide = otc.tackle === 2 || Math.random() < .3;
+        if (slide) thief.slide = .55;
+        run([mv(() => thief, .38 + pdist(thief, h) * .9, { end: () => { S.holder = thief; S.poss = thief.s; if (Math.random() < .35) pop(thief, slide && otc.tackle === 2 ? 'SERT MÜDAHALE' : slide ? 'KAYARAK MÜDAHALE' : 'TOP KAPMA', '#58c4dd'); if (otc.counter === 2) { S.ctr = { s: thief.s, until: S.t + 2.6 }; S.ctrN = (S.ctrN || 0) + 1; S.passT = .3; if (Math.random() < .35) pop(thief, 'KONTRA!', '#ffc93c'); } else S.passT = otc.counter === 0 ? 1.2 : .8; } })], false);
         S.holder = null; return;
       }
     }
-    const dd = pdist(rec, h), far = dd > (tc.pass === 2 ? .22 : .3);
-    run([mv(() => rec, .3 + dd * 1.4, { arc: far ? .5 : 0, end: () => { S.holder = rec; FM.Audio.kick(); } })], false);
+    const dd = pdist(rec, h), far = dd > (tc.pass === 2 ? .24 : .3);
+    run([mv(() => rec, .32 + dd * 1.5, { arc: far ? .5 : 0, end: () => { S.holder = rec; FM.Audio.kick(); } })], false);
     S.holder = null;
   }
 
   /* Hücum kurma: pozisyondan önce top bulunduğu yerden pas pas ileri taşınır, takım blok hâlinde çıkar */
   function buildUp(s, toX, exclude) {
-    const steps = [], b = { x: S.ball.x, y: S.ball.y }, mates = () => S.dots.filter(d => d.s === s && d.i > 0 && active(d) && !exclude.includes(d));
+    const steps = [], mates = () => S.dots.filter(d => d.s === s && d.i > 0 && active(d) && !exclude.includes(d));
     let cur = S.holder && S.holder.s === s && active(S.holder) ? S.holder : null;
-    if (!cur) {   // önce topu kazan
+    const tc = S.m.s[s].tac, kontra = tc.counter === 2;
+    if (!cur) {   // top rakipteyse önce bir oyuncu koşup topu kapar
+      const h = S.holder && active(S.holder) ? S.holder : null, b = h || S.ball;
       const c = mates().sort((x, y) => pdist(x, b) - pdist(y, b))[0]; if (!c) return steps;
-      cur = c; const d0 = pdist(c, b), kontra = S.m.s[s].tac.counter === 2;
-      steps.push(mv(() => c, .3 + d0 * 1.1, { end: () => { S.holder = c; S.poss = s; if (kontra) { S.ctr = { s, until: S.t + 3 }; S.ctrN = (S.ctrN || 0) + 1; pop(c, 'KONTRA!', '#ffc93c'); } else if (Math.random() < .35) pop(c, 'TOP KAPMA', '#58c4dd'); } }));
+      cur = c; const slide = Math.random() < .4;
+      steps.push(wait(.01, () => { c.ov = h || { x: b.x, y: b.y }; if (h) h.cv = null; if (slide) c.slide = .6; }), waitFor(() => pdist(c, h || S.ball) < .035, 1.8),
+        mv(() => c, .25, { end: () => { c.ov = null; S.holder = c; S.poss = s; if (kontra) { S.ctr = { s, until: S.t + 3 }; S.ctrN = (S.ctrN || 0) + 1; pop(c, 'KONTRA!', '#ffc93c'); } else pop(c, slide ? 'KAYARAK MÜDAHALE' : 'TOP KAPMA', '#58c4dd'); } }));
     }
-    const tc = S.m.s[s].tac, maxP = tc.counter === 2 && !(S.holder && S.holder.s === s) ? 2 : tc.pass === 0 ? 5 : tc.pass === 2 ? 2 : 4, pref = [.15, .2, .3][tc.pass], pause = tc.counter === 2 ? .05 : tc.pass === 0 ? .28 : .18;
+    const maxP = kontra && !(S.holder && S.holder.s === s) ? 3 : tc.pass === 0 ? 7 : tc.pass === 2 ? 3 : 5, pref = [.14, .18, .28][tc.pass], adv = tc.pass === 2 ? .3 : kontra ? .24 : .17;
     let x = ownX(s, cur.x), guard = 0;
     while (x < toX && guard++ < maxP) {
-      const prev = cur, opts = mates().filter(d => d !== prev && ownX(s, d.x) > x + .04 && pdist(d, prev) < (tc.pass === 2 ? .5 : .38));
+      const prev = cur, ahead = mates().filter(d => d !== prev && ownX(s, d.x) > x + .025 && ownX(s, d.x) <= x + adv && pdist(d, prev) < .36);
+      const side = mates().filter(d => d !== prev && Math.abs(ownX(s, d.x) - x) < .05 && pdist(d, prev) < .3);
+      const opts = ahead.length && (Math.random() < .78 || !side.length) ? ahead : side;
       if (!opts.length) break;
       const nx = opts.sort((a, c) => Math.abs(pdist(a, prev) - pref) - Math.abs(pdist(c, prev) - pref))[Math.floor(Math.random() * Math.min(2, opts.length))];
-      const dd = pdist(nx, prev);
-      steps.push(wait(pause + Math.random() * .2), mv(() => nx, .3 + dd * 1.4, { arc: dd > .3 ? .4 : 0, end: () => { S.holder = nx; FM.Audio.kick(); } }));
+      const dd = pdist(nx, prev), dir = dirRight(s) ? 1 : -1;
+      // alan oyuncu topu biraz taşır, sonra pas
+      steps.push(wait(.01, () => { prev.cv = { x: clamp(prev.x + dir * .025, .03, .97), y: prev.y }; }), mv(() => ({ x: prev.x + dir * .012, y: prev.y }), .32 + Math.random() * .2),
+        wait(.01, () => { prev.cv = null; prev.kick = .28; }), mv(() => nx, .32 + dd * 1.5, { arc: dd > .3 ? .4 : 0, end: () => { S.holder = nx; FM.Audio.kick(); } }));
       cur = nx; x = ownX(s, nx.x);
     }
     return steps;
@@ -167,30 +186,30 @@
       others.forEach((d, k) => { d.ov = toPitch(s, .775 - (k % 3) * .022, .14 + k / Math.max(1, others.length - 1) * .72); });
       sh.ov = toPitch(s, .84, .5); gk.ov = toPitch(s, .985, .5);
       if (e.varPen && !replay) steps.push(wait(.01, () => { A.whistle(1); S.varSnap = snap(s, sh); varShow('PENALTI İNCELEMESİ', 'Hakem monitöre gidiyor', ''); startVarCam(e, s, 'pen'); S.refs[0].tx = MON.x; S.refs[0].ty = MON.y - .012; S.varOn = true; }), wait(2.6, () => { varShow('PENALTI', 'VAR kararı: penaltı noktası', 'ok'); varVerdict('pen'); S.varOn = false; }), wait(1.4, varHide));
-      steps.push(mv(() => spot, .35, { end: () => { S.holder = null; A.whistle(1); pop(sh, 'PENALTI!', '#ffc93c'); } }), waitFor(() => pdist(sh, toPitch(s, .84, .5)) < .03, 2.4), wait(.9, () => { sh.ov = toPitch(s, .875, .5); }), wait(.3, () => A.kick()));
+      steps.push(mv(() => spot, .35, { end: () => { S.holder = null; A.whistle(1); pop(sh, 'PENALTI!', '#ffc93c'); } }), waitFor(() => pdist(sh, toPitch(s, .84, .5)) < .03, 2.4), wait(.9, () => { sh.ov = toPitch(s, .875, .5); }), wait(.3, () => { sh.kick = .32; A.kick(); }));
     } else if (e.kind === 'fk') {
       const spot = toPitch(s, .74, .5 + side * .13);
       S.dots.filter(d => d.s === o && d.i > 0 && active(d)).slice(0, 3).forEach((d, k) => { d.ov = toPitch(s, .835, .5 + side * .09 + (k - 1) * .032); });
       sh.ov = toPitch(s, .72, .5 + side * .14);
-      steps.push(mv(() => spot, .35, { end: () => { S.holder = null; A.whistle(1); pop(sh, 'FRİKİK', '#ffc93c'); } }), waitFor(() => pdist(sh, toPitch(s, .72, .5 + side * .14)) < .04, 2.2), wait(.5, () => { sh.ov = spot; }), wait(.35, () => A.kick()));
+      steps.push(mv(() => spot, .35, { end: () => { S.holder = null; A.whistle(1); pop(sh, 'FRİKİK', '#ffc93c'); } }), waitFor(() => pdist(sh, toPitch(s, .72, .5 + side * .14)) < .04, 2.2), wait(.5, () => { sh.ov = spot; }), wait(.35, () => { sh.kick = .32; A.kick(); }));
       arc = .8;
     } else if (e.kind === 'ck') {
       const corner = toPitch(s, .992, flank < .5 ? .008 : .992), tk = as || sh;
       tk.ov = corner; if (tk !== sh) sh.ov = toPitch(s, .92, .44 + Math.random() * .12);
       S.dots.filter(d => d.s === s && d.i > 0 && d !== tk && d !== sh && active(d)).slice(-4).forEach((d, k) => { d.ov = toPitch(s, .87 + (k % 2) * .04, .36 + k * .09); });
-      steps.push(mv(() => corner, .45, { end: () => { S.holder = null; pop(tk, 'KORNER', '#ffc93c'); } }), waitFor(near(tk, corner), 2.4), wait(.4, () => A.kick()), mv(() => sh, .75, { arc: 1 }), wait(.08, () => A.kick()));
+      steps.push(mv(() => corner, .45, { end: () => { S.holder = null; pop(tk, 'KORNER', '#ffc93c'); } }), waitFor(near(tk, corner), 2.4), wait(.4, () => { tk.kick = .3; A.kick(); }), wait(.01, () => { sh.jump = 1; }), mv(() => sh, .75, { arc: 1 }), wait(.08, () => A.kick()));
       arc = .15;
     } else {
       if (as !== sh) as.ov = toPitch(s, .7, flank);
       sh.ov = toPitch(s, .86, v.shotY);
       if (as !== sh) { const ap = toPitch(s, .7, flank); steps.push(mv(() => as, .35 + pdist(as, S.ball) * 1.2, { arc: .3, end: () => { S.holder = as; A.kick(); } }), waitFor(() => pdist(as, ap) < .05, 1.2)); }
       const spt = toPitch(s, .86, v.shotY);
-      steps.push(waitFor(() => pdist(sh, spt) < .06, 1.6), mv(() => sh, .45, { end: () => { S.holder = sh; A.kick(); } }), wait(.22, () => { S.holder = null; A.kick(); }));
+      steps.push(wait(.01, () => { if (as !== sh) as.kick = .28; }), waitFor(() => pdist(sh, spt) < .06, 1.6), mv(() => sh, .45, { end: () => { S.holder = sh; A.kick(); } }), wait(.22, () => { S.holder = null; sh.kick = .32; A.kick(); }));
     }
-    const done = (holder, poss) => () => { if (replay) return replayNext(); clearOv(); S.holder = holder; S.poss = poss; S.passT = .8; };
+    const done = (holder, poss) => () => { if (replay) return replayNext(); clearOv(); S.holder = holder; S.poss = poss; S.passT = holder && holder.i === 0 ? 1.6 : 1; };
     if (e.out === 'goal') {
       const gp = toPitch(s, 1.022, .5 + side * .035);
-      if (e.kind === 'pen') steps.push(wait(.01, () => { gk.ov = toPitch(s, .98, .5 - side * .05); }));
+      steps.push(wait(.01, () => { gk.dive = { t: .9, d: (dirRight(s) ? side : -side) }; if (e.kind === 'pen') gk.ov = toPitch(s, .98, .5 - side * .05); }));
       if ((e.varNo || e.varOk) && !replay) steps.push(wait(.01, () => { S.varSnap = snap(s, sh); }));
       steps.push(mv(() => gp, .3, { arc, end: () => goalFx(e, s, flank, replay) }));
       if ((e.varNo || e.varOk) && !replay) {
@@ -201,7 +220,7 @@
       } else steps.push(wait(2.6, () => (replay ? replayNext() : kickoff(o))));
     } else if (e.out === 'save') {
       const sp = toPitch(s, .975, .5 + side * .04);
-      steps.push(wait(.01, () => { gk.ov = sp; }), mv(() => sp, .34, { arc: arc * .8, end: () => { A.groan(); pop(gk, 'KURTARIŞ', '#58c4dd'); } }), wait(.7, done(gk, o)));
+      steps.push(wait(.01, () => { gk.ov = sp; gk.dive = { t: 1, d: (dirRight(s) ? side : -side) }; }), mv(() => sp, .34, { arc: arc * .8, end: () => { A.groan(); pop(gk, 'KURTARIŞ', '#58c4dd'); } }), wait(.9, done(gk, o)));
     } else if (e.out === 'post') {
       const pp = toPitch(s, 1, .5 + side * .058), rb = toPitch(s, .86, .5 + side * .25);
       steps.push(mv(() => pp, .3, { arc: .2, end: () => { A.kick(); A.groan(); S.shake = .5; S.shakeSide = dirRight(s) ? 1 : 0; pop(sh, 'DİREK!', '#ffc93c'); } }), mv(() => rb, .45, { arc: .5 }), wait(.3, done(gk, o)));
@@ -437,6 +456,7 @@
     if (r >= 4) { g.fillStyle = '#0a1322'; g.font = `800 ${Math.round(r * .7)}px 'Barlow Condensed', sans-serif`; g.textAlign = 'center'; g.fillText('VAR', q.X, q.Y - r * 1.72); }
   }
   function goalFx(e, s, flank, replay) {
+    S.dots.forEach(d => { if (d.s === s && d.i > 0) d.cel = 3; else if (d.s !== s) d.sad = 2.4; });
     if (!replay) { setMgr(s, 'cheer', 2.6); setMgr(1 - s, 'despair', 2.4); }
     const t = FM.T(S.m.s[s].tid), p = FM.P(e.pid), A = FM.Audio;
     if (!replay) { S.disp[s]++; paintScore(s); }
@@ -696,8 +716,16 @@
   /* ---------- Oyuncu figürü: gölge, bacaklar (şort, çorap, krampon), gövde (forma), kollar, baş ---------- */
   const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16), c = v => Math.max(0, Math.min(255, Math.round(v * f))); return `rgb(${c(n >> 16)},${c((n >> 8) & 255)},${c(n & 255)})`; };
   function figure(g, x, y, h, o) {
+    if (o.dive || o.slide) {   // plonjon / kayarak müdahale: gövde yere paralele yakın
+      const ang = o.dive ? o.dive.d * 1.25 * Math.min(1, o.dive.k * 2) : o.dir * 1.05 * Math.min(1, o.slide * 2.5);
+      g.save(); g.translate(x, y); g.rotate(ang); g.translate(-x, -y);
+      figure(g, x, y - (o.dive ? h * .1 : 0), h, { ...o, dive: null, slide: null, arms: o.dive ? 'up' : 'out', run: 0 });
+      g.restore(); return;
+    }
+    if (o.lift) y -= o.lift * h;
     // x, y: ayakların zemindeki noktası; h: boy (piksel); o: { shirt, trim, shorts, socks, skin, hair, run (0..1), ph, dir (-1/1), hi }
-    const w = h * .36, run = o.run, sw = Math.sin(o.ph) * run, sw2 = Math.sin(o.ph + Math.PI) * run, lw = Math.max(1.2, h * .085);
+    const w = h * .36, run = o.run, kick = o.kick || 0, sw = kick ? -.25 : Math.sin(o.ph) * run, sw2 = kick ? Math.sin(Math.min(1, kick) * Math.PI) * 1.6 : Math.sin(o.ph + Math.PI) * run, lw = Math.max(1.2, h * .085);
+    if (!run && !kick && !o.arms) y -= Math.sin((o.ph || 0) * .4) * h * .006;   // nefes
     g.fillStyle = 'rgba(0,0,0,.33)'; g.beginPath(); g.ellipse(x + h * .1, y, w * .85, h * .12, 0, 0, 6.29); g.fill();
     if (o.hi) { g.beginPath(); g.ellipse(x, y, w * 1.25, h * .2, 0, 0, 6.29); g.strokeStyle = 'rgba(255,201,60,.95)'; g.lineWidth = 1.5; g.stroke(); }
     const hip = y - h * .46, sh = y - h * .8, lean = o.dir * run * h * .06;
@@ -712,7 +740,8 @@
     // şort
     g.fillStyle = o.shorts; g.beginPath(); g.moveTo(x - w * .5 + lean, hip - h * .1); g.lineTo(x + w * .5 + lean, hip - h * .1); g.lineTo(x + w * .46, hip + h * .06); g.lineTo(x - w * .46, hip + h * .06); g.closePath(); g.fill();
     // kollar (gövdenin arkasındaki)
-    const arm = (a, front) => { const ax = x + lean + (front ? 1 : -1) * w * .48, bx = ax - a * h * .17 * o.dir, by = sh + h * .3; g.strokeStyle = o.shirt; g.lineWidth = lw * 1.05; g.beginPath(); g.moveTo(ax, sh + h * .03); g.lineTo((ax + bx) / 2, sh + h * .14); g.stroke(); g.strokeStyle = o.skin; g.lineWidth = lw * .9; g.beginPath(); g.moveTo((ax + bx) / 2, sh + h * .14); g.lineTo(bx, by); g.stroke(); };
+    const arm = (a, front) => { const ax = x + lean + (front ? 1 : -1) * w * .48, side = front ? 1 : -1; let bx = ax - a * h * .17 * o.dir, by = sh + h * .3;
+      if (o.arms === 'up') { bx = ax + side * h * .12; by = sh - h * .32; } else if (o.arms === 'head') { bx = x + lean + side * w * .2; by = sh - h * .16; } else if (o.arms === 'out' || kick) { bx = ax + side * h * .2; by = sh + h * .08; } g.strokeStyle = o.shirt; g.lineWidth = lw * 1.05; g.beginPath(); g.moveTo(ax, sh + h * .03); g.lineTo((ax + bx) / 2, (sh + h * .03 + by) / 2); g.stroke(); g.strokeStyle = o.skin; g.lineWidth = lw * .9; g.beginPath(); g.moveTo((ax + bx) / 2, (sh + h * .03 + by) / 2); g.lineTo(bx, by); g.stroke(); };
     arm(sw, false);
     // gövde (forma)
     g.fillStyle = o.shirt; g.beginPath(); g.moveTo(x - w * .52 + lean, sh); g.lineTo(x + w * .52 + lean, sh); g.lineTo(x + w * .46 + lean * .5, hip - h * .08); g.lineTo(x - w * .46 + lean * .5, hip - h * .08); g.closePath(); g.fill();
@@ -787,7 +816,10 @@
       d.rph = (d.rph || d.ph) + (S.paused ? 0 : (d.spd || 0) * 110 * Math.min(.05, dt || .016));
       figure(g, q.X, q.Y + r0 * q.s * .5, r0 * q.s * 3.1, {
         shirt: gkp ? k.gk : k.fill, trim: gkp ? '#14202f' : k.stroke, shorts: gkp ? '#1b2433' : (lum(k.fill) > 150 ? '#1b2433' : '#f3efe4'), socks: gkp ? k.gk : k.fill,
-        skin: L ? L.SKIN[lk[0]] || '#d39b6c' : '#d39b6c', hair: L ? L.HAIR[lk[1]] || '#1b1b1b' : '#1b1b1b', run, ph: d.rph, dir: d.dir || 1, hi: d === S.holder, num: p ? p.num : null
+        skin: L ? L.SKIN[lk[0]] || '#d39b6c' : '#d39b6c', hair: L ? L.HAIR[lk[1]] || '#1b1b1b' : '#1b1b1b', run: d.cel > 0 ? 0 : run, ph: d.rph, dir: d.dir || 1, hi: d === S.holder, num: p ? p.num : null,
+        kick: d.kick > 0 ? 1 - d.kick / .3 : 0, dive: d.dive && d.dive.t > 0 ? { d: d.dive.d, k: 1 - d.dive.t / 1 } : null, slide: d.slide > 0 ? d.slide : 0,
+        lift: d.cel > 0 ? Math.abs(Math.sin(S.rt * 8 + d.ph)) * .16 : d.jump > 0 ? Math.sin(Math.min(1, 1 - d.jump) * Math.PI) * .28 : 0,
+        arms: d.cel > 0 ? 'up' : d.jump > 0 ? 'up' : d.sad > 0 ? 'head' : null
       });
     }
     if (S.holder && active(S.holder)) {
@@ -886,6 +918,8 @@
         d.x += sx; d.y += sy;
         const v = Math.hypot(sx, sy) / Math.max(1e-4, dt); d.spd = (d.spd || 0) * .8 + v * .2 * Math.min(1, dt * 60) / Math.max(1, S.speed); if (Math.abs(sx) > 1e-5) d.dir = sx > 0 ? 1 : -1;
         S.last[S.m.s[d.s].on[d.i]] = d;
+        if (d.kick > 0) d.kick -= dt; if (d.slide > 0) d.slide -= dt; if (d.jump > 0) d.jump -= dt * 1.4; if (d.cel > 0) d.cel -= dt; if (d.sad > 0) d.sad -= dt;
+        if (d.dive && d.dive.t > 0) d.dive.t -= dt;
       }
       if (S.phase === 'play' && !S.script) { S.refs[0].tx = clamp(S.ball.x + .05, .05, .95); S.refs[0].ty = clamp(S.ball.y + .1, .08, .92); }
       if (S.phase !== 'cer') { S.refs[1].tx = clamp(S.ball.x, .02, .98); S.refs[2].tx = clamp(S.ball.x, .02, .98); }
@@ -971,6 +1005,7 @@
   }
 
   FM.MatchView = {
+    state: () => S,   // test ve hata ayıklama için salt okunur erişim
     _s: () => S,   // test ve hata ayıklama için
     cur: () => (S && FM.Depth ? FM.Depth.buildRep(S.m, S.user) : null),
     /* info: { comp: 'Yıldızlar Ligi · 5. hafta', att } */

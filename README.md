@@ -53,6 +53,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Kulüp göreviyle birlikte milli takımı çalıştırma: milli ara maçları, Kıta Şampiyonası, federasyon güveni
 - Tünel sahnesi, gol sevinci çeşitleri, meşale ve sahaya giren taraftar olayları; ev sahibi tribün olaylarında para cezası ve kapalı tribün
 - Haftanın 11'i ve haftanın golü oylaması
+- Maç akışı: oyun dakikası ~1,15 sn; kendi yarısında sabırlı kurulum, orta sahada ileri pas, son bölümde dolaştırma; pozisyon öncesi topu kazanma ve kısa paslarla ilerleme; oyuncu animasyonları (vuruş, plonjon, kayarak müdahale, kafa için sıçrama, gol sevinci, üzüntü)
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
 ## Dosyalar
