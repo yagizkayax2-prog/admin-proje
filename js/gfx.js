@@ -55,7 +55,15 @@
     play: '<path d="M7 4v16l13-8z" fill="currentColor"/>',
     pause: '<path d="M7 4v16M17 4v16"/>',
     swap: '<path d="M7 4v16l-4-4M17 20V4l4 4"/>',
-    skip: '<path d="M4 5l9 7-9 7zM13 5l9 7-9 7z" fill="currentColor"/>'
+    skip: '<path d="M4 5l9 7-9 7zM13 5l9 7-9 7z" fill="currentColor"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    inbox: '<path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5"/>',
+    career: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM5 5h3M16 5h3M12 13v4M8 20h8"/>',
+    world: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+    team: '<circle cx="9" cy="8" r="3.500"/><path d="M2 20c0-4 3-6.500 7-6.500s7 2.500 7 6.500M16 5a3.500 3.500 0 0 1 0 7M18 13.500c2.500.700 4 2.800 4 6.500"/>'
   };
   FM.tacSegs = (tac, attr) => Object.keys(FM.TAC).map(k => `<div class="tac-row" title="${FM.TAC[k][2]}"><span>${FM.TAC[k][0]}</span><div class="seg">${FM.TAC[k][1].map((n, i) => `<button ${attr}="tac" data-k="${k}" data-v="${i}" class="${tac[k] === i ? 'on' : ''}">${n}</button>`).join('')}</div></div>`).join('');
   FM.icon = n => `<svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;

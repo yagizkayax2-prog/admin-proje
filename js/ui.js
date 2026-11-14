@@ -3,8 +3,23 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const { P, T, money } = FM;
-  const U = { view: 'home', fxWeek: null, fxTab: 'lig', tblDiv: null, sel: null, tf: { pos: 'ALL', afford: false }, pickTeam: 0, confirmReset: false, shownBal: null };
-  const TABS = [['home', 'Ana Sayfa'], ['squad', 'Kadro'], ['tactics', 'Taktik'], ['fixtures', 'Fikstür'], ['table', 'Lig'], ['transfer', 'Transfer'], ['training', 'Antrenman'], ['club', 'Kulüp']];
+  const U = { view: 'home', fxWeek: null, fxTab: 'lig', tblDiv: null, sel: null, tf: { pos: 'ALL', afford: false }, pickTeam: 0, confirmReset: false, shownBal: null, hist: ['home'], hi: 0, mail: null, mailF: 'all', mailQ: '', mailPick: null, mailOpen: false };
+  const GROUPS = [
+    ['home', 'Ana Sayfa', [['home', 'Genel bakış'], ['inbox', 'Gelen kutusu'], ['career', 'Kariyer']]],
+    ['team', 'Takım', [['squad', 'Kadro'], ['tactics', 'Taktik'], ['training', 'Antrenman']]],
+    ['world', 'Dünya', [['table', 'Lig'], ['fixtures', 'Fikstür ve kupa']]],
+    ['transfer', 'Transfer', [['transfer', 'Pazar']]],
+    ['club', 'Kulüp', [['club', 'Kulüp']]]
+  ];
+  const groupOf = v => GROUPS.find(g => g[2].some(x => x[0] === v)) || GROUPS[0];
+  const pending = () => (FM.G.inbox || []).filter(m => m.opts && !m.done);
+  const unread = () => (FM.G.inbox || []).filter(m => !m.read);
+  function go(view, fromHist) {
+    if (!fromHist && U.hist[U.hi] !== view) { U.hist = U.hist.slice(0, U.hi + 1); U.hist.push(view); if (U.hist.length > 40) U.hist.shift(); U.hi = U.hist.length - 1; }
+    U.view = view; U.sel = null; U.fxWeek = null; U.confirmReset = false; U.mailOpen = false;
+    render(); window.scrollTo(0, 0);
+  }
+  FM.go = go;
   const me = () => T(FM.G.teamId);
   const stars = n => `<span class="stars" aria-label="${n} yıldız">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
   const posChip = pos => `<span class="pos ${pos}">${FM.POS_TR[pos]}</span>`;
@@ -47,15 +62,28 @@
   }
 
   /* ---------- Kabuk ---------- */
+  function ticker() {
+    const G = FM.G, t = me(), w = G.week - 1, items = [];
+    if (w >= 0) for (const d of [t.div, 1 - t.div]) for (const f of G.fixtures[d][w]) if (f.hs != null) items.push(`<span><b>Sonuç</b>${FM.crest(T(f.h), 16)}${T(f.h).name} <em>${f.hs}-${f.as}</em> ${T(f.a).name}</span>`);
+    for (const n of G.news.slice(0, 6)) items.push(`<span><b class="hb">Haber</b>${esc(n.text.length > 80 ? n.text.slice(0, 78) + '…' : n.text)}</span>`);
+    if (!items.length) items.push('<span><b class="hb">Haber</b>Sezon başlıyor. İlk maç için “Devam et” düğmesine bas.</span>');
+    const row = items.join('');
+    return `<footer class="ticker" aria-label="Sonuçlar ve haberler"><div class="ticker-in">${row}${row}</div></footer>`;
+  }
   function shell(inner) {
-    const G = FM.G, t = me();
+    const G = FM.G, t = me(), grp = groupOf(U.view), dt = FM.fmtDate(G.season, G.week), badge = pending().length + unread().length;
     return `<header class="top"><div class="top-in">
-        <div class="club">${FM.crest(t, 38)}<div><strong>${t.name}</strong><span>${esc(G.manager)} · ${G.season}. sezon · Hafta ${Math.min(G.week + 1, FM.WEEK_COUNT)}/${FM.WEEK_COUNT}</span></div></div>
+        <div class="navhist"><button class="btn icon" data-a="back" aria-label="Geri" ${U.hi <= 0 ? 'disabled' : ''}>‹</button><button class="btn icon" data-a="fwd" aria-label="İleri" ${U.hi >= U.hist.length - 1 ? 'disabled' : ''}>›</button></div>
+        <button class="clubbtn" data-a="team" data-id="${t.id}" aria-label="${t.name}">${FM.crest(t, 34)}</button>
+        <nav class="mainnav" aria-label="Bölümler">${GROUPS.map(g => `<button data-a="tab" data-v="${g[2][0][0]}" class="${g === grp ? 'on' : ''}" ${g === grp ? 'aria-current="page"' : ''}>${g[1]}${g[0] === 'home' && badge ? `<i>${badge}</i>` : ''}</button>`).join('')}</nav>
+        <div class="gsearch">${FM.icon('search')}<input id="gsearch" type="search" placeholder="Ara: oyuncu ya da takım" autocomplete="off" aria-label="Oyuncu ya da takım ara"><div class="gsr" id="gsr" hidden></div></div>
         <div class="top-r"><div class="bal"><span>Bütçe</span><b id="bal" class="${G.fin.balance < 0 ? 'neg' : ''}">${money(G.fin.balance)}</b></div>
-        <button class="btn icon" data-a="sound" aria-label="Ses aç/kapat">${FM.icon(FM.Audio.muted ? 'mute' : 'sound')}</button></div>
+          <button class="btn icon" data-a="settings" aria-label="Ayarlar">${FM.icon('gear')}</button>
+          <div class="datebox"><b>${dt.d}</b><span>${dt.g} · ${G.season}. sezon, ${Math.min(G.week + 1, FM.WEEK_COUNT)}. hafta</span></div>
+          <button class="btn primary gobtn" data-a="play">Devam et ${FM.icon('play')}</button></div>
       </div>
-      <nav class="tabs" aria-label="Bölümler"><div class="tabs-in">${TABS.map(([k, n]) => `<button data-a="tab" data-v="${k}" class="${U.view === k ? 'on' : ''}" ${U.view === k ? 'aria-current="page"' : ''}>${FM.icon(k)}<span>${n}</span></button>`).join('')}</div></nav>
-    </header><main class="view enter" id="view">${inner}</main>`;
+      <nav class="tabs" aria-label="${grp[1]} alt bölümleri"><div class="tabs-in">${grp[2].map(([k, n]) => `<button data-a="tab" data-v="${k}" class="${U.view === k ? 'on' : ''}">${n}${k === 'inbox' && badge ? `<i>${badge}</i>` : ''}</button>`).join('')}</div></nav>
+    </header><main class="view enter" id="view">${inner}</main>${ticker()}`;
   }
   function fxRow(f, big) {
     const h = T(f.h), a = T(f.a), mine = f.h === FM.G.teamId || f.a === FM.G.teamId;
@@ -86,8 +114,7 @@
     const pr = G.press ? FM.PRESS[G.press.q] : null;
     const last = G.week > 0 ? G.fixtures[t.div][G.week - 1] : null;
     return hero +
-      (pr ? `<section class="card press"><p class="eyebrow">Basın toplantısı</p><h3>“${pr.q}”</h3><div class="opts">${pr.a.map((x, i) => `<button class="opt" data-a="press" data-v="${i}"><strong>${x[0]}</strong></button>`).join('')}</div></section>` : '') +
-      G.offers.map(o => { const p = P(o.pid); return `<section class="card offer"><div>${FM.avatar(p, 40)}<p><strong>${T(o.tid).name}</strong>, ${esc(p.name)} için <b>${money(o.amt)}</b> teklif ediyor. <small>Piyasa değeri ${money(p.value)}</small></p></div><div class="row"><button class="btn" data-a="offer-no" data-id="${o.pid}">Reddet</button><button class="btn primary" data-a="offer-yes" data-id="${o.pid}">Kabul et</button></div></section>`; }).join('') +
+      (pending().length ? `<section class="card offer"><div>${FM.icon('inbox')}<p><strong>Gelen kutusunda ${pending().length} karar bekliyor.</strong><small>${esc(pending()[0].title)}</small></p></div><button class="btn primary" data-a="tab" data-v="inbox">Gelen kutusunu aç</button></section>` : '') +
       `<div class="grid2">
         <section class="card"><h2>Puan durumu</h2>${tableHtml(tb.slice(from, from + 5), from, true, t.div)}<button class="link" data-a="tab" data-v="table">Tüm tablo</button></section>
         <section class="card"><h2>Durum</h2>${gauge('Yönetim güveni', G.board)}${gauge('Taraftar desteği', G.fans)}<p class="chips"><span class="chip ${FM.windowOpen() ? 'on' : ''}">Transfer dönemi ${FM.windowOpen() ? (FM.deadline() ? 'son hafta!' : 'açık') : 'kapalı'}</span>${G.cup.winner != null ? `<span class="chip">Kupa: ${T(G.cup.winner).name}</span>` : `<span class="chip">Kupada ${G.cup.alive.includes(G.teamId) ? 'devam' : 'elendin'}</span>`}</p></section>
@@ -253,15 +280,72 @@
       <section class="card"><h2>Finans</h2><div class="kpis sm"><div><span>Bütçe</span><b>${money(G.fin.balance)}</b></div><div><span>Haftalık maaş</span><b>${money(FM.wageBill(t))}</b></div><div><span>Sponsor</span><b>${money(G.fin.sponsor)}</b></div></div>
         ${spark(G.fin.hist)}
         ${l ? `<table class="tbl fin"><tbody><tr><td class="l">Sponsor geliri</td><td class="r pos-v">+${money(l.sponsor)}</td></tr><tr><td class="l">Bilet geliri ${l.att ? '(' + l.att.toLocaleString('tr-TR') + ' seyirci)' : '(deplasman)'}</td><td class="r pos-v">+${money(l.tickets)}</td></tr><tr><td class="l">Maaşlar</td><td class="r neg-v">−${money(l.wages)}</td></tr><tr><td class="l"><b>Geçen hafta net</b></td><td class="r"><b>${money(l.net)}</b></td></tr></tbody></table>` : ''}</section>
-      <section class="card"><h2>Yönetim ve taraftar</h2><p>Hedef: ${FM.DIV_TR[t.div]}'nde <b>${exp}. sıra</b> veya üstü. Şu an <b>${pos}.</b> sıradasın.</p>${gauge('Yönetim güveni', G.board, G.board <= 25 ? 'Tehlike: güven 10\'un altına düşerse görevden alınırsın.' : G.board >= 70 ? 'Yönetim arkanda.' : 'Yönetim gidişatı izliyor.')}${gauge('Taraftar desteği', G.fans, 'Destek arttıkça tribünler dolar, iç saha avantajın büyür.')}
-        <h2>Geçmiş sezonlar</h2>${G.history.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Sezon</th><th class="l">Kulüp</th><th>Sıra</th><th>Puan</th><th class="l">Şampiyon</th><th class="l">Kupa</th></tr></thead><tbody>${G.history.map(h => `<tr><td>${h.season}</td><td class="l">${h.team || ''}</td><td>${h.pos}${h.div ? ' (alt lig)' : ''}</td><td>${h.pts}</td><td class="l">${h.champion}</td><td class="l">${h.cup || '—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">İlk sezonun devam ediyor.</p>'}</section></div>
-      <section class="card"><h2>Tesisler</h2><div class="facs">${Object.keys(FM.FAC).map(k => `<div class="fac"><div><strong>${FM.FAC[k].name}</strong><span class="lv">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= t.fac[k] ? 'on' : ''}"></i>`).join('')}</span><p>${facDesc[k]}</p></div><button class="btn" data-a="upgrade" data-v="${k}" ${t.fac[k] >= 5 ? 'disabled' : ''}>${t.fac[k] >= 5 ? 'En üst seviye' : 'Geliştir · ' + money(FM.facCost(k))}</button></div>`).join('')}</div></section>
+      <section class="card"><h2>Yönetim ve taraftar</h2><p>Hedef: ${FM.DIV_TR[t.div]}'nde <b>${exp}. sıra</b> veya üstü. Şu an <b>${pos}.</b> sıradasın.</p>${gauge('Yönetim güveni', G.board, G.board <= 25 ? 'Tehlike: güven 10\'un altına düşerse görevden alınırsın.' : G.board >= 70 ? 'Yönetim arkanda.' : 'Yönetim gidişatı izliyor.')}${gauge('Taraftar desteği', G.fans, 'Destek arttıkça tribünler dolar, iç saha avantajın büyür.')}</section></div>
+      <section class="card"><h2>Tesisler</h2><div class="facs">${Object.keys(FM.FAC).map(k => `<div class="fac"><div><strong>${FM.FAC[k].name}</strong><span class="lv">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= t.fac[k] ? 'on' : ''}"></i>`).join('')}</span><p>${facDesc[k]}</p></div><button class="btn" data-a="upgrade" data-v="${k}" ${t.fac[k] >= 5 ? 'disabled' : ''}>${t.fac[k] >= 5 ? 'En üst seviye' : 'Geliştir · ' + money(FM.facCost(k))}</button></div>`).join('')}</div></section>`;
+  }
+
+  /* ---------- Kariyer ---------- */
+  function viewCareer() {
+    const G = FM.G, mu = G.museum, t = me();
+    const legends = Object.entries(G.legends).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const cups = mu.titles.map(s => `<figure><img src="assets/trophy.svg" alt="" width="44" height="52"><figcaption>Lig · ${s}. sezon</figcaption></figure>`).join('') + mu.cups.map(s => `<figure class="cupt"><img src="assets/trophy.svg" alt="" width="44" height="52"><figcaption>Kupa · ${s}. sezon</figcaption></figure>`).join('');
+    return `<div class="kpis"><div><span>Teknik direktör</span><b>${esc(G.manager)}</b></div><div><span>Kulüp</span><b>${t.name}</b></div><div><span>Sezon</span><b>${G.season}.</b></div><div><span>Kupa sayısı</span><b>${mu.titles.length + mu.cups.length}</b></div></div>
+      <section class="card"><h2>Geçmiş sezonlar</h2>${G.history.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Sezon</th><th class="l">Kulüp</th><th>Sıra</th><th>Puan</th><th class="l">Şampiyon</th><th class="l">Kupa</th></tr></thead><tbody>${G.history.map(h => `<tr><td>${h.season}</td><td class="l">${h.team || ''}</td><td>${h.pos}${h.div ? ' (alt lig)' : ''}</td><td>${h.pts}</td><td class="l">${h.champion}</td><td class="l">${h.cup || '—'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">İlk sezonun devam ediyor.</p>'}</section>
       <section class="card museum"><h2>Kulüp müzesi</h2>
         <div class="cups">${cups || '<p class="muted">Vitrin henüz boş. İlk kupanı kazan.</p>'}</div>
         <div class="grid2"><div><h3 class="rnd">Rekorlar</h3><ul class="recs"><li><span>En farklı galibiyet</span><b>${G.rec.bigWin ? G.rec.bigWin.text : '—'}</b></li><li><span>Bir sezonda en çok gol</span><b>${G.rec.goals ? `${G.rec.goals.name} (${G.rec.goals.g}) · ${G.rec.goals.s}. sezon` : '—'}</b></li><li><span>En yüksek puan</span><b>${G.rec.pts ? `${G.rec.pts.v} puan · ${G.rec.pts.s}. sezon` : '—'}</b></li></ul></div>
         <div><h3 class="rnd">Efsaneler</h3><ol class="rank">${legends.map(([n, g], i) => `<li><span class="wk">${i + 1}</span><span class="nm">${esc(n)}</span><b>${g} gol</b></li>`).join('') || '<li class="muted">Senin dönemindeki golcüler burada sıralanır.</li>'}</ol></div></div>
-        <h3 class="rnd">Başarımlar <small>${Object.keys(G.ach).length}/${Object.keys(FM.ACH).length}</small></h3><div class="achs">${Object.keys(FM.ACH).map(k => `<div class="ach ${G.ach[k] ? 'on' : ''}"><strong>${FM.ACH[k][0]}</strong><span>${FM.ACH[k][1]}</span>${G.ach[k] ? `<em>${G.ach[k].s}. sezon</em>` : ''}</div>`).join('')}</div></section>
-      <section class="card"><h2>Kariyer kaydı</h2><p class="muted">Oyun bu tarayıcıda otomatik kaydedilir. Başka cihaza taşımak için kaydı dışa aktar.</p><div class="row"><button class="btn" data-a="export">Kaydı dışa aktar</button><button class="btn" data-a="import">Kayıt yükle</button>${U.confirmReset ? '' : '<button class="btn" data-a="reset">Yeni kariyere başla</button>'}</div>${U.confirmReset ? '<p>Tüm kariyer silinecek. Emin misin?</p><div class="row"><button class="btn" data-a="reset-no">Vazgeç</button><button class="btn danger" data-a="reset-yes">Kariyeri sil</button></div>' : ''}</section>`;
+        <h3 class="rnd">Başarımlar <small>${Object.keys(G.ach).length}/${Object.keys(FM.ACH).length}</small></h3><div class="achs">${Object.keys(FM.ACH).map(k => `<div class="ach ${G.ach[k] ? 'on' : ''}"><strong>${FM.ACH[k][0]}</strong><span>${FM.ACH[k][1]}</span>${G.ach[k] ? `<em>${G.ach[k].s}. sezon</em>` : ''}</div>`).join('')}</div></section>`;
+  }
+
+  /* ---------- Gelen kutusu ---------- */
+  const CATC = { KADRO: 'c1', BASIN: 'c2', 'MALİYE': 'c3', TRANSFER: 'c4', 'KULÜP': 'c5', SCOUT: 'c6' };
+  function mailList() {
+    const G = FM.G, q = U.mailQ.toLocaleLowerCase('tr');
+    const list = (G.inbox || []).filter(m => (U.mailF === 'all' || (U.mailF === 'todo' ? m.opts && !m.done : !m.read)) && (!q || (m.title + ' ' + m.body + ' ' + m.from).toLocaleLowerCase('tr').includes(q)));
+    if (!list.length) return '<p class="muted mail-empty">Bu görünümde mesaj yok.</p>';
+    let out = '', last = '';
+    for (const m of list) {
+      const key = m.s + '-' + m.w, dt = FM.fmtDate(m.s, m.w);
+      if (key !== last) { last = key; out += `<h4 class="mail-day">${m.s === G.season && m.w === G.week ? 'Bugün · ' : ''}${dt.d} ${dt.g}</h4>`; }
+      out += `<button class="mail-row ${m.id === U.mail ? 'on' : ''} ${m.read ? '' : 'new'}" data-a="mail" data-id="${m.id}">${FM.icon(m.opts ? 'inbox' : 'mail')}<span class="mt"><strong>${esc(m.title)}</strong><small>${esc(m.from)}</small></span><span class="mr"><i class="mtag ${CATC[m.cat] || ''}">${m.cat}</i>${m.opts && !m.done ? '<small>Karar</small>' : ''}</span></button>`;
+    }
+    return out;
+  }
+  function mailDetail() {
+    const G = FM.G, m = (G.inbox || []).find(x => x.id === U.mail);
+    if (!m) return '<div class="mail-none"><p class="muted">Okumak için soldan bir mesaj seç.</p></div>';
+    const dt = FM.fmtDate(m.s, m.w), p = m.pid != null ? P(m.pid) : null, open = m.opts && !m.done;
+    const card = p ? `<p class="mail-lbl">Oyuncu</p><button class="mail-pl" data-a="player" data-id="${p.id}">${posChip(p.pos)}<span class="nm"><strong>${esc(p.name)}</strong><small>${p.age} yaş · ${p.tid != null ? T(p.tid).name : 'Serbest'}</small></span><span><small>Genel güç</small>${ovrB(p)}</span><span><small>Değer</small><b>${money(p.value)}</b></span><span class="hide-s"><small>Sözleşme</small><b>${p.tid == null ? '—' : p.con + ' sezon'}</b></span><span class="hide-s"><small>Bu sezon</small><b>${p.apps} maç · ${fmtR(FM.avgRating(p))}</b></span></button>` : '';
+    const opts = m.opts ? `<p class="mail-lbl">Kararın</p><div class="mail-opts">${m.opts.map((o, i) => `<button class="mail-opt ${open ? (U.mailPick === i ? 'on' : '') : (m.choice === i ? 'on' : 'off')}" data-a="mail-pick" data-v="${i}" ${open ? '' : 'disabled'}>${esc(o)}</button>`).join('')}</div>` : '';
+    const foot = m.opts ? `<div class="mail-foot"><span class="${open ? 'wait' : 'done'}">${FM.icon('clock')} ${open ? 'Karar bekliyor' : esc(m.result || 'Karar verildi')}</span><span class="row">${p ? `<button class="btn" data-a="player" data-id="${p.id}">İncele</button>` : ''}${open ? `<button class="btn primary" data-a="mail-decide" ${U.mailPick == null ? 'disabled' : ''}>Kararı ver</button>` : ''}</span>${open && U.mailPick == null ? '<small>Önce bir cevap seç</small>' : ''}</div>` : '';
+    return `<article class="mail-body"><button class="link mail-back" data-a="mail-back">‹ Gelen kutusu</button>
+      <header><div class="mail-ic">${FM.icon(m.opts ? 'inbox' : 'mail')}</div><div><small>${esc(m.from)}</small><h3>${esc(m.title)}</h3></div><div class="mail-meta"><i class="mtag ${CATC[m.cat] || ''}">${m.cat}</i><small>${dt.d}</small></div></header>
+      <p class="mail-text">${esc(m.body)}</p>${card}${opts}${foot}</article>`;
+  }
+  function viewInbox() {
+    const todo = pending().length, un = unread().length;
+    return `<div class="inbox ${U.mailOpen ? 'open' : ''}">
+      <section class="card mail-side"><div class="mail-head"><h2>Gelen kutusu <small>${un} okunmamış</small></h2><button class="link" data-a="mail-allread">Tümünü okundu say ›</button></div>
+        <label class="mail-search" for="mailq">${FM.icon('search')}<input id="mailq" type="search" placeholder="Mektuplarda ara" value="${esc(U.mailQ)}" autocomplete="off"></label>
+        <div class="seg">${[['all', 'Tümü', ''], ['todo', 'İşler', todo], ['unread', 'Okunmamış', un]].map(([k, n, c]) => `<button data-a="mail-filter" data-v="${k}" class="${U.mailF === k ? 'on' : ''}">${n}${c ? ' ' + c : ''}</button>`).join('')}</div>
+        <div class="mail-list" id="mailList">${mailList()}</div></section>
+      <section class="card mail-main" id="mailMain">${mailDetail()}</section></div>`;
+  }
+  function settingsModal() {
+    modal(`<h3>Ayarlar</h3>
+      <div class="set-row"><div><strong>Ses</strong><p class="muted">Düdük, tribün ve gol sesleri</p></div><button class="btn" data-a="sound-set">${FM.Audio.muted ? 'Kapalı · aç' : 'Açık · kapat'}</button></div>
+      <div class="set-row"><div><strong>Kariyer kaydı</strong><p class="muted">Oyun bu tarayıcıda otomatik kaydedilir. Başka cihaza taşımak için dışa aktar.</p></div><div class="row"><button class="btn" data-a="export">Dışa aktar</button><button class="btn" data-a="import">Yükle</button></div></div>
+      <div class="set-row"><div><strong>Yeni kariyer</strong><p class="muted">${U.confirmReset ? 'Tüm kariyer silinecek. Emin misin?' : 'Mevcut kariyeri siler ve baştan başlar.'}</p></div>${U.confirmReset ? '<div class="row"><button class="btn" data-a="reset-no">Vazgeç</button><button class="btn danger" data-a="reset-yes">Kariyeri sil</button></div>' : '<button class="btn" data-a="reset">Yeni kariyere başla</button>'}</div>`, true);
+  }
+  function searchResults(q) {
+    const box = $('gsr'); if (!box) return;
+    q = q.trim().toLocaleLowerCase('tr');
+    if (q.length < 2) { box.hidden = true; return; }
+    const G = FM.G, teams = G.teams.filter(t => t.name.toLocaleLowerCase('tr').includes(q)).slice(0, 3);
+    const pls = Object.values(G.players).filter(p => p.name.toLocaleLowerCase('tr').includes(q)).sort((a, b) => (b.tid === G.teamId) - (a.tid === G.teamId) || FM.est(b)[0] - FM.est(a)[0]).slice(0, 7);
+    box.innerHTML = (teams.map(t => `<button data-a="team" data-id="${t.id}">${FM.crest(t, 22)}<span><strong>${t.name}</strong><small>${FM.DIV_TR[t.div]}</small></span></button>`).join('') + pls.map(p => `<button data-a="player" data-id="${p.id}">${posChip(p.pos)}<span><strong>${esc(p.name)}</strong><small>${p.tid != null ? T(p.tid).name : 'Serbest'} · ${p.age} yaş</small></span>${ovrB(p)}</button>`).join('')) || '<p class="muted">Sonuç yok.</p>';
+    box.hidden = false;
   }
 
   /* ---------- Sezon sonu, görevden alınma ---------- */
@@ -288,7 +372,7 @@
   }
 
   /* ---------- Çizim ve akış ---------- */
-  const VIEWS = { home: viewHome, squad: viewSquad, tactics: viewTactics, fixtures: viewFixtures, table: viewTable, transfer: viewTransfer, training: viewTraining, club: viewClub };
+  const VIEWS = { inbox: viewInbox, career: viewCareer, home: viewHome, squad: viewSquad, tactics: viewTactics, fixtures: viewFixtures, table: viewTable, transfer: viewTransfer, training: viewTraining, club: viewClub };
   function render(keepScroll) {
     const G = FM.G, app = $('app'), y = window.scrollY;
     if (!G) { app.innerHTML = startScreen(); return; }
@@ -364,7 +448,17 @@
     switch (a) {
       case 'pick-team': U.pickTeam = +d.id; { const v = $('mgr').value, y = window.scrollY; render(); $('mgr').value = v; window.scrollTo(0, y); } break;
       case 'start': FM.Audio.init(); FM.newGame(U.pickTeam, $('mgr').value.trim()); U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); break;
-      case 'tab': U.view = d.v; U.sel = null; U.fxWeek = null; U.confirmReset = false; render(); window.scrollTo(0, 0); break;
+      case 'tab': go(d.v); break;
+      case 'back': if (U.hi > 0) go(U.hist[--U.hi], true); break;
+      case 'fwd': if (U.hi < U.hist.length - 1) go(U.hist[++U.hi], true); break;
+      case 'settings': U.confirmReset = false; settingsModal(); break;
+      case 'sound-set': FM.Audio.init(); FM.Audio.toggle(); settingsModal(); break;
+      case 'mail': { const m = G.inbox.find(x => x.id === +d.id); if (m) { m.read = true; U.mail = m.id; U.mailPick = null; U.mailOpen = true; FM.save(); render(true); } } break;
+      case 'mail-pick': U.mailPick = +d.v; $('mailMain').innerHTML = mailDetail(); break;
+      case 'mail-decide': { const r = FM.decide(U.mail, U.mailPick); say(r); U.mailPick = null; render(true); } break;
+      case 'mail-filter': U.mailF = d.v; render(true); break;
+      case 'mail-allread': for (const m of G.inbox) m.read = true; FM.save(); render(true); break;
+      case 'mail-back': U.mailOpen = false; render(true); break;
       case 'sound': el.innerHTML = FM.icon(FM.Audio.toggle() ? 'mute' : 'sound'); break;
       case 'play': playMatch(); break;
       case 'close': closeModal(); break;
@@ -411,16 +505,22 @@
       case 'import': importModal(); break;
       case 'copy-save': { const ta = $('saveText'); ta.select(); const ok = () => toast('Kayıt panoya kopyalandı.', 'good'); if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(ok).catch(() => toast('Metin seçildi: Ctrl+C ile kopyala.')); else toast('Metin seçildi: Ctrl+C ile kopyala.'); } break;
       case 'do-import': { const r = FM.importSave($('loadText').value.trim()); say(r); if (r.ok) { closeModal(); U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); } } break;
-      case 'reset': U.confirmReset = true; render(true); break;
-      case 'reset-no': U.confirmReset = false; render(true); break;
-      case 'reset-yes': FM.reset(); U.confirmReset = false; U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); break;
+      case 'reset': U.confirmReset = true; settingsModal(); break;
+      case 'reset-no': U.confirmReset = false; settingsModal(); break;
+      case 'reset-yes': closeModal(); FM.reset(); U.confirmReset = false; U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); break;
       case 'new-season': FM.startNewSeason(); U.view = 'home'; render(); window.scrollTo(0, 0); break;
     }
   }
   document.addEventListener('click', e => {
     if (e.target.id === 'modal') return closeModal();
+    if (!e.target.closest('.gsearch') && $('gsr')) $('gsr').hidden = true;
     const el = e.target.closest('[data-a]'); if (!el || el.disabled || el.type === 'checkbox' || el.tagName === 'SELECT') return;
+    if (el.closest('.gsr')) { $('gsr').hidden = true; $('gsearch').value = ''; }
     act(el.dataset.a, el.dataset, el);
+  });
+  document.addEventListener('input', e => {
+    if (e.target.id === 'gsearch') searchResults(e.target.value);
+    else if (e.target.id === 'mailq') { U.mailQ = e.target.value; $('mailList').innerHTML = mailList(); }
   });
   document.addEventListener('change', e => {
     if (e.target.id === 'loadFile' && e.target.files[0]) { const rd = new FileReader(); rd.onload = () => { $('loadText').value = rd.result; }; rd.readAsText(e.target.files[0]); return; }
