@@ -519,7 +519,7 @@
     S.ct += dt;
     const ct = S.ct, LY = .8;
     S.choreo = clamp((ct - .9) / 3.2, 0, 1.2);
-    const say = [[.3, S.m.derby ? `Derbi günü! ${S.info.stadium} tıklım tıklım: ${S.info.att} seyirci.` : `İyi seyirler! ${S.info.stadium} tribünleri doldu, ${S.info.att} seyirci var.`], [3.2, `${S.info.home} ile ${S.info.away} karşı karşıya. Tribünlerde koreografi açılıyor.`], [5.8, 'Takımlar selam verdi, yazı tura atılıyor. Az sonra başlıyoruz.']];
+    const say = [[.3, S.m.derby ? `Derbi günü! ${S.info.stadium} tıklım tıklım: ${S.info.att} seyirci.` : `İyi seyirler! ${S.info.stadium} tribünleri doldu, ${S.info.att} seyirci var.`], [3.2, `${S.info.home} ile ${S.info.away} karşı karşıya. ${FM.fansOf(FM.T(S.m.s[0].tid))} koreografiyi açıyor!`], [5.8, 'Takımlar selam verdi, yazı tura atılıyor. Az sonra başlıyoruz.']];
     while (S.said < say.length && ct >= say[S.said][0]) talk(say[S.said++][1]);
     S.cheer[0] = Math.max(S.cheer[0], .35);
     if (ct < 6.8) {

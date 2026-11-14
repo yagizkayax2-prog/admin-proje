@@ -218,6 +218,13 @@
     const scr = (x, y, z) => { v.set(x, y, z).project(camera); return [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H]; };
     const proj = (x, y) => { const wxx = (x - .5) * 2 * A0, wz = (y - .5) * 2 * B0, a = scr(wxx, 0, wz), b = scr(wxx + 1, 0, wz); return { X: a[0], Y: a[1], s: Math.abs(b[0] - a[0]) / ref }; };
     let lastKey = '';
+    const homeItems = FM.bannerTexts(home), bH = 58, bY = TH - bH - 4;
+    function paintStandBanners(g) {
+      g.globalAlpha = 1;
+      if (inc(.14, true)) FM.paintBanners(g, TW * .006, bY, TW * (SEG[1] - .012), bH, home, homeItems, 2, false);
+      if (inc(.64, true)) FM.paintBanners(g, TW * (SEG[4] + .02), bY, TW * (SEG[5] - SEG[4] - .04), bH, home, [homeItems[0], homeItems[2], homeItems[3]], 1, true);
+      if (away && away.name && inc(.32, true)) FM.paintBanners(g, TW * .296, bY, TW * .05, bH, away, [FM.fansOf(away).toLocaleUpperCase('tr')], 0, false);
+    }
     function compose(al, rv) {
       const key = al.toFixed(2) + '|' + rv.toFixed(2); if (key === lastKey) return; lastKey = key;
       for (const tr of tiers) {
@@ -228,6 +235,7 @@
           for (const sh of [-1, 0, 1]) g.rect((c - hw + sh) * TW, 0, 2 * hw * TW, TH);
           g.clip(); g.globalAlpha = clamp(al, 0, 1); g.drawImage(tr.tc, 0, 0); g.restore();
         }
+        if (tr.lower) paintStandBanners(g);
         tr.map.needsUpdate = true;
       }
     }

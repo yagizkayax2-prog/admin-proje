@@ -131,6 +131,8 @@
     const glow = document.createElement('canvas'); glow.width = glow.height = 64;
     { const q = glow.getContext('2d'), gr = q.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,250,225,.9)'); gr.addColorStop(.3, 'rgba(255,244,200,.3)'); gr.addColorStop(1, 'rgba(255,244,200,0)'); q.fillStyle = gr; q.fillRect(0, 0, 64, 64); }
     const smoke = [], flareX = [.22, .5, .78], flareY = ap[0].Y - c * 2;
+    const bnW = ap[1].X - ap[0].X, bnH = c * 2.6, [bnr, gb] = (() => { const cv = document.createElement('canvas'); cv.width = Math.max(1, bnW * dpr); cv.height = Math.max(1, bnH * dpr); const q = cv.getContext('2d'); q.scale(dpr, dpr); return [cv, q]; })();
+    FM.paintBanners(gb, 0, 0, bnW, bnH, o.home, FM.bannerTexts(o.home), 2, false);
 
     function layer(ctx, img, amp, time, freq) {
       if (amp < .02) { ctx.drawImage(img, 0, 0, W, H); return; }
@@ -146,6 +148,7 @@
         ctx.save(); ctx.beginPath(); ctx.rect(cx - W / 2 * rv, 0, W * rv, H); ctx.clip();
         ctx.globalAlpha = clamp(al, 0, 1); layer(ctx, crowdT, .22 + amp * .8, time, 3.2); ctx.restore();
       }
+      ctx.drawImage(bnr, ap[0].X, ap[0].Y - bnH - c * .2, bnW, bnH);
       // dev bayrak
       const fk = t >= 3 ? clamp((ch - .45) / .45, 0, 1) * clamp((al - .5) * 4, 0, 1) : 0;
       if (fk > 0) {

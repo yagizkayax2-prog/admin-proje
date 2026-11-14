@@ -71,6 +71,38 @@
     team: '<circle cx="9" cy="8" r="3.500"/><path d="M2 20c0-4 3-6.500 7-6.500s7 2.500 7 6.500M16 5a3.500 3.500 0 0 1 0 7M18 13.500c2.500.700 4 2.800 4 6.500"/>'
   };
   FM.tacSegs = (tac, attr) => Object.keys(FM.TAC).map(k => `<div class="tac-row" title="${FM.TAC[k][2]}"><span>${FM.TAC[k][0]}</span><div class="seg">${FM.TAC[k][1].map((n, i) => `<button ${attr}="tac" data-k="${k}" data-v="${i}" class="${tac[k] === i ? 'on' : ''}">${n}</button>`).join('')}</div></div>`).join('');
+  /* ---------- Tribün pankartları: ortada taraftar grubu, yanlarda kulüp pankartları ---------- */
+  const lumHex = h => { const n = parseInt(h.slice(1), 16); return (n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114; };
+  FM.fansOf = t => (t && (t.fans || ((FM.TEAMS.concat(FM.FOREIGN || [])).find(x => x.name === t.name) || {}).fans || (t.short ? t.short + ' Ultras' : ''))) || '';
+  FM.bannerTexts = t => { const H = t.name.split(' ')[0].toLocaleUpperCase('tr'); return [H, H + ' SEVDALILARI', FM.fansOf(t).toLocaleUpperCase('tr'), 'ÖLÜMÜNE ' + H, 'İYİ Kİ VARSIN ' + H]; };
+  /* g: 2D bağlam; (x, y, w, h) şerit; items: metinler; center: ortadaki büyük pankartın sırası; flip: 180° çevir */
+  FM.paintBanners = function (g, x, y, w, h, team, items, center, flip) {
+    const dk = lumHex(team.c1) <= lumHex(team.c2) ? team.c1 : team.c2, lt = dk === team.c1 ? team.c2 : team.c1;
+    const ws = items.map((_, i) => (i === center ? 1.45 : 1)), tot = ws.reduce((a, b) => a + b, 0), gap = Math.max(2, w * .012), avail = w - gap * (items.length + 1);
+    g.save();
+    if (flip) { g.translate(x + w / 2, y + h / 2); g.rotate(Math.PI); g.translate(-(x + w / 2), -(y + h / 2)); }
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    let cx = x + gap;
+    items.forEach((txt, i) => {
+      const bw = avail * ws[i] / tot, big = i === center, bh = big ? h : h * .7, by = y + h - bh;
+      g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(cx + 1.5, by + 2, bw, bh);
+      if (big) {
+        g.fillStyle = team.c1; g.fillRect(cx, by, bw, bh);
+        g.fillStyle = team.c2; g.fillRect(cx, by, bw, bh * .12); g.fillRect(cx, by + bh * .88, bw, bh * .12);
+        g.strokeStyle = '#f3efe4'; g.lineWidth = Math.max(1, bh * .04); g.strokeRect(cx + bh * .06, by + bh * .17, bw - bh * .12, bh * .66);
+        g.fillStyle = Math.abs(lumHex(team.c1) - lumHex(team.c2)) > 70 ? team.c2 : (lumHex(team.c1) > 150 ? '#14202f' : '#ffffff');
+        g.font = `800 ${Math.round(bh * .42)}px 'Barlow Condensed', Impact, sans-serif`;
+      } else {
+        g.fillStyle = '#ece6d8'; g.fillRect(cx, by, bw, bh);
+        g.fillStyle = team.c1; g.fillRect(cx, by, bw, bh * .1); g.fillRect(cx, by + bh * .9, bw, bh * .1);
+        g.fillStyle = lumHex(dk) < 150 ? dk : '#7a1f1f';
+        g.font = `800 ${Math.round(bh * .46)}px 'Barlow Condensed', Impact, sans-serif`;
+      }
+      g.fillText(txt, cx + bw / 2, by + bh * .52, bw * .9);
+      cx += bw + gap;
+    });
+    g.restore();
+  };
   FM.icon = n => `<svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ''}</svg>`;
 
   /* ---------- Ses (WebAudio ile sentezlenir, dosya gerekmez) ---------- */

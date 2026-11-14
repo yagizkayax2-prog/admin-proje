@@ -146,3 +146,9 @@ FM.TXT.varNo = ['{p} topu ağlara gönderdi ama VAR devreye girdi: {w}. Gol ipta
 FM.TXT.mgrProt = ['{c}, {w} kararına sert tepki gösteriyor!', '{c} dördüncü hakemin üstüne yürüyor: {w} kararını kabul etmiyor.', '{c} kenarda çılgına döndü, {w} kararına itiraz ediyor.'];
 FM.TXT.mgrYel = ['Hakem kenara geldi: {c} sarı kart gördü.'];
 FM.TXT.mgrRed = ['KIRMIZI KART! {c} tribüne gönderildi.'];
+
+/* ---------- Taraftar grupları (kurgusal) ---------- */
+FM.FANS = ['Yıldız Tayfası', 'Fırtına Gençliği', 'İmbatçılar', 'Kartal Yuvası', 'Martılar', 'Bozkır Süvarileri', 'Portakal Çetesi', 'Peribacaları', 'Zirve Tayfası', 'Ayçiçekleri', 'Fırat Akıncıları', 'Gündoğanlar',
+  'Kıyı Çocukları', 'Pamuk Eller', 'İnci Tayfası', 'Safran Ordusu', 'Likya Gezginleri', 'Yayla Kurtları', 'Bağ Bozumu', 'Kubbe Altı', 'Şelale Gençliği', 'Mavi Kumlar', 'Vadi Ruhu', 'Batık Şehir'];
+FM.TEAMS.forEach((t, i) => { t.fans = FM.FANS[i]; });
+['Adlerfront', 'Havnens Drenge', 'Penya Daurada', 'Brigade Lumière', 'Gipfelsturm', 'Duna Brigád', 'Glen Army', 'Riva Boys', 'Maré Azul', 'Vistula Front', 'Liman Tayfası', 'Curva Naviglio'].forEach((n, i) => { FM.FOREIGN[i].fans = n; });
