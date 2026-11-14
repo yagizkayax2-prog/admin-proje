@@ -103,7 +103,10 @@
   function negOffer(pid) {
     const s = NEG[pid], p = P(pid); if (!s || s.done) return s;
     const o = s.offer, d = s.dem, yr = Math.abs(o.years - d.years) <= 1 ? 1 : .9;
-    const sc = (Math.min(1.3, o.wage / d.wage) * .72 + Math.min(1.5, o.bonus / d.bonus) * .28) * yr;
+    // sözleşme maddeleri: gol/maç primi haftalık maaşa eklenmiş gibi değerlendirilir, makul bir serbest kalma bedeli oyuncuyu ikna eder
+    const gr = { FWD: .4, MID: .15, DEF: .05, GK: 0 }[p.pos], ext = ((o.gb || 0) * gr + (o.ab || 0) * .85) / Math.max(1, d.wage);
+    const rc = o.rcl ? (o.rcl <= p.value * 1.5 ? .05 : o.rcl <= p.value * 2.5 ? .025 : 0) : 0;
+    const sc = (Math.min(1.3, o.wage / d.wage) * .72 + Math.min(1.5, o.bonus / d.bonus) * .28) * yr + Math.min(.12, ext * .72) + rc;
     if (sc >= .985) { s.done = 'ok'; s.msg = `Anlaşma sağlandı! ${p.name} haftalık ${FM.money(o.wage)} ile ${o.years} yıllık sözleşmeyi kabul etti.`; return s; }
     s.pat -= sc < .78 ? 2 : 1;
     if (s.pat <= 0) { s.done = 'walk'; s.msg = 'Menajer masadan kalktı: “Bu teklifler oyuncumun değerini yansıtmıyor.” Bu hafta tekrar görüşülemez.'; G_().cool['n' + pid] = 1; return s; }

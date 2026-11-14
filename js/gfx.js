@@ -175,8 +175,33 @@
       });
       burst(800, .2, 5);
     }
+    /* tezahürat: el çırpma ritmi ve kalabalık sesi; ritim ve ezgi kulübe göre değişir */
+    function clap(t, g) {
+      const s = noise(.09), f = ctx.createBiquadFilter(), gn = ctx.createGain();
+      f.type = 'bandpass'; f.frequency.value = 1500; f.Q.value = 1.1;
+      gn.gain.setValueAtTime(0.001, t); gn.gain.exponentialRampToValueAtTime(g, t + .006); gn.gain.exponentialRampToValueAtTime(0.001, t + .085);
+      s.connect(f); f.connect(gn); gn.connect(master); s.start(t); s.stop(t + .1);
+    }
+    function voice(t, freq, len, g) {
+      const out = ctx.createGain(), f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 760; f.Q.value = 1.4;
+      out.gain.setValueAtTime(0.001, t); out.gain.exponentialRampToValueAtTime(g, t + .05); out.gain.setValueAtTime(g, t + len * .7); out.gain.exponentialRampToValueAtTime(0.001, t + len);
+      f.connect(out); out.connect(master);
+      for (const dt of [-22, -8, 6, 19]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq; o.detune.value = dt; o.connect(f); o.start(t); o.stop(t + len + .05); }
+    }
+    const RHY = [[0, .5, 1, 1.5, 1.75, 2.25, 2.5], [0, .25, .5, 1, 1.5, 1.75, 2], [0, .5, .75, 1.25, 1.5, 2, 2.5], [0, .33, .66, 1, 1.5, 2], [0, .5, 1, 1.25, 1.5, 2, 2.75]];
+    const MEL = [[0, 0, 2, 4, 2, 0, -1, 0], [0, 2, 4, 4, 2, 0], [4, 4, 2, 0, 2, 4], [0, -3, 0, 2, 4, 2, 0], [7, 4, 4, 2, 0, 2]];
+    function chant(seed, derby) {
+      if (!ctx || muted) return;
+      seed = Math.abs(seed | 0) + 3;
+      const r = RHY[seed % RHY.length], ml = MEL[Math.floor(seed / 2) % MEL.length], base = 185 * Math.pow(2, (seed * 7 % 6) / 12), beat = derby ? .34 : .4, t0 = ctx.currentTime + .1, reps = derby ? 3 : 2, bar = beat * 3.2;
+      for (let k = 0; k < reps; k++) {
+        const tk = t0 + k * bar;
+        r.forEach(b => clap(tk + b * beat, derby ? .45 : .3));
+        ml.forEach((n, i) => voice(tk + i * bar / ml.length, base * Math.pow(2, n / 12), bar / ml.length * .92, derby ? .05 : .034));
+      }
+    }
     return {
-      init, crowd, whistle, kick, anthem,
+      init, crowd, whistle, kick, anthem, chant,
       cheer: () => { burst(950, .55, 2.8); burst(1900, .18, 2.2); },
       groan: () => burst(380, .22, 1.1, 'lowpass'),
       get muted() { return muted; },

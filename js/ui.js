@@ -175,7 +175,7 @@
     modal(`<div class="pm-head">${FM.crest(t, 72)}<div><h3>${t.name}</h3><p>${t.div < 2 ? `${FM.DIV_TR[t.div]} · ${pos}. sıra · ${row.pts} puan` : 'Kıta Kupası kulübü'}${my.rival === id ? ' · Ezeli rakip' : ''}</p><p class="muted">${esc(t.stadium)} · ${FM.Stadium.TIERS[tier]} · ${FM.stadiumCap(t).toLocaleString('tr-TR')} kişilik</p></div><div class="pm-ovr"><b class="ovr o3">${t.formation}</b><span>Diziliş</span></div></div>
       <p class="chips">${tac}<span class="chip">Form: ${row.form.slice(-5).join(' ') || '—'}</span><span class="chip">Taraftar grubu: ${esc(FM.fansOf(t))}</span></p>
       <div class="kpis sm"><div><span>Kadro değeri</span><b>${money(FM.squadValue(t))}</b></div><div><span>Attığı / yediği</span><b>${row.gf} / ${row.ga}</b></div>${star ? `<div><span>Dikkat edilecek isim</span><b>${esc(star.name)}</b></div>` : ''}</div>
-      ${plan}<div class="scroll tall"><table class="tbl pls">${P_HEAD(id !== G.teamId)}<tbody>${playerRows(list, id !== G.teamId)}</tbody></table></div>`, true);
+      ${plan}${FM.ui.tmExtra ? FM.ui.tmExtra(t) : ''}<div class="scroll tall"><table class="tbl pls">${P_HEAD(id !== G.teamId)}<tbody>${playerRows(list, id !== G.teamId)}</tbody></table></div>`, true);
   }
 
   /* ---------- Taktik ---------- */
@@ -244,13 +244,15 @@
     const G = FM.G, f = U.tf, open = FM.windowOpen();
     let list = FM.marketList().filter(p => (f.pos === 'ALL' || p.pos === f.pos) && (!f.afford || FM.askPrice(p) <= G.fin.balance));
     if (f.free) list = list.filter(p => p.tid == null);
+    if (f.maxAge) list = list.filter(p => p.age <= f.maxAge);
+    if (f.minOvr) list = list.filter(p => FM.est(p)[1] >= f.minOvr);
     const mid = p => { const e = FM.est(p); return (e[0] + e[1]) / 2; };
     list.sort((a, b) => mid(b) - mid(a) || a.age - b.age);
     const total = list.length; list = list.slice(0, 60);
     return `<section class="card tfwin ${open ? 'open' : ''}"><div><h2>Transfer dönemi ${open ? 'açık' : 'kapalı'}</h2><p class="muted">${open ? (FM.deadline() ? 'Son hafta: kulüpler daha cömert teklif yapar.' : 'Sezonun ilk 4 haftası ve 11–14. haftalar arası açık.') : 'Kulüplerden alım, satım ve kiralama yapılamaz. Serbest oyuncularla her zaman anlaşabilirsin.'}</p></div><span class="chip">Scout: ${G.scoutQ.length}/4 görevde</span></section>
       <section class="card"><h2>Transfer pazarı</h2>
       <div class="filters"><div class="seg">${[['ALL', 'Tümü'], ['GK', 'KL'], ['DEF', 'DF'], ['MID', 'OS'], ['FWD', 'FV']].map(([k, n]) => `<button data-a="tf-pos" data-v="${k}" class="${f.pos === k ? 'on' : ''}">${n}</button>`).join('')}</div>
-      <label class="chk" for="tfAfford"><input type="checkbox" id="tfAfford" data-a="tf-afford" ${f.afford ? 'checked' : ''}> Bütçeme uyanlar</label><label class="chk" for="tfFree"><input type="checkbox" id="tfFree" data-a="tf-free" ${f.free ? 'checked' : ''}> Yalnız serbestler</label><span class="muted">${total} oyuncudan ${list.length} tanesi</span></div>
+      <label class="chk" for="tfAfford"><input type="checkbox" id="tfAfford" data-a="tf-afford" ${f.afford ? 'checked' : ''}> Bütçeme uyanlar</label><label class="chk" for="tfFree"><input type="checkbox" id="tfFree" data-a="tf-free" ${f.free ? 'checked' : ''}> Yalnız serbestler</label>${FM.ui.tfSel ? FM.ui.tfSel(f) : ''}<span class="muted">${total} oyuncudan ${list.length} tanesi</span></div>${FM.ui.tfExtra ? FM.ui.tfExtra(f) : ''}
       <div class="scroll"><table class="tbl pls">${P_HEAD(true)}<tbody>${playerRows(list, true)}</tbody></table></div></section>`;
   }
 

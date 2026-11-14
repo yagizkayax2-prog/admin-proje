@@ -154,6 +154,7 @@
     const patch = (t, i) => `<div class="patch ${i ? 'r' : ''}" style="--f:${kitFill(t, kOf(t, i))};--l:${kitLine(t, kOf(t, i))};--i:${lumH(kitFill(t, kOf(t, i))) > 150 ? '#14202f' : '#ffffff'}" aria-label="Takım gücü ${xiStr(t)}"><span>GÜÇ</span><b>${xiStr(t)}</b></div>`;
     const conf = (G.inbox || []).find(m => m.conf && !m.conf.done && m.conf.type === 'pre');
     const talkPanel = pr.panel === 'talk' ? `<div class="pre-panel" role="dialog" aria-label="Takım konuşması"><div class="pre-card"><h3>Takım konuşması</h3><p class="muted">Soyunma odasında son sözler. Bir kez seçebilirsin.</p><div class="mail-opts col">${TALKS.map(([k, n, d]) => `<button class="mail-opt col" data-a="pre-talk" data-v="${k}"><strong>${n}</strong><small>${d}</small></button>`).join('')}</div><button class="link" data-a="pre-panel" data-v="">Vazgeç</button></div></div>` : '';
+    const asstPanel = pr.panel === 'asst' && UI.asstHtml ? `<div class="pre-panel" role="dialog" aria-label="Yardımcı antrenör"><div class="pre-card">${UI.asstHtml(opp.id, mine === 0)}<button class="link" data-a="pre-panel" data-v="">Kapat</button></div></div>` : '';
     return `<div class="pre" style="--h1:${h.c1};--a1:${a.c1}"><div class="pre-bg" aria-hidden="true"></div>${patch(h, 0)}${patch(a, 1)}
       <header class="pre-head">${team(h, 0)}
         <div class="pre-mid"><img src="${pr.ctx.mid ? 'assets/trophy.svg' : 'assets/logo.svg'}" alt="" width="54" height="54"><p class="eyebrow">${pr.ctx.mid ? esc(pr.ctx.name) : FM.DIV_TR[myT.div] + ' · ' + (G.week + 1) + '. hafta'}</p>${h.rival === a.id ? '<p class="derby-b">Derbi</p>' : ''}<p class="pre-st">${esc(pr.ctx.opts.neutral ? 'Tarafsız saha' : h.stadium)}</p><p class="pre-when">${({ Pazar: 'PAZ', Pazartesi: 'PZT', 'Salı': 'SAL', 'Çarşamba': 'ÇAR', 'Perşembe': 'PER', Cuma: 'CUM', Cumartesi: 'CMT' })[dt.g] || dt.g} ${dt.d} · ${wx.n ? '20:00' : '17:00'}</p><p class="pre-wx">${FM.WX_TR[wx.t]}${wx.n ? ' · Gece' : ''}</p>${pr.ban && FM.Banners ? FM.Banners.preHtml(pr.ban) : ''}</div>
@@ -164,11 +165,12 @@
           <button data-a="pre-tactics">Kadro ve taktik</button>
           <button data-a="pre-panel" data-v="talk" ${pr.talk ? 'disabled' : ''}>Takım konuşması${pr.talk ? ' ✓' : ''}</button>
           <button data-a="team" data-id="${opp.id}">Rakip ve maç planı</button>
+          ${FM.Depth ? `<button data-a="pre-panel" data-v="asst">Yardımcının önerileri</button>` : ''}
           ${conf ? `<button class="prs" data-a="press-open" data-id="${conf.id}">Basın toplantısı <i class="dot" aria-label="bekliyor"></i></button>` : ''}
           <button class="go" data-a="pre-go">Onayla ${FM.icon('play')}</button>
           <button class="back" data-a="pre-close">‹ Geri dön</button>
           ${pr.talk ? `<p class="pre-talk-res">${FM.icon('check')} ${esc(pr.talkRes)}</p>` : ''}</nav>
-        ${preBoard(a, kOf(a, 1))}</div>${talkPanel}</div>`;
+        ${preBoard(a, kOf(a, 1))}</div>${talkPanel}${asstPanel}</div>`;
   }
   function showPre() { const el = $('pre'); el.innerHTML = preScreen(); el.hidden = false; document.body.classList.add('noscroll'); }
   function closePre() { $('pre').hidden = true; $('pre').innerHTML = ''; document.body.classList.remove('noscroll'); }
@@ -247,12 +249,12 @@
 
   /* ================= 9: Sözleşme pazarlığı ================= */
   function negHtml(pid) {
-    const s = C.NEG[pid], p = P(pid), o = s.offer, d = s.dem, sign = s.kind === 'sign', fee = sign ? FM.askPrice(p) : 0;
+    const s = C.NEG[pid], p = P(pid), o = s.offer, d = s.dem, sign = s.kind === 'sign', fee = sign ? (FM.Depth ? FM.Depth.feeOf(p, o) : FM.askPrice(p)) : 0;
     const step = (k, l, val, sub) => `<div class="neg-row"><span><strong>${l}</strong><small>${sub}</small></span><div class="stp"><button class="btn icon" data-a="neg-adj" data-id="${pid}" data-k="${k}" data-v="-1" ${s.done ? 'disabled' : ''} aria-label="${l} azalt">−</button><b>${val}</b><button class="btn icon" data-a="neg-adj" data-id="${pid}" data-k="${k}" data-v="1" ${s.done ? 'disabled' : ''} aria-label="${l} artır">+</button></div></div>`;
     return `<div class="pm-head">${FM.avatar(p, 64)}<div><h3>${sign ? 'Transfer görüşmesi' : 'Sözleşme görüşmesi'}</h3><p>${esc(p.name)} · ${p.age} yaş · ${FM.POS_LONG[p.pos]}</p><p class="muted">Şu anki maaş ${money(p.wage)}/hafta${!sign ? ` · ${p.con} sezon kaldı` : ''}</p></div><div class="pm-ovr"><span>Menajerin sabrı</span><span class="pat">${[0, 1, 2].map(i => `<i class="${i < s.pat ? 'on' : ''}"></i>`).join('')}</span></div></div>
       <blockquote class="neg-msg ${s.done === 'ok' ? 'ok' : s.done === 'walk' ? 'bad' : ''}">${esc(s.msg)}</blockquote>
       ${sign ? `<p class="price">${p.tid == null ? 'İmza parası (serbest oyuncu)' : FM.isClause(p) ? 'Serbest kalma bedeli' : 'Bonservis bedeli'}: <b>${money(fee)}</b> · kulübe ödenir</p>` : ''}
-      ${step('wage', 'Haftalık maaş', money(o.wage), `Talep: ${money(d.wage)}`)}${step('years', 'Sözleşme süresi', o.years + ' yıl', `Tercih: ${d.years} yıl`)}${step('bonus', 'İmza parası', money(o.bonus), `Talep: ${money(d.bonus)}`)}
+      ${step('wage', 'Haftalık maaş', money(o.wage), `Talep: ${money(d.wage)}`)}${step('years', 'Sözleşme süresi', o.years + ' yıl', `Tercih: ${d.years} yıl`)}${step('bonus', 'İmza parası', money(o.bonus), `Talep: ${money(d.bonus)}`)}${UI.negExtra ? UI.negExtra(s, p, step) : ''}
       <p class="muted">Bugünkü toplam maliyet: <b>${money(fee + o.bonus)}</b> · bütçe ${money(FM.G.fin.balance)}</p>
       <div class="row end">${s.done === 'ok' ? `<button class="btn primary" data-a="neg-sign" data-id="${pid}">${sign ? 'Transferi tamamla' : 'Sözleşmeyi imzala'}</button>` : s.done ? '<button class="btn" data-a="close">Kapat</button>' : `<button class="btn" data-a="player" data-id="${pid}">Vazgeç</button><button class="btn primary" data-a="neg-send" data-id="${pid}">Teklifi sun</button>`}</div>`;
   }

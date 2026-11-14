@@ -35,6 +35,19 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Kulüp sekmeleri: Tesisler (kampüs haritası ve yakınlaştırma, tesis seviyeleri ve etkileri, uzun vadeli projeler, yurt dışı akademi), Stadyum (koltuk deseni 3D tribünde görünür, bilet ve kombine fiyatı, stat adı sponsoru, stadyum adı ve büyütme), Forma ve sponsor (3 forma tasarımı maçta kullanılır, forma sponsoru), Maliye (sezonluk gelir-gider, yönetimden ek bütçe)
 - Taraftar pankartları: 180 pankart 12 kategoride, kulübe göre tribün kimliği ve maç durumuna göre seçim; yönetim ve teknik direktör kötü gidiyorsa “YÖNETİM İSTİFA!” protestosu
 - Fikstürde iç saha/deplasman sırası dengeli
+- Maç raporu: şut başına gol beklentisi (xG), dakikalık xG grafiği, şut haritası, pas ağı, ısı haritası ve “Maçı ne belirledi?” özeti; maç sonunda ve ana sayfada açılır
+- Oyuncu talimatları (öne çık, pas dağıt, önde bas, uzaktan şut) ve duran top organizasyonu (korner: ön direk / arka direk / kısa, frikik: direkt / ortala, baraj 3–5 kişi)
+- Yardımcı antrenör: maç öncesi ekranında rakibe göre öneriler, devre arasında xG ve değişiklik tavsiyesi
+- Sözleşme maddeleri: gol ve maç primi, serbest kalma bedeli (başka kulüp ödeyip alabilir), satıştan pay, takaslı transfer, satın alma opsiyonlu kiralık
+- Takas teklifleri ve transfer söylentileri (söylenti fiyatı şişirir; kendi oyuncun için açıklama yaparsın)
+- Kadro planlayıcı: 3 sezonluk mevki derinliği, biten sözleşmeler, yaşlanan oyuncular, U19 adayları ve takviye önerisi
+- Sezon akışı: hazırlık kampı seçimi, dostluk maçları ve Yaz Kupası; milli aralar (davet, yorgunluk, sakatlık riski); kış arası kampı, yönetim toplantısı ve ara transfer önerisi
+- Teknik direktör: itibar, seviye ve XP, yetenek ağacı (taktisyen, motivasyoncu, gençlik hocası, medya ustası), UEFA C/B/A/Pro lisans kursları, kariyer istatistikleri
+- Diğer hocalar: kötü giden kulüplerde kovulmalar, başarılı hocaların büyük kulüplere geçmesi, basında atışmalar ve ezeli hasım
+- Haftalık gazete (manşet, haberler, kulis, iki köşe yazarı) ve sezon sonu özel sayısı
+- Kulübe özel ritimde sentezlenen tezahüratlar (gol ve derbi)
+- Klavye kısayolları (? ile liste), kayıtlı transfer filtreleri, oyuncu notları, 4 oyunculuk karşılaştırma
+- Takım penceresinde kafa kafaya geçmiş; kariyer sayfasında zaman çizelgesi
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
 ## Dosyalar
@@ -48,6 +61,8 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | `js/press.js` | Basın toplantıları ve basın salonu çizimi |
 | `js/banners.js` | Taraftar pankartları ve tribün protestoları |
 | `js/settings.js` | Oyun ayarları |
+| `js/depth.js` | Maç raporu ve xG, yardımcı önerileri, sözleşme maddeleri, takas ve söylentiler, kadro planlayıcı, sezon akışı, teknik direktör gelişimi, diğer hocalar, gazete |
+| `js/depth-ui.js` | Bu sistemlerin ekranları ve klavye kısayolları |
 | `js/ui-more.js` | Menü, rehber ve tur, maç öncesi ekranı, basın salonu ve yeni ekranlar |
 | `js/boot.js` | Açılış |
 | `js/stadium3d.js` | Three.js ile 3D stadyum (saha, tribünler, çatı, kaleler, bayrak) |

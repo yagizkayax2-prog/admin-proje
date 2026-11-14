@@ -343,6 +343,7 @@
     const t = FM.T(S.m.s[s].tid), p = FM.P(e.pid), A = FM.Audio;
     if (!replay) { S.disp[s]++; paintScore(s); }
     A.cheer();
+    if (!replay && A.chant) { const sd = t.id, dv = !!S.m.derby; setTimeout(() => { if (S && !S.ended) A.chant(sd, dv); }, 2200); }
     S.cheer[s] = 1;
     if (s === 0) { S.choreoA = Math.max(S.choreoA, .9); S.choreo = 1.2; }
     S.shake = 1; S.shakeSide = dirRight(s) ? 1 : 0;
@@ -481,7 +482,8 @@
   function htOverlay() {
     S.paused = true;
     const talkH = S.htTalk ? `<p class="ht-res">${S.htTalk}</p>` : `<p class="ht-lbl">Soyunma odası konuşması</p><div class="ht-talk">${HT.map(([k, n]) => `<button class="btn" data-mv="httalk" data-v="${k}">${n}</button>`).join('')}</div>`;
-    overlay(`<h3>Devre arası</h3>${statsHtml()}${talkH}<div class="row"><button class="btn" data-mv="tacp">Taktik</button><button class="btn" data-mv="sub">Değişiklik</button><button class="btn primary" data-mv="second">İkinci yarıyı başlat</button></div>`);
+    const adv = FM.Depth ? `<div class="ht-adv"><p class="ht-lbl">Yardımcı antrenör</p><ul>${FM.Depth.htAdvice(S.m, S.user).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
+    overlay(`<h3>Devre arası</h3>${statsHtml()}${adv}${talkH}<div class="row"><button class="btn" data-mv="tacp">Taktik</button><button class="btn" data-mv="sub">Değişiklik</button><button class="btn primary" data-mv="second">İkinci yarıyı başlat</button></div>`);
   }
   function fullTime() {
     const m = S.m, A = FM.Audio;
@@ -500,13 +502,14 @@
     S.ftHtml = `${S.fin && ws >= 0 ? `<img class="trophy won" src="assets/trophy.svg" alt="" width="84" height="98"><p class="eyebrow">Kupa şampiyonu: ${esc(FM.T(m.s[ws].tid).name)}</p>` : ''}<h3 class="${res > 0 ? 'win' : res < 0 ? 'loss' : ''}">${head}</h3><p class="ft-score">${m.score[0]} – ${m.score[1]}${m.pens ? ` <small>(pen. ${m.pens.sc[0]}–${m.pens.sc[1]})</small>` : ''}</p><ul class="ft-goals">${goals}</ul>
       ${best != null ? `<p class="motm">Maçın adamı: <b>${esc(FM.P(best).name)}</b></p>` : ''}
       <div class="rts">${rts.map(x => `<span class="rt ${x.r >= 7.5 ? 'hi' : x.r < 6 ? 'lo' : ''}"><b>${x.r.toFixed(1)}</b>${esc(x.p.name.split(' ').pop())}</span>`).join('')}</div>
-      ${statsHtml()}<div class="row">${S.goals.length ? `<button class="btn" data-mv="replay">${FM.icon('play')} Golleri izle</button>` : ''}<button class="btn primary" data-mv="done">Devam et</button></div>`;
+      ${statsHtml()}<div class="row">${S.goals.length ? `<button class="btn" data-mv="replay">${FM.icon('play')} Golleri izle</button>` : ''}${FM.Depth && FM.ui.reportHtml ? '<button class="btn" data-mv="report">Maç raporu</button>' : ''}<button class="btn primary" data-mv="done">Devam et</button></div>`;
     overlay(S.ftHtml);
   }
   function statsHtml() {
     const st = S.m.st, pt = Math.max(1, st.poss[0] + st.poss[1]), p0 = Math.round(st.poss[0] / pt * 100);
     const row = (l, a, b) => `<div class="st-row"><b>${a}</b><span>${l}</span><b>${b}</b><i style="--w:${a + b ? a / (a + b) * 100 : 50}%"></i></div>`;
-    return `<div class="st">${row('Topla oynama %', p0, 100 - p0)}${row('Şut', st.shots[0], st.shots[1])}${row('İsabetli şut', st.target[0], st.target[1])}${row('Pas isabeti %', st.pass[0] ? Math.round(st.passOk[0] / st.pass[0] * 100) : 0, st.pass[1] ? Math.round(st.passOk[1] / st.pass[1] * 100) : 0)}${row('Top kapma', st.tack[0], st.tack[1])}${row('Ofsayt', st.off[0], st.off[1])}${row('Korner', st.corners[0], st.corners[1])}${row('Faul', st.fouls[0], st.fouls[1])}${row('Sarı kart', st.yel[0], st.yel[1])}</div>`;
+    const xg = S.m.xg ? `<div class="st-row"><b>${S.m.xg[0].toFixed(2).replace('.', ',')}</b><span>Gol beklentisi (xG)</span><b>${S.m.xg[1].toFixed(2).replace('.', ',')}</b><i style="--w:${S.m.xg[0] + S.m.xg[1] ? S.m.xg[0] / (S.m.xg[0] + S.m.xg[1]) * 100 : 50}%"></i></div>` : '';
+    return `<div class="st">${row('Topla oynama %', p0, 100 - p0)}${xg}${row('Şut', st.shots[0], st.shots[1])}${row('İsabetli şut', st.target[0], st.target[1])}${row('Pas isabeti %', st.pass[0] ? Math.round(st.passOk[0] / st.pass[0] * 100) : 0, st.pass[1] ? Math.round(st.passOk[1] / st.pass[1] * 100) : 0)}${row('Top kapma', st.tack[0], st.tack[1])}${row('Ofsayt', st.off[0], st.off[1])}${row('Korner', st.corners[0], st.corners[1])}${row('Faul', st.fouls[0], st.fouls[1])}${row('Sarı kart', st.yel[0], st.yel[1])}</div>`;
   }
   function overlay(html) { const o = $('mvOverlay'); o.innerHTML = `<div class="ov-card">${html}</div>`; o.hidden = false; }
   function closeOverlay() { $('mvOverlay').hidden = true; if (S.htPending) htOverlay(); else S.paused = S.wasPaused; }
@@ -582,6 +585,7 @@
     freeDots(); kickoff(0);
     S.refs[1].ty = -.04; S.refs[2].ty = 1.04;
     FM.Audio.whistle(1);
+    if (S.m.derby && FM.Audio.chant) { const hid = S.m.s[0].tid; setTimeout(() => { if (S && !S.ended) FM.Audio.chant(hid, true); }, 1500); }
   }
 
   /* ---------- Çizim (perspektifli) ---------- */
@@ -802,6 +806,8 @@
       paintUi(); closeOverlay();
     }
     else if (a === 'second') { S.htPending = false; $('mvOverlay').hidden = true; S.second = true; S.paused = false; kickoff(1); FM.Audio.whistle(1); }
+    else if (a === 'report') { overlay(`<div class="ov-rep">${FM.ui.reportHtml(FM.Depth.buildRep(S.m, S.user))}</div><div class="row"><button class="btn" data-mv="ftback">‹ Geri</button><button class="btn primary" data-mv="done">Devam et</button></div>`); }
+    else if (a === 'ftback') overlay(S.ftHtml);
     else if (a === 'replay') { $('mvOverlay').hidden = true; S.rep = 0; replayNext(); }
     else if (a === 'done') {
       cancelAnimationFrame(S.raf); window.removeEventListener('resize', S.onResize); clearTimeout(S.bannerT); if (S.st && S.st.dispose) S.st.dispose();
@@ -812,6 +818,7 @@
   }
 
   FM.MatchView = {
+    cur: () => (S && FM.Depth ? FM.Depth.buildRep(S.m, S.user) : null),
     /* info: { comp: 'Yıldızlar Ligi · 5. hafta', att } */
     start(m, onDone, info) {
       const el = $('match'), h = FM.T(m.s[0].tid), a = FM.T(m.s[1].tid), A = FM.Audio, G = FM.G;
