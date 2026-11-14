@@ -146,7 +146,7 @@
       tid: team.id, formation: team.formation, slots: FM.FORMATIONS[team.formation],
       on: team.lineup.slice(), bench: benchOf(team), subsLeft: 5, ment: isUser ? team.ment : 1,
       tac: { ...team.tac }, sp: { ...team.sp }, yel: {}, played: team.lineup.filter(x => x != null), user: !!isUser,
-      plan: isUser && team.plan ? { ...team.plan } : { focus: 0, mark: null }, chem: team.chem == null ? 60 : team.chem, cap: team.cap, start: team.lineup.slice()
+      plan: isUser && team.plan ? { ...team.plan } : { focus: 0, mark: null }, chem: team.chem == null ? 60 : team.chem, cap: team.cap, start: team.lineup.slice(), mgr: { yc: 0, out: false }
     };
   }
   function newMatch(fx, opts) {
@@ -160,6 +160,7 @@
       log: []
     };
     for (const s of m.s) for (const id of s.played) m.rt[id] = 6 + (R() - .5) * .7;
+    if (G.mgrBan) for (const sd of m.s) if (sd.user) { sd.mgr.out = true; sd.mgr.ban = true; }
     return m;
   }
   const rate = (m, id, d) => { if (id != null && m.rt[id] != null) m.rt[id] += d; };
@@ -231,14 +232,23 @@
     e.sy = kind === 'pen' ? .5 : kind === 'fk' ? .5 + (R() < .5 ? -.13 : .13) : kind === 'ck' ? .44 + R() * .12 : .28 + R() * .44;
     m.shots.push(e);
     const names = { p: sh.name, a: as ? as.name : '', k: keeper ? keeper.name : 'Savunma' };
-    const pre = kind === 'pen' ? txt('pen', names) + ' ' : '';
+    if (kind === 'pen') e.varPen = R() < .35;
+    const pre = kind === 'pen' ? (e.varPen ? 'VAR incelemesi sonrası penaltı kararı! ' : '') + txt('pen', names) + ' ' : '';
     if (R() < pg) {
+      const chk = kind !== 'pen' && R() < .11;
+      if (chk && R() < .42) {
+        e.out = 'goal'; e.varNo = pick(FM.TXT.varWhy); m.st.target[s]++; rate(m, sh.id, -.1);
+        e.text = txt('varNo', { p: sh.name, w: e.varNo });
+        m.log.push({ min: m.min, side: s, type: 'varno', pid: sh.id });
+        return e;
+      }
       e.out = 'goal'; m.score[s]++; m.st.target[s]++;
       sh.g++; if (as) as.as++;
       rate(m, sh.id, 1.1); rate(m, e.aid, .6); rate(m, keeperId, -.3);
       opp.on.forEach((id, i) => { if (id != null && opp.slots[i][0] === 'DEF') rate(m, id, -.15); });
       e.text = kind === 'pen' ? pre + txt('penGoal', names) : kind === 'fk' ? txt('fkGoal', names) : kind === 'ck' ? txt('ckGoal', names) : txt('goal', names) + (as ? ' ' + txt('assist', names) : '');
       m.log.push({ min: m.min, side: s, type: 'goal', pid: sh.id, aid: e.aid, kind });
+      if (chk) { e.varOk = true; e.text += ' VAR incelemesinin ardından gol geçerli!'; }
     } else {
       const y = R();
       if (kind === 'pen') { e.out = y < .7 && keeper ? 'save' : 'miss'; if (e.out === 'save') m.st.target[s]++; e.text = pre + txt('penMiss', names); rate(m, sh.id, -.6); if (e.out === 'save') rate(m, keeperId, .7); }
@@ -311,7 +321,7 @@
       const side = m.s[s], o = 1 - s, pos = s ? 1 - poss0 : poss0, tac = side.tac;
       const homeF = m.neutral ? 1 : s === 0 ? (side.user ? 1.03 + G.fans / 100 * .07 : 1.07) : .95;
       const pm = planMod(m, s); side._pg = pm.pg;
-      const pc = .142 * (.55 + .9 * pos) * Math.pow(r[s].att / r[o].def, 1.7) * homeF * [.9, 1, 1.1][tac.tempo] * [.96, 1, 1.05][tac.width] * (.75 + .5 * m.terr[s]) * pm.pc * (m.derby && s === 0 ? 1.04 : 1);
+      const pc = .142 * (.55 + .9 * pos) * Math.pow(r[s].att / r[o].def, 1.7) * homeF * [.9, 1, 1.1][tac.tempo] * [.96, 1, 1.05][tac.width] * (.75 + .5 * m.terr[s]) * pm.pc * (m.derby && s === 0 ? 1.04 : 1) * (side.fire > m.min ? 1.06 : 1);
       const np = Math.round(1.5 + 5 * pos + R() * 2), acc = clamp(.66 + (r[s].ctl - 62) * .005 - (m.s[o].tac.press - 1) * .03 - (m.wx.t !== 'clear' ? .03 : 0), .5, .93);
       m.st.pass[s] += np; m.st.passOk[s] += Math.round(np * acc);
       if (R() < .3 * [.85, 1, 1.25][tac.press] * (1.3 - pos)) m.st.tack[s]++;
@@ -349,6 +359,19 @@
         if (m.min >= 70) side.ment = m.score[s] < m.score[o] ? 2 : m.score[s] > m.score[o] && m.min >= 80 ? 0 : 1;
       }
     }
+    // tartışmalı kararlar: yapay zekâ hocaları itiraz eder, kullanıcıya seçim sunulur
+    const extra = [];
+    for (const e of ev) {
+      let ps = null, why = '', pr = 0;
+      if (e.type === 'chance' && e.varNo) { ps = e.side; why = 'iptal edilen gol'; pr = .7; }
+      else if (e.type === 'chance' && e.kind === 'pen') { ps = 1 - e.side; why = e.varPen ? 'VAR penaltısı' : 'penaltı'; pr = e.varPen ? .65 : .35; }
+      else if (e.type === 'red') { ps = e.side; why = 'kırmızı kart'; pr = .55; }
+      else if (e.type === 'yellow' && R() < .12) { ps = e.side; why = 'sarı kart'; pr = 1; }
+      if (ps == null || m.s[ps].mgr.out) continue;
+      if (m.s[ps].user) { if (!m.auto) { e.dispute = ps; e.why = why; } continue; }
+      if (R() < pr) { const p = protest(m, ps, why); if (p) extra.push(p); }
+    }
+    if (extra.length) { const k = ev.findIndex(e => e.type === 'ht' || e.type === 'ft' || e.type === 'et' || e.type === 'pens'); ev.splice(k < 0 ? ev.length : k, 0, ...extra); }
     const level = m.score[0] === m.score[1];
     if (m.min === 45) ev.push({ type: 'ht', min: 45, text: txt('ht', {}) });
     if (m.min === 90 && m.cup && level) { m.et = true; ev.push({ type: 'et', min: 90, text: txt('et', {}) }); }
@@ -360,6 +383,18 @@
     const side = m.s[s], role = side.slots[i][0];
     const rep = bestBenchFor(side, role) ?? (role !== 'GK' ? side.bench.find(id => P(id).pos !== 'GK') : null);
     return rep != null ? doSub(m, s, i, rep) : null;
+  }
+  const coachOf = tid => (tid === G.teamId ? G.manager : T(tid).coach || 'Teknik direktör');
+  function protest(m, s, why) {
+    const side = m.s[s], mg = side.mgr; if (!mg || mg.out || m.done) return null;
+    const c = coachOf(side.tid), ev = { type: 'protest', min: m.min, side: s, why, coach: c };
+    ev.text = txt('mgrProt', { c, w: why });
+    if (R() < .4) {
+      if (mg.yc) { mg.out = true; ev.card = 'red'; ev.text += ' ' + txt('mgrRed', { c }); }
+      else { mg.yc = 1; ev.card = 'yellow'; ev.text += ' ' + txt('mgrYel', { c }); }
+      m.log.push({ min: m.min, side: s, type: 'mgr' + ev.card });
+    } else { side.fire = m.min + 10; ev.text += ' Tribün ve takım ateşlendi.'; }
+    return ev;
   }
   function simFull(m) { m.auto = true; while (!m.done) simMinute(m); return m; }
   const winnerSide = m => (m.score[0] !== m.score[1] ? (m.score[0] > m.score[1] ? 0 : 1) : m.pens ? (m.pens.sc[0] > m.pens.sc[1] ? 0 : 1) : -1);
@@ -404,11 +439,14 @@
     const cnt = {};
     for (const l of m.log) if (l.type === 'goal' && l.side === us) { const n = P(l.pid).name; cnt[n] = (cnt[n] || 0) + 1; G.legends[n] = (G.legends[n] || 0) + 1; }
     if (Object.values(cnt).some(v => v >= 3)) unlock('hattrick');
+    const mg = m.s[us].mgr;
+    if (mg.ban) G.mgrBan = 0;
+    if (mg.out && !mg.ban) { G.mgrBan = 1; G.fin.balance -= 50000; G.board -= 2; news(`${G.manager} hakeme itirazları nedeniyle tribüne gönderildi. Ceza: 1 maç kenardan men ve ₺50 Bin para cezası.`, 'bad', { cat: 'KULÜP', from: 'Disiplin kurulu', title: 'Disiplin cezası: 1 maç men' }); }
     if (m.derby) { G.board = b0 + (G.board - b0) * 2; G.fans = f0 + (G.fans - f0) * 2; if (d > 0) unlock('derby'); }
     G.board = clamp(G.board, 0, 100); G.fans = clamp(G.fans, 0, 100);
     const S = G.stats, st = m.st, pt = Math.max(1, st.poss[0] + st.poss[1]);
     S.m++; S.shots += st.shots[us]; S.target += st.target[us]; S.poss += st.poss[us] / pt * 100; S.pass += st.pass[us]; S.passOk += st.passOk[us]; S.tack += st.tack[us]; S.off += st.off[us]; S.corners += st.corners[us]; S.fouls += st.fouls[us]; S.yel += st.yel[us]; S.gf += gf; S.ga += ga;
-    for (const e of m.shots) if (e.side === us) G.shots.push({ x: e.sx, y: e.sy, o: e.out, k: e.kind });
+    for (const e of m.shots) if (e.side === us) G.shots.push({ x: e.sx, y: e.sy, o: e.varNo ? 'miss' : e.out, k: e.kind });
     if (G.shots.length > 500) G.shots.splice(0, G.shots.length - 500);
     const start = m.s[us].start.filter(x => x != null), same = me.lastXI ? start.filter(id => me.lastXI.includes(id)).length : 11;
     me.chem = clamp((me.chem == null ? 60 : me.chem) + (same >= 9 ? 1.2 : -2), 20, 100); me.lastXI = start;
@@ -994,6 +1032,7 @@
     });
     for (const [a, b] of FM.RIVALS) if (T(a).rival == null) { T(a).rival = b; T(b).rival = a; }
     for (const t of G.teams) if (t.chem == null) t.chem = 60;
+    for (const t of G.teams) if (!t.coach) { foreignGen = t.div === 2; t.coach = genName(); foreignGen = false; }
     const me = T(G.teamId);
     G.staff = G.staff || { coach: 0, fitness: 0, scout: 0, physio: 0 }; G.promises = G.promises || []; G.social = G.social || []; G.stats = G.stats || newStats(); G.shots = G.shots || [];
     G.youth = G.youth || []; G.u19 = G.u19 || { w: 0, d: 0, l: 0, last: '' };
@@ -1176,7 +1215,7 @@
   }
 
   Object.assign(FM, {
-    WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, injSub, finishMatch, doSub, ratings, winnerSide,
+    WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, injSub, protest, coachOf, finishMatch, doSub, ratings, winnerSide,
     table, userFixture, newGame, save, load, reset, exportSave, importSave, endWeek, startNewSeason, simOthers, askPrice, isClause, marketList, buy, sellOffer, sell,
     loanIn, loanOut, loanedOut, renew, renewTerms, scout, known, est, avgRating, talk, answerPress, takeJob, windowOpen, deadline, cupTie, playCupRound,
     decide, fmtDate, youthIntake, upgrade, jab, setCaptain, scoutReport, hireStaff, staffCost, setTicket, projAtt, promote, releaseYouth, euroTie, euroTable, playEuroRound, STAFF_WAGE, facCost, FAC, money, wageBill, expectation, stadiumCap, stadiumTier, squadValue, slotRole, divTeams

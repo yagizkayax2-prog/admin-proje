@@ -109,7 +109,7 @@
           <div class="vs"><div class="vt">${FM.crest(h, 72)}<strong>${h.name}</strong><span class="form">${form(h.id)}</span></div><b>VS</b><div class="vt">${FM.crest(a, 72)}<strong>${a.name}</strong><span class="form">${form(a.id)}</span></div></div>
           <button class="btn primary big pulse" data-a="play">${FM.icon('play')} Maça çık</button>
           <button class="link" data-a="team" data-id="${opp.id}">Rakip analizi ve maç planı: ${opp.name}</button>
-          <p class="chips">${wxChip(fx.wx || { t: 'clear', n: 0 })}<span class="chip">${neutral ? 'Tarafsız saha' : fx.h === G.teamId ? 'İç saha' : 'Deplasman'}</span><span class="chip">${FM.Stadium.TIERS[FM.stadiumTier(h)]}</span>${derby ? '<span class="chip on">Derbi: etkiler iki kat</span>' : ''}${ko ? '<span class="chip">Eleme: uzatma ve penaltılar</span>' : ''}<span class="chip">Plan: ${FM.PLAN_TR[t.plan.focus]}</span></p></div>
+          <p class="chips">${wxChip(fx.wx || { t: 'clear', n: 0 })}<span class="chip">${neutral ? 'Tarafsız saha' : fx.h === G.teamId ? 'İç saha' : 'Deplasman'}</span><span class="chip">${FM.Stadium.TIERS[FM.stadiumTier(h)]}</span>${derby ? '<span class="chip on">Derbi: etkiler iki kat</span>' : ''}${ko ? '<span class="chip">Eleme: uzatma ve penaltılar</span>' : ''}<span class="chip">Plan: ${FM.PLAN_TR[t.plan.focus]}</span>${G.mgrBan ? '<span class="chip bad">Men cezası: maçı tribünden izleyeceksin</span>' : ''}</p></div>
       </section>`;
     }
     const pr = G.press ? FM.PRESS[G.press.q] : null;

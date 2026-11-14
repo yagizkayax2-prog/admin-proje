@@ -139,3 +139,10 @@ FM.SOCIAL = {
   names: [['Tribün Sesi', '@tribunsesi'], ['Kale Arkası', '@kalearkasi'], ['Forma Aşkı', '@formaaski'], ['Deplasman Yolcusu', '@deplasmanci'], ['Eski Açık', '@eskiacik'], ['Gece Maçı', '@gecemaci']],
   papers: ['Spor Postası', 'Saha Gazetesi', 'Maç Günü']
 };
+
+/* ---------- VAR ve teknik direktör itirazları ---------- */
+FM.TXT.varWhy = ['ofsayt', 'elle oynama', 'hücumda faul'];
+FM.TXT.varNo = ['{p} topu ağlara gönderdi ama VAR devreye girdi: {w}. Gol iptal!', 'VAR incelemesi: {p}\'nin golü {w} gerekçesiyle iptal edildi!'];
+FM.TXT.mgrProt = ['{c}, {w} kararına sert tepki gösteriyor!', '{c} dördüncü hakemin üstüne yürüyor: {w} kararını kabul etmiyor.', '{c} kenarda çılgına döndü, {w} kararına itiraz ediyor.'];
+FM.TXT.mgrYel = ['Hakem kenara geldi: {c} sarı kart gördü.'];
+FM.TXT.mgrRed = ['KIRMIZI KART! {c} tribüne gönderildi.'];

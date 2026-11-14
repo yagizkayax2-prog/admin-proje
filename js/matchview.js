@@ -113,6 +113,7 @@
       const spot = toPitch(s, .885, .5);
       others.forEach((d, k) => { d.ov = toPitch(s, .775 - (k % 3) * .022, .14 + k / Math.max(1, others.length - 1) * .72); });
       sh.ov = toPitch(s, .84, .5); gk.ov = toPitch(s, .985, .5);
+      if (e.varPen && !replay) steps.push(wait(.01, () => { A.whistle(1); varShow('PENALTI İNCELEMESİ', 'Hakem monitöre gidiyor', ''); S.refs[0].tx = MON.x; S.refs[0].ty = MON.y - .012; S.varOn = true; }), wait(2.6, () => { varShow('PENALTI', 'VAR kararı: penaltı noktası', 'ok'); S.varOn = false; }), wait(1, varHide));
       steps.push(mv(() => spot, .35, { end: () => { S.holder = null; A.whistle(1); pop(sh, 'PENALTI!', '#ffc93c'); } }), wait(1.5, () => { sh.ov = toPitch(s, .875, .5); }), wait(.3, () => A.kick()));
     } else if (e.kind === 'fk') {
       const spot = toPitch(s, .74, .5 + side * .13);
@@ -136,7 +137,13 @@
     if (e.out === 'goal') {
       const gp = toPitch(s, 1.022, .5 + side * .035);
       if (e.kind === 'pen') steps.push(wait(.01, () => { gk.ov = toPitch(s, .98, .5 - side * .05); }));
-      steps.push(mv(() => gp, .3, { arc, end: () => goalFx(e, s, flank, replay) }), wait(2.6, () => (replay ? replayNext() : kickoff(o))));
+      steps.push(mv(() => gp, .3, { arc, end: () => goalFx(e, s, flank, replay) }));
+      if ((e.varNo || e.varOk) && !replay) {
+        steps.push(wait(1.5, () => { FM.Audio.whistle(1); varShow('VAR · GOL İNCELEMESİ', 'Pozisyon kontrol ediliyor', ''); S.refs[0].tx = MON.x; S.refs[0].ty = MON.y - .012; S.varOn = true; clearOv(); }),
+          wait(1.4, () => { varShow('VAR · GOL İNCELEMESİ', 'Hakem monitörde', ''); }),
+          wait(1.5, () => varEnd(e, s)), wait(e.varNo ? 1.6 : 1.4, varHide));
+        steps.push(wait(.3, () => (e.varNo ? done(gk, o)() : kickoff(o))));
+      } else steps.push(wait(2.6, () => (replay ? replayNext() : kickoff(o))));
     } else if (e.out === 'save') {
       const sp = toPitch(s, .975, .5 + side * .04);
       steps.push(wait(.01, () => { gk.ov = sp; }), mv(() => sp, .34, { arc: arc * .8, end: () => { A.groan(); pop(gk, 'KURTARIŞ', '#58c4dd'); } }), wait(.7, done(gk, o)));
@@ -152,7 +159,105 @@
     }
     run(steps, true);
   }
+  /* ---------- VAR ---------- */
+  const MON = { x: .46, y: 1.03 };
+  function varShow(head, sub, res) {
+    const el = $('mvVar'); el.className = 'mv-var ' + (res || 'chk');
+    el.innerHTML = `<b>VAR</b><div><strong>${head}</strong><span>${sub}</span></div>`; el.hidden = false;
+  }
+  function varHide() { $('mvVar').hidden = true; S.varOn = false; }
+  function varEnd(e, s) {
+    S.varOn = false;
+    const p = FM.P(e.pid);
+    if (e.varNo) {
+      S.disp[s]--; paintScore(s); S.conf = []; S.cheer[s] = 0; S.cheer[1 - s] = .8; $('tvb').classList.remove('show');
+      varShow('GOL İPTAL', 'Gerekçe: ' + e.varNo, 'no'); FM.Audio.groan();
+      setMgr(s, 'despair', 2.5); setMgr(1 - s, 'cheer', 2);
+    } else { varShow('GOL GEÇERLİ', 'VAR kararı onayladı', 'ok'); S.cheer[s] = 1; FM.Audio.cheer(); setMgr(s, 'cheer', 2); }
+    feed({ min: e.min, side: e.side, type: e.varNo ? 'var no' : 'var ok', text: e.text });
+    if (e.dispute === S.user) showDispute(e.why);
+  }
+
+  /* ---------- Teknik direktörler ---------- */
+  const BENCH = [.36, .64];
+  function setMgr(k, st, t) { const M = S.mgrs[k]; if (!M || M.gone || M.st === 'out') return; M.st = st; M.stT = t; if (st !== 'protest') M.ty = 1.035; }
+  function showDispute(why) {
+    if (S.m.s[S.user].mgr.out || S.ended) return;
+    const el = $('mvDisp'); S.dispWhy = why; S.dispT = 7;
+    el.innerHTML = `<p><strong>Tartışmalı karar:</strong> ${esc(why)}</p><div class="row"><button class="btn" data-mv="calm">Sakin kal</button><button class="btn danger" data-mv="protest">Hakeme itiraz et</button></div><i id="mvDispBar"></i>`;
+    el.hidden = false;
+  }
+  function hideDispute() { const el = $('mvDisp'); if (el) el.hidden = true; S.dispT = 0; }
+  function playProtest(e) {
+    const M = S.mgrs[e.side], A = FM.Audio;
+    if (!M || M.gone) return;
+    M.st = 'protest'; M.stT = 3.2; M.ty = 1.006; M.tx = clamp(M.x + (e.side ? -.035 : .035), .26, .74);
+    const steps = [wait(1.3)];
+    if (e.card) {
+      steps.push(wait(.01, () => { S.refs[0].tx = M.tx; S.refs[0].ty = .975; }), wait(1.2, () => {
+        A.whistle(1);
+        S.pops.push({ x: M.x, y: M.y, card: e.card === 'red' ? '#ef5350' : '#ffc93c', t: 0, mgr: true });
+        if (e.card === 'red') { M.st = 'out'; M.stT = 99; if (e.side === S.user) { talk('Tribüne gönderildin. Yardımcın değişiklik yapabilir ama taktik talimatı veremezsin.'); paintUi(); } }
+        else { M.st = 'despair'; M.stT = 1.6; }
+      }), wait(1));
+    }
+    run(steps, true);
+  }
+  function drawMgr(g, k, r0) {
+    const M = S.mgrs[k]; if (!M || M.gone) return;
+    const q = S.st.proj(M.x, M.y), r = Math.max(3.2, r0 * q.s * .8), kit = S.kits[k], t = S.rt + M.ph;
+    let pose = M.st, lift = 0;
+    if (pose === 'idle') pose = Math.abs(M.tx - M.x) > .004 ? 'walk' : 'watch';
+    if (pose === 'cheer') lift = Math.abs(Math.sin(t * 9)) * r * .9;
+    const x = q.X, by = q.Y - lift;
+    g.globalAlpha = M.a;
+    g.fillStyle = 'rgba(0,0,0,.32)'; g.beginPath(); g.ellipse(x, q.Y + r * .15, r * .75, r * .3, 0, 0, 6.29); g.fill();
+    const sw = pose === 'walk' || pose === 'out' ? Math.sin(t * 8) * r * .25 : 0;
+    g.strokeStyle = '#11151d'; g.lineCap = 'round'; g.lineWidth = r * .34;
+    g.beginPath(); g.moveTo(x - r * .2, by - r * .95); g.lineTo(x - r * .2 + sw, by); g.moveTo(x + r * .2, by - r * .95); g.lineTo(x + r * .2 - sw, by); g.stroke();
+    g.fillStyle = '#1d2433'; g.beginPath(); if (g.roundRect) g.roundRect(x - r * .52, by - r * 2.15, r * 1.04, r * 1.32, r * .3); else g.rect(x - r * .52, by - r * 2.15, r * 1.04, r * 1.32); g.fill();
+    g.fillStyle = kit.fill; g.fillRect(x - r * .12, by - r * 2.1, r * .24, r * .85);
+    const sy = by - r * 1.95, L = [x - r * .5, sy], Rr = [x + r * .5, sy];
+    const hands = {
+      watch: [[x + r * .25, by - r * 1.55], [x - r * .25, by - r * 1.5]],
+      walk: [[x - r * .6 - sw, by - r * 1.05], [x + r * .6 + sw, by - r * 1.05]],
+      cheer: [[x - r * 1, by - r * 3.2], [x + r * 1, by - r * 3.2]],
+      despair: [[x - r * .3, by - r * 2.8], [x + r * .3, by - r * 2.8]],
+      protest: [[x - r * 1.05, by - r * 2.6 + Math.sin(t * 12) * r * .45], [x + r * 1.05, by - r * 2.2 + Math.cos(t * 12) * r * .45]],
+      out: [[x - r * .6 - sw, by - r * 1.05], [x + r * .6 + sw, by - r * 1.05]]
+    }[pose] || [[x - r * .6, by - r * 1.05], [x + r * .6, by - r * 1.05]];
+    g.strokeStyle = '#1d2433'; g.lineWidth = r * .3;
+    g.beginPath(); g.moveTo(L[0], L[1]); g.lineTo(hands[0][0], hands[0][1]); g.moveTo(Rr[0], Rr[1]); g.lineTo(hands[1][0], hands[1][1]); g.stroke();
+    g.fillStyle = '#d9a77d'; g.beginPath(); g.arc(x, by - r * 2.5, r * .38, 0, 6.29); g.fill();
+    if (S.m.s[k].mgr.yc && M.st !== 'out') { g.fillStyle = '#ffc93c'; g.fillRect(x + r * .55, by - r * 2.2, r * .32, r * .45); }
+    const show = k === S.user || M.st === 'protest' || M.st === 'out';
+    if (show && r >= 3.6) {
+      g.font = `600 ${Math.max(9, Math.round(S.W * .013))}px Barlow, sans-serif`; g.textAlign = 'center';
+      const nm = M.name.split(' ').pop(), tw = g.measureText(nm).width + 8, ty = by - r * 3.4 - (pose === 'cheer' ? r : 0);
+      g.fillStyle = k === S.user ? 'rgba(255,201,60,.92)' : 'rgba(10,19,34,.8)'; g.fillRect(x - tw / 2, ty - 7, tw, 13);
+      g.fillStyle = k === S.user ? '#2a1f00' : '#f3efe4'; g.fillText(nm, x, ty);
+    }
+    g.globalAlpha = 1;
+  }
+  function tickMgrs(dt) {
+    for (let k = 0; k < 2; k++) {
+      const M = S.mgrs[k]; if (!M || M.gone) continue;
+      if (M.st !== 'idle' && M.st !== 'out') { M.stT -= dt; if (M.stT <= 0) { M.st = 'idle'; M.ty = 1.035; } }
+      if (M.st === 'idle') M.tx = clamp(BENCH[k] + (S.ball.x - .5) * .09 + Math.sin(S.rt * .35 + M.ph) * .018, BENCH[k] - .055, BENCH[k] + .055);
+      if (M.st === 'out') { M.tx = .5; M.ty = 1.2; M.a = Math.max(0, M.a - dt * .3); if (M.a <= 0) M.gone = true; }
+      const sp = M.st === 'protest' ? 2.4 : 1.4;
+      M.x += (M.tx - M.x) * Math.min(1, dt * sp); M.y += (M.ty - M.y) * Math.min(1, dt * sp);
+    }
+  }
+  function drawMonitor(g, r0) {
+    const q = S.st.proj(MON.x, MON.y), r = Math.max(3, r0 * q.s * .8);
+    g.fillStyle = '#11151d'; g.fillRect(q.X - r * .08, q.Y - r * 1.4, r * .16, r * 1.4);
+    g.fillStyle = S.varOn ? '#58c4dd' : '#2a3a52'; g.strokeStyle = '#0a1322'; g.lineWidth = 1;
+    g.fillRect(q.X - r * .9, q.Y - r * 2.3, r * 1.8, r * 1.1); g.strokeRect(q.X - r * .9, q.Y - r * 2.3, r * 1.8, r * 1.1);
+    if (r >= 4) { g.fillStyle = '#0a1322'; g.font = `800 ${Math.round(r * .7)}px 'Barlow Condensed', sans-serif`; g.textAlign = 'center'; g.fillText('VAR', q.X, q.Y - r * 1.72); }
+  }
   function goalFx(e, s, flank, replay) {
+    if (!replay) { setMgr(s, 'cheer', 2.6); setMgr(1 - s, 'despair', 2.4); }
     const t = FM.T(S.m.s[s].tid), p = FM.P(e.pid), A = FM.Audio;
     if (!replay) { S.disp[s]++; paintScore(s); }
     A.cheer();
@@ -238,8 +343,10 @@
   }
   function handle(e) {
     const A = FM.Audio;
-    feed(e);
-    if (e.type === 'chance') { if (e.out === 'goal') S.goals.push(e); return playChance(e); }
+    if (!e.fed) feed(e.type === 'chance' && (e.varNo || e.varOk) ? { ...e, text: `${FM.P(e.pid) ? FM.P(e.pid).name : ''} topu ağlara gönderdi! VAR inceleme yapıyor…` } : e);
+    if (e.dispute === S.user && !e.varNo) showDispute(e.why);
+    if (e.type === 'protest') return playProtest(e);
+    if (e.type === 'chance') { if (e.out === 'goal' && !e.varNo) S.goals.push(e); return playChance(e); }
     if (e.type === 'yellow' || e.type === 'red') {
       const pos = S.last[e.pid] || { x: .5, y: .5 };
       S.pops.push({ x: pos.x, y: pos.y, card: e.type === 'red' ? '#ef5350' : '#ffc93c', t: 0 });
@@ -435,13 +542,14 @@
       g.fillStyle = 'rgba(10,19,34,.78)'; g.fillRect(x - tw / 2, y - 8, tw, 15);
       g.fillStyle = '#f3efe4'; g.fillText(nm, x, y);
     }
+    drawMonitor(g, r0); drawMgr(g, 0, r0); drawMgr(g, 1, r0);
     const bq = P(S.ball.x, S.ball.y), br = r0 * .5 * bq.s, lift = S.ball.z * h * .07;
     g.fillStyle = 'rgba(0,0,0,.34)'; g.beginPath(); g.ellipse(bq.X, bq.Y + br * .5, br * (1 + S.ball.z * .3), br * .45, 0, 0, 6.29); g.fill();
     g.beginPath(); g.arc(bq.X, bq.Y - br * .4 - lift, br * (1 + S.ball.z * .25), 0, 6.29); g.fillStyle = S.st.snow ? '#ff9a3c' : '#fff'; g.fill(); g.lineWidth = 1.1; g.strokeStyle = '#14202f'; g.stroke();
     g.beginPath(); g.arc(bq.X + Math.cos(S.t * 9) * br * .35, bq.Y - br * .4 - lift + Math.sin(S.t * 9) * br * .35, br * .3, 0, 6.29); g.fillStyle = '#14202f'; g.fill();
     for (const p of S.pops) {
       if (p.t < 0) continue;
-      const q = P(p.x, p.y), x = q.X, y = q.Y - r0 - 12 - p.t * 22, a = clamp(1.6 - p.t, 0, 1);
+      const q = P(p.x, p.y), x = q.X, y = q.Y - (p.mgr ? r0 * q.s * 2.9 : r0) - 12 - p.t * 22, a = clamp(1.6 - p.t, 0, 1);
       g.globalAlpha = a;
       if (p.card) { g.fillStyle = p.card; g.strokeStyle = '#14202f'; g.lineWidth = 1.5; g.fillRect(x - 6, y - 16, 12, 17); g.strokeRect(x - 6, y - 16, 12, 17); }
       else { g.font = `800 ${Math.max(12, Math.round(w * .024))}px 'Barlow Condensed', sans-serif`; g.lineWidth = 3; g.strokeStyle = '#0a1322'; g.strokeText(p.text, x, y); g.fillStyle = p.color; g.fillText(p.text, x, y); }
@@ -472,6 +580,7 @@
     const raw = Math.min(.05, (ts - (S.lastTs || ts)) / 1000); S.lastTs = ts;
     const dt = S.paused ? 0 : raw * S.speed * S.slow;
     S.rt += raw;
+    if (S.dispT > 0) { S.dispT -= raw; const bar = $('mvDispBar'); if (bar) bar.style.width = Math.max(0, S.dispT / 7 * 100) + '%'; if (S.dispT <= 0) hideDispute(); }
     if (S.fin && S.ended) fireworks(raw);
     if (dt > 0 && S.phase === 'cer') ceremony(dt);
     else if (dt > 0) {
@@ -510,6 +619,7 @@
       }
       if (S.phase === 'play' && !S.script) { S.refs[0].tx = clamp(S.ball.x + .05, .05, .95); S.refs[0].ty = clamp(S.ball.y + .1, .08, .92); }
       if (S.phase !== 'cer') { S.refs[1].tx = clamp(S.ball.x, .02, .98); S.refs[2].tx = clamp(S.ball.x, .02, .98); }
+      tickMgrs(dt);
       for (const rf of S.refs) if (!rf.fix) { rf.x += (rf.tx - rf.x) * Math.min(1, dt * 2); rf.y += (rf.ty - rf.y) * Math.min(1, dt * 2); }
       if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * .8);
       S.cheer[0] = Math.max(0, S.cheer[0] - dt * .3); S.cheer[1] = Math.max(0, S.cheer[1] - dt * .3);
@@ -524,14 +634,14 @@
     const m = S.m;
     if (S.phase === 'cer') endCeremony();
     if (S.ended || S.phase === 'pens' || S.phase === 'replay') return;
-    S.script = null; clearOv(); S.htPending = false; m.auto = true;
+    S.script = null; clearOv(); S.htPending = false; m.auto = true; hideDispute(); varHide();
     if (S.injSlot != null) { const x = FM.injSub(m, S.user, S.injSlot); if (x) feed(x); S.injSlot = null; }
-    for (const e of S.queue) { if (e.need) { const x = FM.injSub(m, e.side, e.slot); if (x) feed(x); } if (e.type === 'chance' && e.out === 'goal') S.goals.push(e); if (e.type !== 'ft' && e.type !== 'chance' && e.type !== 'pens') feed(e); }
+    for (const e of S.queue) { if (e.need) { const x = FM.injSub(m, e.side, e.slot); if (x) feed(x); } if (e.type === 'chance' && e.out === 'goal' && !e.varNo) S.goals.push(e); if (e.type !== 'ft' && e.type !== 'chance' && e.type !== 'pens' && !e.fed) feed(e); }
     const hadPens = S.queue.some(e => e.type === 'pens');
     S.queue = [];
     let pens = hadPens;
     while (!m.done) for (const e of FM.simMinute(m)) {
-      if (e.type === 'chance' && e.out === 'goal') S.goals.push(e);
+      if (e.type === 'chance' && e.out === 'goal' && !e.varNo) S.goals.push(e);
       if (e.type === 'pens') pens = true;
       if (e.type !== 'ft' && (e.type !== 'chance' || e.out === 'goal')) feed(e);
     }
@@ -546,6 +656,9 @@
     FM.Audio.init();
     if (a === 'pause') { S.paused = !S.paused; b.innerHTML = FM.icon(S.paused ? 'play' : 'pause'); b.setAttribute('aria-label', S.paused ? 'Devam ettir' : 'Duraklat'); }
     else if (a === 'speedc') { S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 4 : 1; b.textContent = S.speed + 'x'; $('mvSpd').textContent = '▷▷ ' + S.speed + 'x'; }
+    else if ((a === 'ment' || a === 'tac' || a === 'tacp') && side.mgr.out) { talk('Tribündesin: taktik talimatı veremezsin. Değişiklikleri yardımcın yapabilir.'); $('mvOverlay').hidden = true; if (!S.htPending) S.paused = S.wasPaused; }
+    else if (a === 'protest') { hideDispute(); const pe = FM.protest(S.m, S.user, S.dispWhy || 'hakem'); if (pe) { feed(pe); pe.fed = true; S.queue.unshift(pe); } }
+    else if (a === 'calm') { hideDispute(); talk('Sakin kaldın. Hakemle tartışmaya girmedin.'); }
     else if (a === 'ment') { side.ment = +b.dataset.v; FM.T(side.tid).ment = side.ment; tacPanel(); }
     else if (a === 'tac') { side.tac[b.dataset.k] = +b.dataset.v; FM.T(side.tid).tac[b.dataset.k] = +b.dataset.v; tacPanel(); }
     else if (a === 'cam') { S.cam = (S.cam + 1) % 4; talk('Kamera: ' + ['Yayın açısı', 'Kuşbakışı', 'Kale arkası', 'Saha kenarı'][S.cam]); }
@@ -600,6 +713,7 @@
               <div class="tvb-sub" id="tvbSub"></div>
             </div>
             <div class="mv-talk" id="mvTalk" aria-hidden="true"></div>
+            <div class="mv-var" id="mvVar" role="status" hidden></div><div class="mv-disp" id="mvDisp" hidden></div>
             <div class="mv-pens" id="mvPens" hidden></div><div class="mv-tag" id="mvTag" hidden></div>
             <div class="mv-ctl">
               <button class="btn icon" data-mv="pause" aria-label="Duraklat">${FM.icon('pause')}</button>
@@ -625,7 +739,7 @@
         m, onDone, user, cv, g: cv.getContext('2d'), t: 0, ct: 0, speed: 1, slow: 1, paused: false, acc: 0, queue: [], script: null, second: false, phase: 'cer',
         poss: 0, holder: null, passT: 1, kickT: 0, dots: [], ball: { x: .5, y: 1.1, z: 0 }, conf: [], pops: [], last: {}, shake: 0, shakeSide: 0,
         disp: [0, 0], ended: false, fill, cheer: [0, 0], choreo: 0, choreoA: 1, goals: [], rep: 0, pk: [[], []], htPending: false, wasPaused: false,
-        rt: 0, discA: 1, said: 0, cam: 0, terrAcc: [0, 0], terrN: 0, info: { stadium: h.stadium, home: h.name, away: a.name, att: Math.round(cap * fill).toLocaleString('tr-TR') }, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
+        rt: 0, discA: 1, said: 0, varOn: false, dispT: 0, dispWhy: '', mgrs: [0, 1].map(k => ({ x: .5, y: 1.2, tx: BENCH[k], ty: 1.035, st: m.s[k].mgr.out ? 'idle' : 'idle', stT: 0, a: 1, ph: Math.random() * 6, gone: m.s[k].mgr.out, name: FM.coachOf(m.s[k].tid) })), cam: 0, terrAcc: [0, 0], terrN: 0, info: { stadium: h.stadium, home: h.name, away: a.name, att: Math.round(cap * fill).toLocaleString('tr-TR') }, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
         kits: [{ ...kit(h), gk: '#ffc93c' }, { ...kit(a, clash), gk: '#58c4dd' }]
       };
       for (let s = 0; s < 2; s++) for (let i = 0; i < 11; i++) S.dots.push({ s, i, x: .5, y: 1.2, ph: Math.random() * 6.28, ov: null });
