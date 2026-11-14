@@ -263,7 +263,8 @@
         <tr class="${sel === 'abroad' ? 'on' : ''}" data-a="fac-sel" data-v="abroad" tabindex="0"><td class="l"><span class="fi">${FM.icon('globe')}</span>${ABROAD.n}</td><td class="l" colspan="2">${t.fac.abroad ? 'Kurulu · her alım gününe 2 yabancı yetenek' : 'Kurulmadı'}</td><td class="l">${t.fac.abroad ? 'Aktif' : 'Kur · ' + money(ABROAD.cost)}</td></tr></tbody></table></div>
       <p class="ib-lbl">Uzun vadeli projeler</p><p class="muted">Tesis 5. seviyeye ulaşınca her tesis için bir uzun vadeli proje açılır; aynı anda yalnızca biri yürütülür. Proje ${PROJ_WEEKS} hafta sürer, bedeli bir kez ödenir; bittiğinde tesis bir kademe daha güçlenir.</p>
       <div class="scroll"><table class="tbl"><thead><tr><th class="l">Proje</th><th class="l">Durum</th><th class="r">Bedel</th></tr></thead><tbody>${keys.map(k => `<tr class="${sel === k ? 'on' : ''}" data-a="fac-sel" data-v="${k}" tabindex="0"><td class="l"><span class="fi">${FM.icon(FACS[k].ic)}</span>${FACS[k].proj[0]}</td><td class="l">${G.fproj.done[k] ? 'Tamamlandı' : pr_ && pr_.k === k ? `Sürüyor · ${pr_.w} hafta kaldı` : t.fac[k] >= 5 ? (pr_ ? 'Sırada' : 'Açık') : 'Kilitli · 5. seviye gerekli'}</td><td class="r">${money(FACS[k].proj[2])}</td></tr>`).join('')}</tbody></table></div></section>`;
-    return `<div class="fac-grid"><div class="fac-main">${map}${table}</div><aside class="card fac-side">${facDetail(sel)}</aside></div>`;
+    const pn = U.facPanel || 'fac', ptabs = `<div class="seg fp-tabs">${[['fac', FACS[sel] ? FACS[sel].n.split(' ')[0] : 'Tesis'], ['focus', 'Bireysel hedef'], ['mentor', 'Mentörlük']].map(([k, n]) => `<button data-a="fac-panel" data-v="${k}" class="${pn === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+    return `<div class="fac-grid"><div class="fac-main">${map}${table}</div><aside class="card fac-side">${ptabs}${pn === 'focus' ? focusPanel() : pn === 'mentor' ? mentorPanel() : facDetail(sel)}</aside></div>`;
   }
   function facDetail(k) {
     const G = G_(), t = me();
@@ -340,7 +341,78 @@
     'shirt-acc': d => { const G = G_(), o = G.offersS.shirt[+d.i]; G.shirt = { ...o, s1: G.season + o.years - 1 }; FM.news(`Forma sponsoru: ${o.brand} ile ${o.years} sezonluk anlaşma.`, 'good'); FM.save(); toast(`${o.brand} formada!`, 'good'); render(true); }
   });
 
+  /* ================= Bireysel hedef ve mentörlük ================= */
+  const ATTR = { pac: 'Hız', sho: 'Şut', pas: 'Pas', def: 'Savunma', phy: 'Fizik', gk: 'Kalecilik' };
+  const focusSlots = () => 2 + Math.min(6, lvOf('training'));                 // antrenman merkezi seviyesine bağlı
+  const mentorSlots = () => 1 + Math.floor(Math.min(6, lvOf('coach')) / 2);  // teknik ekip binası seviyesine bağlı
+  const squad = () => me().players.map(FM.P).filter(p => !p.loan || p.loan.own !== G_().teamId);
+  const focused = () => squad().filter(p => p.tf);
+  function setFocus(pid, attr) {
+    const p = FM.P(pid); if (!p) return { ok: false, msg: 'Oyuncu bulunamadı.' };
+    if (!p.tf && focused().length >= focusSlots()) return { ok: false, msg: `Bireysel hedef kontenjanı dolu (${focusSlots()}). Antrenman merkezi seviyesi kontenjanı artırır.` };
+    if ((p.pos === 'GK') !== (attr === 'gk')) return { ok: false, msg: p.pos === 'GK' ? 'Kaleciler için yalnızca kalecilik çalışılabilir.' : 'Kalecilik yalnızca kalecilere verilebilir.' };
+    p.tf = attr; p.tfBase = p.a[attr]; p.tfW = 0; FM.save();
+    return { ok: true, msg: `${p.name}: bireysel hedef ${ATTR[attr].toLocaleLowerCase('tr')}.` };
+  }
+  function clearFocus(pid) { const p = FM.P(pid); if (p) { delete p.tf; delete p.tfBase; delete p.tfW; FM.save(); } }
+  function addMentor(mid, yid) {
+    const G = G_(), m = FM.P(mid), y = FM.P(yid);
+    if (!m || !y || m === y) return { ok: false, msg: 'Geçerli bir eşleşme seç.' };
+    if (G.mentors.length >= mentorSlots()) return { ok: false, msg: `Mentörlük kontenjanı dolu (${mentorSlots()}). Teknik ekip binası seviyesi kontenjanı artırır.` };
+    if (G.mentors.some(x => x.m === mid || x.y === yid)) return { ok: false, msg: 'Bu oyunculardan biri zaten bir eşleşmede.' };
+    if (m.age < 27 || y.age > 21) return { ok: false, msg: 'Mentor en az 27, öğrenci en fazla 21 yaşında olmalı.' };
+    G.mentors.push({ m: mid, y: yid, w: 0 }); y.mor = clamp(y.mor + 4, 20, 100); FM.save();
+    return { ok: true, msg: `${m.name}, ${y.name}'e mentorluk yapacak.` };
+  }
+  function delMentor(i) { G_().mentors.splice(i, 1); FM.save(); }
+  const mentorBoost = m => { const pr = C.per(m); return pr === 'pro' || pr === 'leader' ? .25 : pr === 'temper' ? .05 : .15; };
+  wrap('ensure', (o, ...a) => { o(...a); const G = G_(); if (G && !G.mentors) G.mentors = []; });
+  wrap('trainMult', (o, p) => {
+    let k = o(p); const G = G_(), pair = G.mentors && G.mentors.find(x => x.y === p.id), m = pair && FM.P(pair.m);
+    if (m) k *= 1 + mentorBoost(m);
+    if (p.tf) k *= 1.1;
+    return k;
+  });
+  wrap('endWeek', o => {
+    const G = G_(), tid = G.teamId;
+    for (const p of Object.values(G.players)) if (p.tf && p.tid !== tid) { delete p.tf; delete p.tfBase; delete p.tfW; } else if (p.tf) p.tfW = (p.tfW || 0) + 1;
+    G.mentors = (G.mentors || []).filter(x => {
+      const m = FM.P(x.m), y = FM.P(x.y);
+      if (!m || !y || m.tid !== tid || y.tid !== tid) { FM.news('Bir mentörlük eşleşmesi oyunculardan biri ayrıldığı için sona erdi.', 'info'); return false; }
+      if (y.age > 22) { FM.news(`${y.name} artık genç sayılmıyor; ${m.name} ile mentörlük tamamlandı.`, 'good'); return false; }
+      x.w++; y.mor = clamp(y.mor + (m.mor - y.mor) * .1, 20, 100);
+      if (x.w === 16 && (C.per(m) === 'pro' || C.per(m) === 'leader') && C.per(y) !== C.per(m) && R() < .5) {
+        y.per = C.per(m); FM.Inbox.make('mentorDone', { m: m.id, y: y.id });
+      }
+      return true;
+    });
+    o();
+  });
+  function focusPanel() {
+    const sq = squad().sort((a, b) => a.age - b.age), fs = focused(), free = sq.filter(p => !p.tf);
+    return `<h3>Bireysel hedef</h3><p class="muted">Seçtiğin özellik bu oyuncunun antrenmanında öncelikli çalışılır (gelişimin yaklaşık %60'ı o özelliğe gider, gelişim hızı +%10). Kontenjan: <b>${fs.length}/${focusSlots()}</b> · antrenman merkezi seviyesiyle artar.</p>
+      ${fs.length ? `<ul class="fp-list">${fs.map(p => `<li><span><button class="lnk" data-a="player" data-id="${p.id}">${esc(p.name)}</button><small>${p.age} yaş · ${FM.POS_TR[p.pos]} · ${p.tfW || 0} haftadır</small></span><span class="fp-v">${ATTR[p.tf]} <b>${p.a[p.tf]}</b>${p.a[p.tf] > p.tfBase ? ` <em class="pos-v">+${p.a[p.tf] - p.tfBase}</em>` : ''}</span><button class="btn icon" data-a="tf-del" data-id="${p.id}" aria-label="${esc(p.name)} hedefini kaldır">×</button></li>`).join('')}</ul>` : '<p class="muted">Henüz bireysel hedef verilmedi.</p>'}
+      ${fs.length < focusSlots() ? `<div class="fp-form"><label class="sp"><span>Oyuncu</span><select id="tfP">${free.map(p => `<option value="${p.id}">${esc(p.name)} · ${p.age} · ${FM.POS_TR[p.pos]} · ${p.ovr}/${p.pot}</option>`).join('')}</select></label>
+        <label class="sp"><span>Özellik</span><select id="tfA">${Object.keys(ATTR).map(k => `<option value="${k}">${ATTR[k]}</option>`).join('')}</select></label><button class="btn primary" data-a="tf-add">Hedef ver</button></div>` : ''}`;
+  }
+  function mentorPanel() {
+    const G = G_(), sq = squad(), olds = sq.filter(p => p.age >= 27).sort((a, b) => b.age - a.age), kids = sq.filter(p => p.age <= 21).sort((a, b) => a.age - b.age), busy = new Set(G.mentors.flatMap(x => [x.m, x.y]));
+    return `<h3>Mentörlük</h3><p class="muted">Tecrübeli bir oyuncu bir genci yanına alır: genç daha hızlı gelişir, morali mentorununkine yaklaşır. Profesyonel ya da lider bir mentor en büyük etkiyi yapar ve 16 hafta sonra kişiliğini gence aktarabilir. Kontenjan: <b>${G.mentors.length}/${mentorSlots()}</b> · teknik ekip binası seviyesiyle artar.</p>
+      ${G.mentors.length ? `<ul class="fp-list">${G.mentors.map((x, i) => { const m = FM.P(x.m), y = FM.P(x.y); return `<li><span><b>${esc(m.name)}</b> → <b>${esc(y.name)}</b><small>${C.PER[C.per(m)][0]} mentor · ${x.w} hafta · gelişim +%${Math.round(mentorBoost(m) * 100)}</small></span><button class="btn icon" data-a="mt-del" data-v="${i}" aria-label="Eşleşmeyi bitir">×</button></li>`; }).join('')}</ul>` : '<p class="muted">Henüz mentörlük eşleşmesi yok.</p>'}
+      ${G.mentors.length < mentorSlots() ? (olds.length && kids.length ? `<div class="fp-form"><label class="sp"><span>Mentor (27+)</span><select id="mtM">${olds.filter(p => !busy.has(p.id)).map(p => `<option value="${p.id}">${esc(p.name)} · ${p.age} · ${C.PER[C.per(p)][0]}</option>`).join('')}</select></label>
+        <label class="sp"><span>Genç (21 ve altı)</span><select id="mtY">${kids.filter(p => !busy.has(p.id)).map(p => `<option value="${p.id}">${esc(p.name)} · ${p.age} · ${FM.POS_TR[p.pos]} · ${p.ovr}/${p.pot}</option>`).join('')}</select></label><button class="btn primary" data-a="mt-add">Eşleştir</button></div>` : '<p class="muted">Eşleşme için kadroda 27 yaş üstü ve 21 yaş altı oyuncu gerekir. Altyapıdan genç alabilirsin.</p>') : ''}`;
+  }
+  Object.assign(acts, {
+    'fac-panel': d => { U.facPanel = d.v; render(true); },
+    'tf-add': () => { if (!$('tfP') || !$('tfP').value) return; say(setFocus(+$('tfP').value, $('tfA').value)); render(true); },
+    'tf-del': d => { clearFocus(+d.id); render(true); },
+    'mt-add': () => { if (!$('mtM') || !$('mtM').value || !$('mtY').value) return; say(addMentor(+$('mtM').value, +$('mtY').value)); render(true); },
+    'mt-del': d => { delMentor(+d.v); toast('Mentörlük eşleşmesi sona erdi.'); render(true); }
+  });
+
   FM.Inbox.extend({ projDone: x => ({ from: G_().staffQ.asst.n, role: 'Yardımcı antrenör', ic: 'staff', cat: 'board', title: `${FACS[x.k].proj[0]} tamamlandı`, body: `${FACS[x.k].n} için başlattığımız uzun vadeli proje bitti. Etkileri bu haftadan itibaren geçerli.` }) });
-  FM.Club = { seatFn, FACS, campus, ensure };
+  FM.Inbox.extend({ mentorDone: x => ({ from: G_().staffQ.asst.n, role: 'Yardımcı antrenör', ic: 'staff', cat: 'squad', title: `${FM.P(x.y).name}, mentorundan çok şey öğrendi`, pid: x.y,
+    body: `{p:${x.y}}, {p:${x.m}} ile geçirdiği 16 haftanın ardından onun gibi ${C.PER[C.per(FM.P(x.y))][0].toLocaleLowerCase('tr')} bir oyuncuya dönüştü.` }) });
+  FM.Club = { seatFn, FACS, campus, ensure, setFocus, clearFocus, addMentor, delMentor, focusSlots, mentorSlots };
   if (FM.G) ensure();
 })();

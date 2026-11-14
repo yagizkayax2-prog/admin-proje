@@ -828,6 +828,13 @@ body.noscroll { overflow: hidden; }
 .shirt { filter: drop-shadow(0 8px 12px rgba(0,0,0,.4)); }
 @media (max-width: 1100px) { .fac-grid { grid-template-columns: minmax(0, 1fr); } .fac-side { position: static; } }
 @media (max-width: 760px) { .campus { display: flex; flex-direction: column-reverse; } .cp-zoom { position: static; margin: 8px; align-self: flex-end; } .cp-l { font-size: 10.5px; padding: 3px 6px; } .big-sl b { font-size: 24px; min-width: 80px; } }
+.fp-list .lnk { justify-self: start; text-align: left; }
+#toast > :nth-last-child(n+5) { display: none; }
+.fp-tabs { display: flex; width: 100%; } .fp-tabs button { flex: 1; padding: 8px 6px; font-size: 13px; }
+.fp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fp-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--bg-2); border: 1px solid var(--line); }
+.fp-list li > span:first-child { flex: 1; display: grid; min-width: 0; } .fp-list small { color: var(--muted); font-size: 12px; } .fp-v { white-space: nowrap; font-size: 13.5px; } .fp-v em { font-style: normal; font-weight: 700; }
+.fp-form { display: grid; gap: 8px; } .fp-form select { width: 100%; }
 /* Ayar: sakin mod ve haber şeridi */
 .calm *, .calm *::before, .calm *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 .no-ticker .ticker { display: none; } .no-ticker body:has(.ticker) { padding-bottom: 0; }

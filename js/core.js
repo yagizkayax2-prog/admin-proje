@@ -571,7 +571,7 @@
     const pool = p.pos === 'GK' ? ['gk', 'gk', 'phy', 'pas']
       : focus === 'att' ? ['sho', 'sho', 'pac', 'pas'] : focus === 'def' ? ['def', 'def', 'phy', 'pas']
         : focus === 'fit' ? ['phy', 'pac'] : Object.keys(W[p.pos]);
-    const k = pick(pool);
+    const k = p.tf && p.tid === G.teamId && (p.pos === 'GK') === (p.tf === 'gk') && R() < .6 ? p.tf : pick(pool);   // bireysel hedef
     if (p.a[k] >= 97) return false;
     const before = p.ovr;
     p.a[k]++; refresh(p);

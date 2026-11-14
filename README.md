@@ -26,6 +26,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Teknik ekip (yardımcı antrenör, kaleci antrenörü, fizyoterapist, baş scout) ve haftalık antrenman takvimi
 - Finans: bilet fiyatı, sezonluk gelir-gider tablosu, yönetimden ek bütçe isteme
 - Derbiler, Kıta Kupası (ligin ilk ikisi ve 8 yabancı kulüpten 6'sı), sezon ödülleri ve yılın 11'i, oyuncu kariyer geçmişi, kulüp efsaneleri, sosyal akış
+- Bireysel hedef (oyuncuya özel çalışılacak özellik) ve mentörlük (tecrübeli oyuncu genci yanına alır, kişiliğini aktarabilir); kontenjanlar tesis seviyelerine bağlı
 - Kulüp sayfası alt sekmeleri: Tesisler (kampüs haritası ve yakınlaştırma, 5 tesis + yurt dışı akademi, seviye etkileri, uzun vadeli projeler), Stadyum (koltuk deseni 3D tribünlerde görünür, bilet ve kombine fiyatı tahminleri, stat adı sponsoru, stadyum adı ve büyütme), Forma ve sponsor (3 forma tasarımı maçta kullanılır, forma sponsoru), Maliye, Müze ve kayıt
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
