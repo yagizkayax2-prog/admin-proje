@@ -642,6 +642,39 @@
     if (S.m.derby && FM.Audio.chant) { const hid = S.m.s[0].tid; setTimeout(() => { if (S && !S.ended) FM.Audio.chant(hid, true); }, 1500); }
   }
 
+  /* ---------- Oyuncu figürü: gölge, bacaklar (şort, çorap, krampon), gövde (forma), kollar, baş ---------- */
+  const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16), c = v => Math.max(0, Math.min(255, Math.round(v * f))); return `rgb(${c(n >> 16)},${c((n >> 8) & 255)},${c(n & 255)})`; };
+  function figure(g, x, y, h, o) {
+    // x, y: ayakların zemindeki noktası; h: boy (piksel); o: { shirt, trim, shorts, socks, skin, hair, run (0..1), ph, dir (-1/1), hi }
+    const w = h * .36, run = o.run, sw = Math.sin(o.ph) * run, sw2 = Math.sin(o.ph + Math.PI) * run, lw = Math.max(1.2, h * .085);
+    g.fillStyle = 'rgba(0,0,0,.33)'; g.beginPath(); g.ellipse(x + h * .1, y, w * .85, h * .12, 0, 0, 6.29); g.fill();
+    if (o.hi) { g.beginPath(); g.ellipse(x, y, w * 1.25, h * .2, 0, 0, 6.29); g.strokeStyle = 'rgba(255,201,60,.95)'; g.lineWidth = 1.5; g.stroke(); }
+    const hip = y - h * .46, sh = y - h * .8, lean = o.dir * run * h * .06;
+    // bacaklar
+    g.lineCap = 'round';
+    for (const [k, a] of [[0, sw], [1, sw2]]) {
+      const fx = x + (k ? 1 : -1) * w * .16 + a * h * .2 * o.dir, fy = y - Math.max(0, -a) * h * .05, kx = (x + fx) / 2 + a * h * .05 * o.dir + (k ? 1 : -1) * w * .05, ky = hip + (y - hip) * .5;
+      g.strokeStyle = o.skin; g.lineWidth = lw; g.beginPath(); g.moveTo(x + (k ? 1 : -1) * w * .17, hip); g.lineTo(kx, ky); g.stroke();
+      g.strokeStyle = o.socks; g.lineWidth = lw * 1.05; g.beginPath(); g.moveTo(kx, ky); g.lineTo(fx, fy - h * .03); g.stroke();
+      g.strokeStyle = '#111'; g.lineWidth = lw * 1.1; g.beginPath(); g.moveTo(fx - o.dir * h * .02, fy); g.lineTo(fx + o.dir * h * .05, fy); g.stroke();
+    }
+    // şort
+    g.fillStyle = o.shorts; g.beginPath(); g.moveTo(x - w * .5 + lean, hip - h * .1); g.lineTo(x + w * .5 + lean, hip - h * .1); g.lineTo(x + w * .46, hip + h * .06); g.lineTo(x - w * .46, hip + h * .06); g.closePath(); g.fill();
+    // kollar (gövdenin arkasındaki)
+    const arm = (a, front) => { const ax = x + lean + (front ? 1 : -1) * w * .48, bx = ax - a * h * .17 * o.dir, by = sh + h * .3; g.strokeStyle = o.shirt; g.lineWidth = lw * 1.05; g.beginPath(); g.moveTo(ax, sh + h * .03); g.lineTo((ax + bx) / 2, sh + h * .14); g.stroke(); g.strokeStyle = o.skin; g.lineWidth = lw * .9; g.beginPath(); g.moveTo((ax + bx) / 2, sh + h * .14); g.lineTo(bx, by); g.stroke(); };
+    arm(sw, false);
+    // gövde (forma)
+    g.fillStyle = o.shirt; g.beginPath(); g.moveTo(x - w * .52 + lean, sh); g.lineTo(x + w * .52 + lean, sh); g.lineTo(x + w * .46 + lean * .5, hip - h * .08); g.lineTo(x - w * .46 + lean * .5, hip - h * .08); g.closePath(); g.fill();
+    g.strokeStyle = o.trim; g.lineWidth = Math.max(1, h * .045); g.beginPath(); g.moveTo(x - w * .3 + lean, sh); g.lineTo(x + w * .3 + lean, sh); g.stroke();
+    g.fillStyle = shade(o.shirt.startsWith('#') ? o.shirt : '#888888', .78); g.fillRect(x + w * .2 + lean * .7, sh + h * .02, w * .3, h * .3);   // gölgeli yan
+    arm(sw2, true);
+    // baş
+    const hx = x + lean * 1.2, hy = sh - h * .1, hr = h * .105;
+    g.fillStyle = o.skin; g.beginPath(); g.arc(hx, hy, hr, 0, 6.29); g.fill();
+    g.fillStyle = o.hair; g.beginPath(); g.arc(hx, hy - hr * .2, hr * 1.02, Math.PI * 1.05, Math.PI * 1.95); g.fill();
+    if (o.num != null && h >= 26) { g.fillStyle = o.trim; g.font = `800 ${Math.round(h * .2)}px 'Barlow Condensed', sans-serif`; g.fillText(o.num, x + lean * .8, sh + h * .17); }
+  }
+
   /* ---------- Çizim (perspektifli) ---------- */
   function resize() {
     const c = S.cv, w = c.parentElement.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1), m = S.m, home = FM.T(m.s[0].tid);
@@ -694,21 +727,20 @@
     const items = S.dots.filter(active).map(d => ({ d, y: d.y })).concat(S.refs.map((rf, k) => ({ rf, k, y: rf.y }))).sort((a, b) => a.y - b.y);
     for (const it of items) {
       if (it.rf) {
-        const q = P(it.rf.x, it.rf.y), r = r0 * q.s * .82;
-        g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(q.X, q.Y + r * .5, r * .9, r * .38, 0, 0, 6.29); g.fill();
-        g.beginPath(); g.arc(q.X, q.Y - r * .3, r, 0, 6.29); g.fillStyle = '#14181f'; g.fill(); g.lineWidth = 1.6; g.strokeStyle = it.k ? '#ffc93c' : '#e8f04a'; g.stroke();
+        const rf = it.rf, q = P(rf.x, rf.y), sp = Math.min(1, (rf.spd || 0) * 9);
+        figure(g, q.X, q.Y + r0 * q.s * .5, r0 * q.s * 2.9, { shirt: it.k ? '#1b1f27' : '#14181f', trim: it.k ? '#ffc93c' : '#e8f04a', shorts: '#0d0f13', socks: '#0d0f13', skin: '#d6a57c', hair: '#2a2a2a', run: sp, ph: S.rt * 10 + it.k, dir: rf.dir || 1 });
         continue;
       }
-      const d = it.d, q = P(d.x, d.y), r = r0 * q.s, x = q.X, y = q.Y - r * .3, k = S.kits[d.s], gkp = d.i === 0;
-      g.fillStyle = 'rgba(0,0,0,.32)'; g.beginPath(); g.ellipse(x, q.Y + r * .55, r * .95, r * .4, 0, 0, 6.29); g.fill();
-      g.beginPath(); g.arc(x, y, r, 0, 6.29);
-      g.fillStyle = gkp ? k.gk : k.fill; g.fill();
-      g.lineWidth = Math.max(1.4, r * .26); g.strokeStyle = gkp ? '#f3efe4' : k.stroke; g.stroke();
-      if (d === S.holder) { g.beginPath(); g.arc(x, y, r + 3, 0, 6.29); g.strokeStyle = 'rgba(255,201,60,.95)'; g.lineWidth = 1.5; g.stroke(); }
-      if (r >= 6.4) { g.fillStyle = gkp ? '#14202f' : k.text; g.font = `700 ${Math.round(r * 1.05)}px Barlow, sans-serif`; g.fillText(FM.P(S.m.s[d.s].on[d.i]).num, x, y + .5); }
+      const d = it.d, q = P(d.x, d.y), k = S.kits[d.s], gkp = d.i === 0, p = FM.P(S.m.s[d.s].on[d.i]), L = FM.LOOK, lk = (p && p.look) || [1, 0];
+      const run = Math.min(1, (d.spd || 0) * 7);
+      d.rph = (d.rph || d.ph) + (S.paused ? 0 : (d.spd || 0) * 110 * Math.min(.05, dt || .016));
+      figure(g, q.X, q.Y + r0 * q.s * .5, r0 * q.s * 3.1, {
+        shirt: gkp ? k.gk : k.fill, trim: gkp ? '#14202f' : k.stroke, shorts: gkp ? '#1b2433' : (lum(k.fill) > 150 ? '#1b2433' : '#f3efe4'), socks: gkp ? k.gk : k.fill,
+        skin: L ? L.SKIN[lk[0]] || '#d39b6c' : '#d39b6c', hair: L ? L.HAIR[lk[1]] || '#1b1b1b' : '#1b1b1b', run, ph: d.rph, dir: d.dir || 1, hi: d === S.holder, num: p ? p.num : null
+      });
     }
     if (S.holder && active(S.holder)) {
-      const p = FM.P(S.m.s[S.holder.s].on[S.holder.i]), q = P(S.holder.x, S.holder.y), x = q.X, y = q.Y - r0 * q.s * 1.3 - 9;
+      const p = FM.P(S.m.s[S.holder.s].on[S.holder.i]), q = P(S.holder.x, S.holder.y), x = q.X, y = q.Y - r0 * q.s * 2.8 - 9;
       g.font = `600 ${Math.max(10, Math.round(w * .016))}px Barlow, sans-serif`;
       const nm = p.name.split(' ').pop(), tw = g.measureText(nm).width + 8;
       g.fillStyle = 'rgba(10,19,34,.78)'; g.fillRect(x - tw / 2, y - 8, tw, 15);
@@ -800,12 +832,13 @@
           if (st > vmax) { sx *= vmax / st; sy *= vmax / st; }
         }
         d.x += sx; d.y += sy;
+        const v = Math.hypot(sx, sy) / Math.max(1e-4, dt); d.spd = (d.spd || 0) * .8 + v * .2 * Math.min(1, dt * 60) / Math.max(1, S.speed); if (Math.abs(sx) > 1e-5) d.dir = sx > 0 ? 1 : -1;
         S.last[S.m.s[d.s].on[d.i]] = d;
       }
       if (S.phase === 'play' && !S.script) { S.refs[0].tx = clamp(S.ball.x + .05, .05, .95); S.refs[0].ty = clamp(S.ball.y + .1, .08, .92); }
       if (S.phase !== 'cer') { S.refs[1].tx = clamp(S.ball.x, .02, .98); S.refs[2].tx = clamp(S.ball.x, .02, .98); }
       tickMgrs(dt);
-      for (const rf of S.refs) if (!rf.fix) { rf.x += (rf.tx - rf.x) * Math.min(1, dt * 2); rf.y += (rf.ty - rf.y) * Math.min(1, dt * 2); }
+      for (const rf of S.refs) if (!rf.fix) { const ax = (rf.tx - rf.x) * Math.min(1, dt * 2), ay = (rf.ty - rf.y) * Math.min(1, dt * 2); rf.x += ax; rf.y += ay; rf.spd = (rf.spd || 0) * .8 + Math.hypot(ax, ay) / Math.max(1e-4, dt) * .2 / Math.max(1, S.speed); if (Math.abs(ax) > 1e-5) rf.dir = ax > 0 ? 1 : -1; }
       if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * .8);
       S.cheer[0] = Math.max(0, S.cheer[0] - dt * .3); S.cheer[1] = Math.max(0, S.cheer[1] - dt * .3);
       S.pops = S.pops.filter(p => (p.t += dt) < 1.6);

@@ -26,6 +26,7 @@
 
   const SKIN = ['#f6d1b0', '#e9b98f', '#d39b6c', '#a8734a', '#7a4f30'];
   const HAIR = ['#1b1b1b', '#3b2a1a', '#6b4423', '#b08a4a', '#8a8a8a'];
+  FM.LOOK = { SKIN, HAIR };
   FM.avatar = function (p, size) {
     const t = p.tid != null ? FM.T(p.tid) : { c1: '#52627a', c2: '#c9d3e0' };
     const sk = SKIN[p.look[0]], hc = HAIR[p.look[1]];
