@@ -9,10 +9,10 @@
     ['team', 'Takım', [['squad', 'Kadro'], ['tactics', 'Taktik'], ['training', 'Antrenman'], ['youth', 'Altyapı']]],
     ['world', 'Dünya', [['table', 'Lig'], ['fixtures', 'Fikstür ve kupa'], ['euro', 'Kıta Kupası'], ['stats', 'İstatistik']]],
     ['transfer', 'Transfer', [['transfer', 'Pazar']]],
-    ['club', 'Kulüp', [['club', 'Kulüp']]]
+    ['club', 'Kulüp', [['club', 'Genel'], ['facilities', 'Tesisler'], ['stadium', 'Stadyum'], ['kit', 'Forma ve sponsor'], ['finance', 'Maliye']]]
   ];
   const groupOf = v => GROUPS.find(g => g[2].some(x => x[0] === v)) || GROUPS[0];
-  const pending = () => (FM.G.inbox || []).filter(m => m.opts && !m.done);
+  const pending = () => (FM.G.inbox || []).filter(m => (m.opts && !m.done) || (m.conf && !m.conf.done));
   const unread = () => (FM.G.inbox || []).filter(m => !m.read);
   function go(view, fromHist) {
     if (!fromHist && U.hist[U.hi] !== view) { U.hist = U.hist.slice(0, U.hi + 1); U.hist.push(view); if (U.hist.length > 40) U.hist.shift(); U.hi = U.hist.length - 1; }
@@ -48,7 +48,7 @@
     const t = FM.TEAMS[U.pickTeam], div = t.div || 0;
     const grid = d => FM.TEAMS.map((x, i) => ((x.div || 0) === d ? `<button class="team-card ${i === U.pickTeam ? 'on' : ''}" data-a="pick-team" data-id="${i}" style="--k1:${x.c1};--k2:${x.c2}">${FM.crest(x, 52)}<strong>${x.name}</strong>${stars(Math.max(1, x.rep - d * 2 + (d ? 1 : 0)))}</button>` : '')).join('');
     return `<div class="start">
-      <div class="start-hero"><img class="stad" src="assets/stadium.svg" alt=""><div class="start-title"><img src="assets/logo.svg" alt="" width="72" height="72"><div><h1>Saha Kenarı</h1><p>Kulübünü seç, kadronu kur, şampiyonluğa yürü.</p></div></div><img class="hero-ball" src="assets/ball.svg" alt="" width="46" height="46"></div>
+      <div class="start-hero"><button class="btn icon back-menu" data-a="to-menu" aria-label="Ana menüye dön">‹</button><img class="stad" src="assets/stadium.svg" alt=""><div class="start-title"><img src="assets/logo.svg" alt="" width="72" height="72"><div><h1>Saha Kenarı</h1><p>Kulübünü seç, kadronu kur, şampiyonluğa yürü.</p></div></div><img class="hero-ball" src="assets/ball.svg" alt="" width="46" height="46"></div>
       <div class="start-body">
         <h2>${FM.DIV_TR[0]}</h2><div class="team-grid">${grid(0)}</div>
         <h2>${FM.DIV_TR[1]} <small>alt lig: yükselmek için ilk 2'ye gir</small></h2><div class="team-grid">${grid(1)}</div>
@@ -78,7 +78,7 @@
         <nav class="mainnav" aria-label="Bölümler">${GROUPS.map(g => `<button data-a="tab" data-v="${g[2][0][0]}" class="${g === grp ? 'on' : ''}" ${g === grp ? 'aria-current="page"' : ''}>${g[1]}${g[0] === 'home' && badge ? `<i>${badge}</i>` : ''}</button>`).join('')}</nav>
         <div class="gsearch">${FM.icon('search')}<input id="gsearch" type="search" placeholder="Ara: oyuncu ya da takım" autocomplete="off" aria-label="Oyuncu ya da takım ara"><div class="gsr" id="gsr" hidden></div></div>
         <div class="top-r"><div class="bal"><span>Bütçe</span><b id="bal" class="${G.fin.balance < 0 ? 'neg' : ''}">${money(G.fin.balance)}</b></div>
-          <button class="btn icon" data-a="settings" aria-label="Ayarlar">${FM.icon('gear')}</button>
+          <button class="btn icon" data-a="settings" aria-label="Ayarlar">${FM.icon('gear')}</button><button class="btn icon" data-a="menu" aria-label="Oyun menüsü">${FM.icon('menu')}</button>
           <div class="datebox"><b>${dt.d}</b><span>${dt.g} · ${G.season}. sezon, ${Math.min(G.week + 1, FM.WEEK_COUNT)}. hafta</span></div>
           <button class="btn primary gobtn" data-a="play">Devam et ${FM.icon('play')}</button></div>
       </div>
@@ -149,19 +149,19 @@
     else if (mine) {
       const rt = FM.renewTerms(p);
       act = (p.inj ? `<p class="trait"><b>${p.injT || 'Sakatlık'}</b> ${p.inj} hafta kaldı.${p.inj <= 2 ? ' İğneyle oynatabilirsin; sakatlığın ağırlaşma riski var.' : ''}</p>` : '') + `<div class="row">${p.inj && p.inj <= 2 ? `<button class="btn" data-a="jab" data-id="${id}">İğneyle oynat</button>` : ''}${p.id !== G.teams[G.teamId].cap ? `<button class="btn" data-a="captain" data-id="${id}">Kaptan yap</button>` : ''}`+`<button class="btn" data-a="talk" data-k="praise" data-id="${id}">Öv</button><button class="btn" data-a="talk" data-k="crit" data-id="${id}">Eleştir</button></div>` +
-        (own ? `<p class="price">Yeni sözleşme: +${rt.years} sezon, haftalık <b>${money(rt.wage)}</b>, imza parası ${money(rt.bonus)}</p><div class="row"><button class="btn" data-a="renew" data-id="${id}">Sözleşme uzat</button><button class="btn" data-a="sell-ask" data-id="${id}">Satış için teklif al</button><button class="btn" data-a="loan-out" data-id="${id}">Kiralığa gönder</button></div>` : `<p class="muted">Kiralık oyuncu: sezon sonunda ${T(p.loan.own).name} takımına döner.</p>`);
+        (own ? `<p class="price">Sözleşme: ${p.con} sezon kaldı · haftalık <b>${money(p.wage)}</b>. Uzatmak için menajeriyle masaya otur.</p><div class="row"><button class="btn" data-a="renew" data-id="${id}">Sözleşme uzat</button><button class="btn" data-a="sell-ask" data-id="${id}">Satış için teklif al</button><button class="btn" data-a="loan-out" data-id="${id}">Kiralığa gönder</button></div>` : `<p class="muted">Kiralık oyuncu: sezon sonunda ${T(p.loan.own).name} takımına döner.</p>`);
     } else {
       const clause = FM.isClause(p), isOut = p.loan && p.loan.own === G.teamId;
       act = isOut ? `<p class="muted">Senin oyuncun: sezon sonuna kadar ${t.name} takımında kiralık.</p>` :
         `<p class="price">${p.tid == null ? 'İmza parası' : clause ? 'Serbest kalma bedeli' : 'İstenen bedel'} <b>${money(FM.askPrice(p))}</b> · Maaş ${money(p.wage)}/hafta</p>${!kn ? `<p class="muted">Gücü tahmini görünüyor. Kesin rapor için scout gönder.</p>` : ''}
         <div class="row">${!kn ? `<button class="btn" data-a="scout" data-id="${id}">Scout gönder · ₺30 Bin</button>` : ''}${p.tid != null ? `<button class="btn" data-a="loan-in" data-id="${id}">Kirala · ${money(Math.round(p.value * .1 / 10000) * 10000)}</button>` : ''}${clause ? '' : `<button class="btn" data-a="buy" data-h="1" data-id="${id}">Pazarlık (%15)</button>`}<button class="btn primary" data-a="buy" data-id="${id}">Satın al</button></div>`;
     }
-    modal(`<div class="pm-head">${FM.avatar(p, 84)}<div><h3>${esc(p.name)}</h3><p>${posChip(p.pos)} ${FM.ROLE_TR[p.role]} · ${p.age} yaş · No ${p.num}</p><p class="muted">${t ? FM.crest(t, 18) + ' ' + t.name : 'Serbest oyuncu'} ${status(p)}</p></div><div class="pm-ovr">${ovrB(p)}<span>Potansiyel ${kn ? p.pot : '?'}</span></div></div>
+    modal(`<div class="pm-head">${FM.avatar(p, 84)}<div><h3>${esc(p.name)} ${FM.ui.watchBtn ? FM.ui.watchBtn(p) : ''}</h3><p>${posChip(p.pos)} ${FM.ROLE_TR[p.role]} · ${p.age} yaş · No ${p.num}</p><p class="muted">${t ? FM.crest(t, 18) + ' ' + t.name : 'Serbest oyuncu'} ${status(p)}</p></div><div class="pm-ovr">${ovrB(p)}<span>Potansiyel ${kn ? p.pot : '?'}</span></div></div>
       ${p.trait && kn ? `<p class="trait"><b>${FM.TRAITS[p.trait][0]}</b> ${FM.TRAITS[p.trait][1]}</p>` : ''}
       ${kn ? `<div class="attrs">${bars}</div>` : '<p class="muted">Özellikler bilinmiyor.</p>'}
       <div class="kpis sm"><div><span>Maç</span><b>${p.apps}</b></div><div><span>Gol / Asist</span><b>${p.g} / ${p.as}</b></div><div><span>Ort. puan</span><b>${fmtR(FM.avgRating(p))}</b></div><div><span>Moral</span><b>${Math.round(p.mor)}</b></div><div><span>Değer</span><b>${money(p.value)}</b></div><div><span>Sözleşme</span><b>${p.tid == null ? '—' : p.con + ' sezon'}</b></div></div>
       ${p.form.length ? `<div class="formr"><span>Son maç puanları</span>${p.form.map(v => `<i class="${v >= 7.5 ? 'hi' : v < 6 ? 'lo' : ''}" style="--h:${Math.round((v - 3) / 7 * 100)}%"><b>${v.toFixed(1)}</b></i>`).join('')}</div>` : ''}
-      <div class="pm-act" id="pmAct">${act}</div>`);
+      <div class="pm-act" id="pmAct">${act}</div>${FM.ui.pmExtra ? FM.ui.pmExtra(p) : ''}`);
   }
 
   function nextOpp() { const G = FM.G, f = G.cupDue ? FM.cupTie() : G.euroDue ? FM.euroTie() : FM.userFixture(); return f ? (f.h === G.teamId ? f.a : f.h) : null; }
@@ -289,7 +289,7 @@
         ${l ? `<table class="tbl fin"><tbody><tr><td class="l">Sponsor geliri</td><td class="r pos-v">+${money(l.sponsor)}</td></tr><tr><td class="l">Bilet geliri ${l.att ? '(' + l.att.toLocaleString('tr-TR') + ' seyirci)' : '(deplasman)'}</td><td class="r pos-v">+${money(l.tickets)}</td></tr><tr><td class="l">Maaşlar</td><td class="r neg-v">−${money(l.wages)}</td></tr>${l.staff ? `<tr><td class="l">Teknik ekip</td><td class="r neg-v">−${money(l.staff)}</td></tr>` : ''}<tr><td class="l"><b>Geçen hafta net</b></td><td class="r"><b>${money(l.net)}</b></td></tr></tbody></table>` : ''}</section>
       <section class="card"><h2>Yönetim ve taraftar</h2><p>Hedef: ${FM.DIV_TR[t.div]}'nde <b>${exp}. sıra</b> veya üstü. Şu an <b>${pos}.</b> sıradasın.</p>${gauge('Yönetim güveni', G.board, G.board <= 25 ? 'Tehlike: güven 10\'un altına düşerse görevden alınırsın.' : G.board >= 70 ? 'Yönetim arkanda.' : 'Yönetim gidişatı izliyor.')}${gauge('Taraftar desteği', G.fans, 'Destek arttıkça tribünler dolar, iç saha avantajın büyür.')}</section></div>
       <section class="card"><h2>Teknik ekip</h2><div class="facs">${Object.keys(FM.STAFF).map(k => `<div class="fac"><div><strong>${FM.STAFF[k][0]}</strong><span class="lv">${[1, 2, 3].map(i => `<i class="${i <= G.staff[k] ? 'on' : ''}"></i>`).join('')}</span><p>${FM.STAFF[k][1]} Haftalık maaş: seviye başına ${money(FM.STAFF_WAGE)}.</p></div><button class="btn" data-a="staff" data-v="${k}" ${G.staff[k] >= 3 ? 'disabled' : ''}>${G.staff[k] >= 3 ? 'En üst seviye' : (G.staff[k] ? 'Güçlendir' : 'İşe al') + ' · ' + money(FM.staffCost(k))}</button></div>`).join('')}</div></section>
-      <section class="card"><h2>Tesisler</h2><div class="facs">${Object.keys(FM.FAC).map(k => `<div class="fac"><div><strong>${FM.FAC[k].name}</strong><span class="lv">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= t.fac[k] ? 'on' : ''}"></i>`).join('')}</span><p>${facDesc[k]}</p></div><button class="btn" data-a="upgrade" data-v="${k}" ${t.fac[k] >= 5 ? 'disabled' : ''}>${t.fac[k] >= 5 ? 'En üst seviye' : 'Geliştir · ' + money(FM.facCost(k))}</button></div>`).join('')}</div></section>`;
+      <section class="card"><div class="row" style="justify-content:space-between"><div><h2>Tesisler ve stadyum</h2><p class="muted">Tesis kampüsü, uzun vadeli projeler, stadyum ve forma ayarları kendi sekmelerinde.</p></div><div class="row"><button class="btn" data-a="tab" data-v="facilities">Tesisler</button><button class="btn" data-a="tab" data-v="stadium">Stadyum</button><button class="btn" data-a="tab" data-v="kit">Forma ve sponsor</button></div></div></section>`;
   }
 
   /* ---------- Kariyer ---------- */
@@ -379,13 +379,13 @@
   const CATC = { KADRO: 'c1', BASIN: 'c2', 'MALİYE': 'c3', TRANSFER: 'c4', 'KULÜP': 'c5', SCOUT: 'c6' };
   function mailList() {
     const G = FM.G, q = U.mailQ.toLocaleLowerCase('tr');
-    const list = (G.inbox || []).filter(m => (U.mailF === 'all' || (U.mailF === 'todo' ? m.opts && !m.done : !m.read)) && (!q || (m.title + ' ' + m.body + ' ' + m.from).toLocaleLowerCase('tr').includes(q)));
+    const list = (G.inbox || []).filter(m => (U.mailF === 'all' || (U.mailF === 'todo' ? (m.opts && !m.done) || (m.conf && !m.conf.done) : !m.read)) && (!q || (m.title + ' ' + m.body + ' ' + m.from).toLocaleLowerCase('tr').includes(q)));
     if (!list.length) return '<p class="muted mail-empty">Bu görünümde mesaj yok.</p>';
     let out = '', last = '';
     for (const m of list) {
       const key = m.s + '-' + m.w, dt = FM.fmtDate(m.s, m.w);
       if (key !== last) { last = key; out += `<h4 class="mail-day">${m.s === G.season && m.w === G.week ? 'Bugün · ' : ''}${dt.d} ${dt.g}</h4>`; }
-      out += `<button class="mail-row ${m.id === U.mail ? 'on' : ''} ${m.read ? '' : 'new'}" data-a="mail" data-id="${m.id}">${FM.icon(m.opts ? 'inbox' : 'mail')}<span class="mt"><strong>${esc(m.title)}</strong><small>${esc(m.from)}</small></span><span class="mr"><i class="mtag ${CATC[m.cat] || ''}">${m.cat}</i>${m.opts && !m.done ? '<small>Karar</small>' : ''}</span></button>`;
+      out += `<button class="mail-row ${m.id === U.mail ? 'on' : ''} ${m.read ? '' : 'new'}" data-a="mail" data-id="${m.id}">${FM.icon(m.opts ? 'inbox' : 'mail')}<span class="mt"><strong>${esc(m.title)}</strong><small>${esc(m.from)}</small></span><span class="mr"><i class="mtag ${CATC[m.cat] || ''}">${m.cat}</i>${m.opts && !m.done ? '<small>Karar</small>' : m.conf ? `<small>${m.conf.done ? (m.conf.exp ? 'Kaçırıldı' : 'Tamamlandı') : 'Toplantı'}</small>` : ''}</span></button>`;
     }
     return out;
   }
@@ -398,7 +398,7 @@
     const foot = m.opts ? `<div class="mail-foot"><span class="${open ? 'wait' : 'done'}">${FM.icon('clock')} ${open ? 'Karar bekliyor' : esc(m.result || 'Karar verildi')}</span><span class="row">${p ? `<button class="btn" data-a="player" data-id="${p.id}">İncele</button>` : ''}${open ? `<button class="btn primary" data-a="mail-decide" ${U.mailPick == null ? 'disabled' : ''}>Kararı ver</button>` : ''}</span>${open && U.mailPick == null ? '<small>Önce bir cevap seç</small>' : ''}</div>` : '';
     return `<article class="mail-body"><button class="link mail-back" data-a="mail-back">‹ Gelen kutusu</button>
       <header><div class="mail-ic">${FM.icon(m.opts ? 'inbox' : 'mail')}</div><div><small>${esc(m.from)}</small><h3>${esc(m.title)}</h3></div><div class="mail-meta"><i class="mtag ${CATC[m.cat] || ''}">${m.cat}</i><small>${dt.d}</small></div></header>
-      <p class="mail-text">${esc(m.body)}</p>${card}${opts}${foot}</article>`;
+      <p class="mail-text">${esc(m.body)}</p>${m.conf && FM.ui.confDetail ? FM.ui.confDetail(m) : card + opts + foot}</article>`;
   }
   function viewInbox() {
     const todo = pending().length, un = unread().length;
@@ -453,7 +453,7 @@
   const VIEWS = { youth: viewYouth, euro: viewEuro, stats: viewStats, social: viewSocial, inbox: viewInbox, career: viewCareer, home: viewHome, squad: viewSquad, tactics: viewTactics, fixtures: viewFixtures, table: viewTable, transfer: viewTransfer, training: viewTraining, club: viewClub };
   function render(keepScroll) {
     const G = FM.G, app = $('app'), y = window.scrollY;
-    if (!G) { app.innerHTML = startScreen(); return; }
+    if (!G) { app.innerHTML = U.screen === 'new' || !FM.ui.menuScreen ? startScreen() : FM.ui.menuScreen(); if (FM.ui.after) FM.ui.after(); return; }
     if (G.phase === 'sacked') { app.innerHTML = sackedScreen(); return; }
     if (G.phase === 'seasonEnd') { app.innerHTML = seasonScreen(); confettiBurst(); return; }
     app.innerHTML = shell(VIEWS[U.view]());
@@ -461,6 +461,7 @@
     if (U.tour) { U.tour.dispose(); U.tour = null; }
     if ($('stPrev')) stadiumTour($('stPrev'));
     countBalance();
+    if (FM.ui.after) FM.ui.after();
   }
   function countBalance() {
     const el = $('bal'), to = FM.G.fin.balance, from = U.shownBal;
@@ -486,7 +487,7 @@
       host.appendChild(c);
     }
   }
-  function playMatch() {
+  function playMatch(force) {
     const G = FM.G, t = me(), mid = G.cupDue ? 'cup' : G.euroDue ? 'euro' : null;
     const tie = mid === 'cup' ? FM.cupTie() : mid === 'euro' ? FM.euroTie() : null;
     const name = mid === 'cup' ? 'Kupa · ' + G.cup.name : mid === 'euro' ? 'Kıta Kupası · ' + FM.EURO_ROUNDS[G.euro.round] : '';
@@ -496,8 +497,15 @@
     const changed = FM.ensureLineup(t);
     if (t.lineup.filter(x => x != null).length < 11) toast('Sahaya 11 kişiden az çıkıyorsun: uygun oyuncu yok.', 'bad');
     else if (changed.length) toast('Kadro güncellendi: ' + changed.map(id => P(id).name).join(', ') + ' ilk 11\'e girdi.');
-    FM.Audio.init();
     const opts = mid === 'cup' ? { cup: true, neutral: G.cup.final } : mid === 'euro' ? { cup: G.euro.round >= 3, euro: true, neutral: G.euro.round === 5 } : {};
+    const ctx = { mid, fx, name, opts, finish };
+    if (FM.ui.preMatch && !force) return FM.ui.preMatch(ctx);
+    startMatch(ctx, {});
+  }
+  /* Maçı başlat (maç öncesi ekranından ya da doğrudan); extra: { kit, ban } */
+  function startMatch(ctx, extra) {
+    const G = FM.G, t = me(), { mid, fx, name, opts, finish } = ctx;
+    FM.Audio.init();
     const m = FM.newMatch(fx, opts), wk = G.week;
     FM.MatchView.start(m, () => {
       FM.finishMatch(m);
@@ -507,18 +515,18 @@
       U.view = 'home'; U.fxWeek = null; U.sel = null;
       render(); window.scrollTo(0, 0);
       if (mid) cupModal(name, ties); else if (!G.phase) weekModal(wk);
-    }, { comp: mid ? name : `${FM.DIV_TR[t.div]} · ${G.week + 1}. hafta` });
+    }, { comp: mid ? name : `${FM.DIV_TR[t.div]} · ${G.week + 1}. hafta`, ...(extra || {}) });
   }
   function weekModal(wk) {
     const G = FM.G, l = G.fin.last;
     modal(`<h3>${wk + 1}. hafta sonuçları</h3><ul class="fxl">${G.fixtures[me().div][wk].map(f => fxRow(f)).join('')}</ul>
       <p class="fin-line">Haftalık bilanço: <b class="${l.net >= 0 ? 'pos-v' : 'neg-v'}">${l.net >= 0 ? '+' : ''}${money(l.net)}</b>${l.att ? ` · ${l.att.toLocaleString('tr-TR')} seyirci` : ''}</p>
-      <div class="row end"><button class="btn primary" data-a="close">Tamam</button></div>`, true);
+      <div class="row end">${FM.ui.confBtn ? FM.ui.confBtn() : ''}<button class="btn primary" data-a="close">Tamam</button></div>`, true);
   }
   function cupModal(name, ties) {
     const c = FM.G.cup;
     modal(`<h3>${name}</h3><ul class="fxl">${ties.map(f => fxRow(f)).join('')}</ul>${c.winner != null ? `<p class="fin-line"><img src="assets/trophy.svg" alt="" width="28" height="32"> Kupa ${T(c.winner).name} takımının!</p>` : ''}
-      <div class="row end"><button class="btn primary" data-a="close">Tamam</button></div>`, true);
+      <div class="row end">${FM.ui.confBtn ? FM.ui.confBtn() : ''}<button class="btn primary" data-a="close">Tamam</button></div>`, true);
   }
   function exportModal() {
     modal(`<h3>Kaydı dışa aktar</h3><p class="muted">Bu metni kopyalayıp sakla. Başka cihazda “Kayıt yükle” ile yapıştır.</p><textarea id="saveText" readonly rows="6">${esc(FM.exportSave())}</textarea><div class="row end"><button class="btn primary" data-a="copy-save">Kopyala</button></div>`, true);
@@ -531,11 +539,11 @@
     const G = FM.G, say = r => toast(r.msg, r.ok ? 'good' : 'bad');
     switch (a) {
       case 'pick-team': U.pickTeam = +d.id; { const v = $('mgr').value, y = window.scrollY; render(); $('mgr').value = v; window.scrollTo(0, y); } break;
-      case 'start': FM.Audio.init(); FM.newGame(U.pickTeam, $('mgr').value.trim()); U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); break;
+      case 'start': FM.Audio.init(); FM.setSlot(U.newSlot || FM.slot()); FM.newGame(U.pickTeam, $('mgr').value.trim()); U.screen = null; U.hist = ['home']; U.hi = 0; U.tourStep = FM.Settings && !FM.Settings.get('tourDone') ? 0 : null; U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); break;
       case 'tab': go(d.v); break;
       case 'back': if (U.hi > 0) go(U.hist[--U.hi], true); break;
       case 'fwd': if (U.hi < U.hist.length - 1) go(U.hist[++U.hi], true); break;
-      case 'settings': U.confirmReset = false; settingsModal(); break;
+      case 'settings': U.confirmReset = false; if (FM.ui.openSettings) FM.ui.openSettings(); else settingsModal(); break;
       case 'sound-set': FM.Audio.init(); FM.Audio.toggle(); settingsModal(); break;
       case 'mail': { const m = G.inbox.find(x => x.id === +d.id); if (m) { m.read = true; U.mail = m.id; U.mailPick = null; U.mailOpen = true; FM.save(); render(true); } } break;
       case 'mail-pick': U.mailPick = +d.v; $('mailMain').innerHTML = mailDetail(); break;
@@ -574,11 +582,11 @@
       case 'ticket': FM.setTicket(G.fin.ticket + +d.v); render(true); break;
       case 'cmp': U[d.k] = +el.value; render(true); break;
       case 'upgrade': say(FM.upgrade(d.v)); render(true); break;
-      case 'buy': { const r = FM.buy(+d.id, !!d.h); say(r); if (r.ok) { closeModal(); render(true); } } break;
+      case 'buy': { if (!d.h && FM.ui.acts['neg-open']) { FM.ui.acts['neg-open']({ id: d.id, k: 'sign' }); break; } const r = FM.buy(+d.id, !!d.h); say(r); if (r.ok) { closeModal(); render(true); } } break;
       case 'loan-in': { const r = FM.loanIn(+d.id); say(r); if (r.ok) { closeModal(); render(true); } } break;
       case 'loan-out': { const r = FM.loanOut(+d.id); say(r); if (r.ok) { closeModal(); render(true); } } break;
       case 'scout': { const r = FM.scout(+d.id); say(r); if (r.ok) { closeModal(); render(true); } } break;
-      case 'renew': { const r = FM.renew(+d.id); say(r); if (r.ok) { render(true); playerModal(+d.id); } } break;
+      case 'renew': { if (FM.ui.acts['neg-open']) { FM.ui.acts['neg-open']({ id: d.id, k: 'renew' }); break; } const r = FM.renew(+d.id); say(r); if (r.ok) { render(true); playerModal(+d.id); } } break;
       case 'talk': { const r = FM.talk(+d.id, d.k); say(r); if (r.msg.indexOf('zaten') < 0) playerModal(+d.id); } break;
       case 'press': { const r = FM.answerPress(+d.v); if (r) { const f = r.fx, parts = []; if (f.fans) parts.push(`taraftar ${f.fans > 0 ? '+' : ''}${f.fans}`); if (f.board) parts.push(`yönetim ${f.board > 0 ? '+' : ''}${f.board}`); if (f.mor) parts.push(`moral ${f.mor > 0 ? '+' : ''}${f.mor}`); toast(parts.length ? 'Açıklamanın etkisi: ' + parts.join(', ') : 'Açıklaman yankı uyandırmadı.'); } render(true); } break;
       case 'sell-ask': {
@@ -602,12 +610,13 @@
       case 'reset-no': U.confirmReset = false; settingsModal(); break;
       case 'reset-yes': closeModal(); FM.reset(); U.confirmReset = false; U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); break;
       case 'new-season': FM.startNewSeason(); U.view = 'home'; render(); window.scrollTo(0, 0); break;
+      default: if (FM.ui.acts[a]) FM.ui.acts[a](d, el);
     }
   }
   document.addEventListener('click', e => {
     if (e.target.id === 'modal') return closeModal();
     if (!e.target.closest('.gsearch') && $('gsr')) $('gsr').hidden = true;
-    const el = e.target.closest('[data-a]'); if (!el || el.disabled || el.type === 'checkbox' || el.tagName === 'SELECT') return;
+    const el = e.target.closest('[data-a]'); if (!el || el.disabled || el.type === 'checkbox' || el.type === 'range' || el.type === 'color' || el.tagName === 'SELECT') return;
     if (el.closest('.gsr')) { $('gsr').hidden = true; $('gsearch').value = ''; }
     act(el.dataset.a, el.dataset, el);
   });
@@ -621,10 +630,12 @@
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('modal').hidden) closeModal();
+    else if (e.key === 'Escape' && $('press') && !$('press').hidden) FM.ui.acts['press-close']();
+    else if (e.key === 'Escape' && $('pre') && !$('pre').hidden) FM.ui.acts['pre-close']();
     if (e.key === 'Enter' && e.target.matches('tr[data-a]')) act(e.target.dataset.a, e.target.dataset, e.target);
     if (e.key === 'Enter' && e.target.id === 'mgr') act('start', {}, e.target);
   });
 
-  FM.load();
-  render();
+  /* Ek arayüz modüllerinin (ui-more.js) kullandığı yardımcılar */
+  FM.ui = { U, $, esc, toast, modal, closeModal, render, go, me, stars, posChip, fitBar, status, ovrB, ovrCls, fmtR, meter, gauge, spark, playerRows, P_HEAD, VIEWS, GROUPS, playerModal, teamModal, playMatch, startMatch, fxRow, cupModal, weekModal, pending, settingsModal, acts: {} };
 })();

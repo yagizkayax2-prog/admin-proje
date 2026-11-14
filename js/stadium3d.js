@@ -37,7 +37,9 @@
     const add = (geo, m, x, y, z) => { const mesh = new T3.Mesh(geo, m); disposables.push(geo); if (x != null) mesh.position.set(x, y, z); scene.add(mesh); return mesh; };
     const cv2 = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; };
     const home = o.home, away = o.away;
-    const dkHex = lum(home.c1) <= lum(home.c2) ? home.c1 : home.c2, ltHex = dkHex === home.c1 ? home.c2 : home.c1, inkHex = Math.abs(lum(dkHex) - lum(ltHex)) < 70 ? '#f3efe4' : ltHex;
+    let dkHex = lum(home.c1) <= lum(home.c2) ? home.c1 : home.c2, ltHex = dkHex === home.c1 ? home.c2 : home.c1, inkHex = Math.abs(lum(dkHex) - lum(ltHex)) < 70 ? '#f3efe4' : ltHex;
+    const BAN = o.banners || null, PROT = BAN && BAN.protest;
+    if (PROT) { dkHex = '#141416'; ltHex = '#e6e6e6'; inkHex = '#e53935'; }   // protesto: siyah-beyaz zemin, kırmızı yazı
     const DK = rgb(dkHex), LT = rgb(ltHex), H1 = rgb(home.c1), H2 = rgb(home.c2), A1 = rgb(away.c1), A2 = rgb(away.c2);
 
     /* ---- zemin ve saha ---- */
@@ -82,7 +84,7 @@
         const awayB = !lower ? u > .3 && u < .41 : u > .31 && u < .36 && t < 4, aisle = i % 18 === 0;
         ng.fillStyle = '#080b11'; ng.fillRect(x, y, CELL, CELL); tg.fillStyle = '#080b11'; tg.fillRect(x, y, CELL, CELL);
         if (aisle) continue;
-        if (Math.random() > o.fill * (awayB ? .85 : 1)) ng.fillStyle = shade([30, 36, 50], dim * .7);
+        if (Math.random() > o.fill * (awayB ? .85 : 1)) ng.fillStyle = shade(o.seatFn && !awayB ? o.seatFn(u, j / (TH / CELL), lower) : [30, 36, 50], dim * (o.seatFn && !awayB ? .62 : .7));   // boş koltuk: kulübün koltuk deseni
         else { const pal = awayB ? [A1, A1, A2, [60, 68, 90]] : [H1, H1, H1, H2, H2, [216, 194, 168], [43, 49, 64], [84, 96, 122]]; ng.fillStyle = shade(pal[(Math.random() * pal.length) | 0], dim * (.8 + Math.random() * .3) * .42); }
         ng.fillRect(x, y, CELL - 1.2, CELL - 1.2);
         const tcol = awayB ? (Math.floor(i / 5 + j / 3) % 2 ? A1 : A2) : farS ? DK : nearS ? (Math.floor(i / 14) % 2 ? H1 : H2) : (Math.floor(j / 5 + (lower ? 0 : 1)) % 2 ? LT : DK);
@@ -91,7 +93,9 @@
       if (text) {
         tg.fillStyle = inkHex; tg.textAlign = 'center'; tg.textBaseline = 'middle';
         tg.font = "800 190px 'Barlow Condensed', Impact, sans-serif";
-        tg.fillText(text, TW * .14, TH * .54, TW * .23);
+        const fs = Math.min(190, 190 * TW * .25 / Math.max(1, tg.measureText(text).width));   // uzun yazı sığacak şekilde küçülür
+        tg.font = `800 ${Math.round(fs)}px 'Barlow Condensed', Impact, sans-serif`;
+        tg.fillText(text, TW * .14, TH * .54, TW * .26);
         tg.strokeStyle = 'rgba(8,11,17,.5)'; tg.lineWidth = 1.2; tg.beginPath();
         for (let x = 0; x < TW * .28; x += CELL) { tg.moveTo(x - .6, 0); tg.lineTo(x - .6, TH); }
         for (let y = 0; y < TH; y += CELL) { tg.moveTo(0, y - .6); tg.lineTo(TW * .28, y - .6); }
@@ -110,8 +114,9 @@
       tiers.push({ nc, tc, cc, cg, map, mesh, d0, h0, d1, h1, lower });
     }
     const up1 = home.name.split(' ')[0].toLocaleUpperCase('tr');
-    buildTier(true, 7, 1.2, 25, 11, 'ÖLÜMÜNE ' + up1 + '!');
-    buildTier(false, 27.5, 14.5, 48, 33, o.banner || 'BURASI ' + home.stadium.toLocaleUpperCase('tr'));
+    const CH = BAN ? BAN.choreo : ['ÖLÜMÜNE ' + up1 + '!', o.banner || 'BURASI ' + home.stadium.toLocaleUpperCase('tr')];
+    buildTier(true, 7, 1.2, 25, 11, CH[0]);
+    buildTier(false, 27.5, 14.5, 48, 33, CH[1]);
     // katlar arası alın ve arka duvar
     function band(d0, h0, d1, h1, color, filter) {
       const pos = [];
@@ -218,12 +223,14 @@
     const scr = (x, y, z) => { v.set(x, y, z).project(camera); return [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H]; };
     const proj = (x, y) => { const wxx = (x - .5) * 2 * A0, wz = (y - .5) * 2 * B0, a = scr(wxx, 0, wz), b = scr(wxx + 1, 0, wz); return { X: a[0], Y: a[1], s: Math.abs(b[0] - a[0]) / ref }; };
     let lastKey = '';
-    const homeItems = FM.bannerTexts(home), bH = 58, bY = TH - bH - 4;
+    /* Asılı pankartlar: maç durumuna göre seçilen metinler (protestoda siyah-kırmızı), yoksa kulübün sabit pankartları */
+    const UP = x => x.toLocaleUpperCase('tr'), homeItems = BAN ? [UP(BAN.hang[2] ? BAN.hang[2].t : FM.fansOf(home)), UP(BAN.hang[1].t), PROT ? 'YÖNETİM İSTİFA!' : UP(FM.fansOf(home)), UP(BAN.hang[3] ? BAN.hang[3].t : BAN.hang[0].t), UP(BAN.hang[4] ? BAN.hang[4].t : BAN.hang[0].t)] : FM.bannerTexts(home), bH = 58, bY = TH - bH - 4;
+    const banTeam = PROT ? { c1: '#141416', c2: '#e53935' } : home;
     function paintStandBanners(g) {
       g.globalAlpha = 1;
-      if (inc(.14, true)) FM.paintBanners(g, TW * .006, bY, TW * (SEG[1] - .012), bH, home, homeItems, 2, false);
-      if (inc(.64, true)) FM.paintBanners(g, TW * (SEG[4] + .02), bY, TW * (SEG[5] - SEG[4] - .04), bH, home, [homeItems[0], homeItems[2], homeItems[3]], 1, true);
-      if (away && away.name && inc(.32, true)) FM.paintBanners(g, TW * .296, bY, TW * .05, bH, away, [FM.fansOf(away).toLocaleUpperCase('tr')], 0, false);
+      if (inc(.14, true)) FM.paintBanners(g, TW * .006, bY, TW * (SEG[1] - .012), bH, banTeam, homeItems, 2, false);
+      if (inc(.64, true)) FM.paintBanners(g, TW * (SEG[4] + .02), bY, TW * (SEG[5] - SEG[4] - .04), bH, banTeam, [homeItems[0], homeItems[2], homeItems[3]], 1, true);
+      if (away && away.name && inc(.32, true)) FM.paintBanners(g, TW * .296, bY, TW * .05, bH, away, [BAN ? UP(BAN.away[0].t) : FM.fansOf(away).toLocaleUpperCase('tr')], 0, false);
     }
     function compose(al, rv) {
       const key = al.toFixed(2) + '|' + rv.toFixed(2); if (key === lastKey) return; lastKey = key;

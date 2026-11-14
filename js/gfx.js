@@ -67,6 +67,14 @@
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     inbox: '<path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5"/>',
     career: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM5 5h3M16 5h3M12 13v4M8 20h8"/>',
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    back: '<path d="M15 5l-7 7 7 7"/>',
+    check: '<path d="M4 12l5 5L20 6"/>',
+    press: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M8 6V4h8v2"/>',
+    staff: '<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.500 18c.700-2.300 2.300-3.500 4.500-3.500s3.800 1.200 4.500 3.500"/>',
+    med: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>',
+    scout: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.500-4.500"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.500 3 14.500 0 18M12 3c-3 3.500-3 14.500 0 18"/>',
     world: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
     team: '<circle cx="9" cy="8" r="3.500"/><path d="M2 20c0-4 3-6.500 7-6.500s7 2.500 7 6.500M16 5a3.500 3.500 0 0 1 0 7M18 13.500c2.500.700 4 2.800 4 6.500"/>'
   };
@@ -107,13 +115,13 @@
 
   /* ---------- Ses (WebAudio ile sentezlenir, dosya gerekmez) ---------- */
   FM.Audio = (function () {
-    let ctx = null, master = null, crowdG = null, muted = false;
+    let ctx = null, master = null, crowdG = null, muted = false, vol = .7;
     try { muted = localStorage.getItem('saha-kenari-mute') === '1'; } catch (e) { /* yok say */ }
     function init() {
       if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
       try {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
-        master = ctx.createGain(); master.gain.value = muted ? 0 : .7; master.connect(ctx.destination);
+        master = ctx.createGain(); master.gain.value = muted ? 0 : vol; master.connect(ctx.destination);
       } catch (e) { ctx = null; }
     }
     function noise(sec) {
@@ -175,9 +183,10 @@
       toggle() {
         muted = !muted;
         try { localStorage.setItem('saha-kenari-mute', muted ? '1' : '0'); } catch (e) { /* yok say */ }
-        if (master) master.gain.value = muted ? 0 : .7;
+        if (master) master.gain.value = muted ? 0 : vol;
         return muted;
-      }
+      },
+      setVol(v) { vol = v; if (master) master.gain.value = muted ? 0 : vol; }
     };
   })();
 })();
