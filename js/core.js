@@ -521,7 +521,7 @@
     if (d == null) d = T(G.teamId).div;
     const rows = {};
     for (const t of divTeams(d)) rows[t.id] = { id: t.id, pl: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, form: [] };
-    for (const rd of G.fixtures[d]) for (const f of rd) {
+    for (const rd of G.fixtures[d] || []) for (const f of rd) {
       if (f.hs == null) continue;
       const h = rows[f.h], a = rows[f.a];
       h.pl++; a.pl++; h.gf += f.hs; h.ga += f.as; a.gf += f.as; a.ga += f.hs;
@@ -658,7 +658,7 @@
   const squadValue = t => t.players.reduce((s, id) => s + P(id).value, 0);
   function stadiumTier(t) { const v = squadValue(t) / 1e6 + (t.fac.stadium - 1) * 10; return v < 12 ? 1 : v < 24 ? 2 : v < 42 ? 3 : v < 62 ? 4 : 5; }
   function stadiumCap(t) { return Math.round((FM.Ext && G && t.id === G.teamId ? FM.Ext.capMult() : 1) * (3000 + stadiumTier(t) * 7500) * (1 + (t.fac.stadium - 1) * .12) / 100) * 100; }
-  function newCup() { const cc = ccOf(T(G.teamId).div); return { alive: G.teams.filter(t => t.div !== 2 && ccOf(t.div) === cc).map(t => t.id), ties: [], hist: [], winner: null, name: '', final: false }; }
+  function newCup() { const cc = ccOf(T(G.teamId).div); return { alive: G.teams.filter(t => t.div !== 2 && (!G.lg || G.lg[t.div]) && ccOf(t.div) === cc).map(t => t.id), ties: [], hist: [], winner: null, name: '', final: false }; }
   function setupClub(me) {
     const wages = wageBill(me);
     G.fin = { balance: 1500000 + me.rep * 2500000 - tierOf(me) * 1000000, sponsor: Math.round(wages * .8 / 1000) * 1000, last: null, hist: [] };
@@ -668,13 +668,16 @@
     me.ment = 1; ensureLineup(me);
   }
   function addLeagues(setup) {
-    G.lg = { 0: { cc: 'TR', tier: 0, mode: 'play' }, 1: { cc: 'TR', tier: 1, mode: 'play' } };
+    const tiersOf = o => (o && o.leagues ? o.leagues.slice() : Array.from({ length: Math.min(2, (o && o.depth) || 2) }, (_, i) => i)).filter(x => x === 0 || x === 1).sort();
+    const trT = setup && setup.countries && setup.countries.TR ? tiersOf(setup.countries.TR) : [0, 1];
+    G.lg = { 0: { cc: 'TR', tier: 0, mode: 'play' } };
+    if (trT.includes(1)) G.lg[1] = { cc: 'TR', tier: 1, mode: 'play' };
     let div = 3; const keyId = {};
     G.teams.forEach((t, i) => { t.key = 'TR:' + i; t.cc = 'TR'; keyId[t.key] = t.id; if (FM.World) { const c = FM.World.clubs('TR')[i]; if (c) t.info = c.info; } });
     for (const cc of Object.keys((setup && setup.countries) || {})) {
       if (cc === 'TR' || !FM.COUNTRIES[cc] || !FM.World) continue;
       const o = setup.countries[cc], all = FM.World.clubs(cc);
-      for (let tier = 0; tier < Math.min(2, o.depth || 1); tier++) {
+      for (const tier of tiersOf(o)) {
         G.lg[div] = { cc, tier, mode: o.mode === 'view' ? 'view' : 'play' };
         foreignGen = true;
         for (const c of all.filter(x => x.tier === tier)) {
@@ -869,8 +872,8 @@
   function sack() {
     const me = T(G.teamId);
     G.phase = 'sacked';
-    const lower = G.teams.filter(t => t.div !== 2 && t.id !== me.id && (t.rep - tierOf(t) * 2) < (me.rep - tierOf(me) * 2)).sort(() => R() - .5);
-    G.jobOffers = (lower.length >= 3 ? lower : G.teams.filter(t => t.div !== 2 && t.id !== me.id).sort(() => R() - .5)).slice(0, 3).map(t => t.id);
+    const lower = G.teams.filter(t => t.div !== 2 && (!G.lg || G.lg[t.div]) && t.id !== me.id && (t.rep - tierOf(t) * 2) < (me.rep - tierOf(me) * 2)).sort(() => R() - .5);
+    G.jobOffers = (lower.length >= 3 ? lower : G.teams.filter(t => t.div !== 2 && (!G.lg || G.lg[t.div]) && t.id !== me.id).sort(() => R() - .5)).slice(0, 3).map(t => t.id);
     news(`${me.name} yönetimi ${G.manager} ile yollarını ayırdı.`, 'bad');
     hook('sacked', me);
   }
@@ -925,7 +928,7 @@
     G.board = clamp(G.board + (pos <= exp ? 10 : -8), 0, 100);
     G.jobOffers = [];
     if (pos <= Math.max(1, exp - 2) || champ) {
-      G.jobOffers = G.teams.filter(t => t.div !== 2 && t.id !== me.id && (t.rep - tierOf(t) * 2) > (me.rep - tierOf(me) * 2)).sort(() => R() - .5).slice(0, 2).map(t => t.id);
+      G.jobOffers = G.teams.filter(t => t.div !== 2 && (!G.lg || G.lg[t.div]) && t.id !== me.id && (t.rep - tierOf(t) * 2) > (me.rep - tierOf(me) * 2)).sort(() => R() - .5).slice(0, 2).map(t => t.id);
     }
     G.summary = { season: G.season, div: me.div, pos, exp, prize, champion: tbs[0][0].id, top: top ? { name: top.name, g: top.g, tid: top.tid } : null, table: tb.slice(0, 3).map(r => r.id), up, down, cup: G.cup.winner };
     G.summary.awards = awards(me.div); G.euroQ = tbs[0].slice(0, 4).map(r => r.id); G.summary.euro = G.euro ? G.euro.winner : null;

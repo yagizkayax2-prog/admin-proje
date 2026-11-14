@@ -26,7 +26,7 @@
     const used = new Set();
     C.towns.forEach((town, i) => {
       const tier = i < 12 ? 0 : 1, k = i % 12, pre = C.pre[Math.floor(r() * C.pre.length)], suf = C.suf[Math.floor(r() * C.suf.length)];
-      let name = (pre ? (r() < .3 && suf ? [pre, town, suf] : [pre, town]) : [town, suf || 'FC']).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      let name = (pre ? (r() < .3 && suf && suf !== pre ? [pre, town, suf] : [pre, town]) : [town, suf || 'FC']).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
       if (used.has(name)) name = town + ' ' + (C.suf.find(x => x && !used.has(town + ' ' + x)) || 'FC');
       used.add(name);
       const c1 = PALETTE[Math.floor(r() * PALETTE.length)]; let c2 = PALETTE[Math.floor(r() * PALETTE.length)];
@@ -49,12 +49,13 @@
     };
     return c;
   }
+  const tiers = o => (o.leagues ? o.leagues.slice().sort() : Array.from({ length: o.depth || 1 }, (_, i) => i));
   /* Seçilen ülkelerin ligleri ve kulüpleri (oyun kurulmadan önce takım seçme ekranı için) */
   function leagues(setup) {
     const out = [];
     for (const cc of Object.keys(setup.countries)) {
       const o = setup.countries[cc], C = FM.COUNTRIES[cc], all = clubs(cc);
-      for (let tier = 0; tier < (o.depth || 1); tier++) out.push({ cc, tier, name: C.l[tier], mode: o.mode, clubs: all.filter(c => c.tier === tier) });
+      for (const tier of tiers(o)) out.push({ cc, tier, name: C.l[tier], mode: o.mode, clubs: all.filter(c => c.tier === tier) });
     }
     return out;
   }
@@ -81,11 +82,11 @@
   /* Kulüp başına oyuncu sayısı ve kayıt boyutu tahmini */
   function estimate(setup) {
     let teams = 0, play = 0;
-    for (const cc of Object.keys(setup.countries)) { const o = setup.countries[cc], n = 12 * (o.depth || 1); teams += n; if (o.mode === 'play') play += n; }
+    for (const cc of Object.keys(setup.countries)) { const o = setup.countries[cc], n = 12 * tiers(o).length; teams += n; if (o.mode === 'play') play += n; }
     teams += 12;   // Kıta Kupası kulüpleri
     const players = teams * 22 + 28 + 14, kb = Math.round(teams * 12.5 + 150);
     const speed = play <= 48 ? 'Hızlı' : play <= 96 ? 'Dengeli' : play <= 144 ? 'Yavaş' : 'Çok yavaş';
     return { teams, players, kb, speed, play };
   }
-  FM.World = { clubs, leagues, repName, finName, facName, expectLabel, kit, estimate, profile, LIMIT_KB: 4300 };
+  FM.World = { tiers, clubs, leagues, repName, finName, facName, expectLabel, kit, estimate, profile, LIMIT_KB: 4300 };
 })();

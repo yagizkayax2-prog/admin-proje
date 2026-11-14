@@ -3,7 +3,8 @@
 (function () {
   const UI = FM.ui, { U, $, esc, toast, render, acts } = UI, W = FM.World;
   const flag = cc => { const f = FM.COUNTRIES[cc].f; return `<span class="flag" aria-hidden="true">${f.map(c => `<i style="background:${c}"></i>`).join('')}</span>`; };
-  const defSetup = () => ({ countries: { TR: { depth: 2, mode: 'play' } } });
+  const defSetup = () => ({ countries: { TR: { leagues: [0, 1], mode: 'play' } } });
+  const lgsOf = o => W.tiers(o);
   const PRESETS = [
     ['Sadece Türkiye', 'İki lig, en hızlı oyun.', { TR: [2, 'play'] }],
     ['Avrupa\'nın büyükleri', 'Türkiye ve beş büyük lig.', { TR: [2, 'play'], EN: [1, 'play'], ES: [1, 'play'], DE: [1, 'play'], IT: [1, 'play'], FR: [1, 'view'] }],
@@ -19,7 +20,7 @@
   function dbHtml() {
     const N = S(), cs = N.setup.countries, ccs = Object.keys(cs), e = W.estimate(N.setup), over = e.kb > W.LIMIT_KB;
     const rows = ccs.map(cc => { const C = FM.COUNTRIES[cc], o = cs[cc]; return `<tr><td class="l"><span class="db-c">${flag(cc)}<strong>${C.n}</strong>${C.base ? '<small>temel ülke</small>' : ''}</span></td>
-      <td><select data-a="db-depth" data-cc="${cc}" aria-label="${C.n} lig seçici"><option value="1" ${o.depth === 1 ? 'selected' : ''}>${esc(C.l[0])}</option><option value="2" ${o.depth === 2 ? 'selected' : ''}>${esc(C.l[1])} ve üstü</option></select></td>
+      <td><div class="lg-chips">${C.l.map((ln, t) => { const on = lgsOf(o).includes(t), lock = C.base && t === 0; return `<button class="lg-chip ${on ? 'on' : ''}" data-a="db-lg" data-cc="${cc}" data-v="${t}" ${lock ? 'disabled title="Temel lig kaldırılamaz"' : ''} aria-pressed="${on}">${on ? (lock ? '●' : '✓') : '+'} ${esc(ln)}</button>`; }).join('')}</div></td>
       <td><select data-a="db-mode" data-cc="${cc}" aria-label="${C.n} ayarı" ${C.base ? 'disabled' : ''}><option value="play" ${o.mode === 'play' ? 'selected' : ''}>Oynanabilir</option><option value="view" ${o.mode === 'view' ? 'selected' : ''}>Yalnızca izle</option></select></td>
       <td class="r">${C.base ? '' : `<button class="btn icon" data-a="db-del" data-cc="${cc}" aria-label="${C.n} ülkesini kaldır">×</button>`}</td></tr>`; }).join('');
     const ring = { 'Hızlı': 25, 'Dengeli': 55, 'Yavaş': 80, 'Çok yavaş': 100 }[e.speed];
@@ -28,19 +29,24 @@
         <section class="card"><h2>Oyunun başlangıç tarihi</h2><p class="ns-date">${FM.fmtDate(1, 0).d} · sezon öncesi</p><p class="muted">Hangi ülkelerin liglerinin kurulacağını seç. Oynanabilir liglerde maçlar tam maç motoruyla oynanır, kulüplerini yönetebilirsin. Yalnızca izlenen liglerde sonuçlar hızlı hesaplanır.</p></section>
         <section class="card"><h2>Hazır kurulumlar</h2><div class="opts">${PRESETS.map((p, i) => `<button class="opt" data-a="db-preset" data-v="${i}"><strong>${p[0]}</strong><span>${p[1]}</span></button>`).join('')}</div></section>
       </aside>
-      <section class="card ns-main"><div class="ns-bar"><button class="btn primary" data-a="db-add">Ülke ekle +</button><span class="chip">Erkek futbol ligleri · ${ccs.reduce((a, cc) => a + cs[cc].depth, 0)}</span></div>
+      <section class="card ns-main"><div class="ns-bar"><div class="row"><button class="btn primary" data-a="db-add">Ülke ekle +</button><button class="btn" data-a="db-add-lg">Lig ekle +</button></div><span class="chip">Aktif ligler · ${ccs.reduce((a, cc) => a + lgsOf(cs[cc]).length, 0)}</span></div>
         <h2>Aktif durumdaki ülkeler <small>(${ccs.length})</small></h2>
-        <div class="scroll"><table class="tbl db-t"><thead><tr><th class="l">Ülke</th><th class="l">Lig seçici</th><th class="l">Ayar</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section></div>
+        <div class="scroll"><table class="tbl db-t"><thead><tr><th class="l">Ülke</th><th class="l">Ligler <small>(eklemek ya da çıkarmak için dokun)</small></th><th class="l">Ayar</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section></div>
       <footer class="ns-foot"><div class="ns-stats"><span>Veri tabanı boyutu <b>${e.players.toLocaleString('tr-TR')} futbolcu · ${e.teams} kulüp</b></span><span class="speed"><i style="--p:${ring}%"></i>Tahmini oyun hızı <b>${e.speed}</b></span><span class="${over ? 'neg-v' : ''}">Kayıt boyutu ≈ <b>${(e.kb / 1024).toFixed(1).replace('.', ',')} MB</b>${over ? ' · tarayıcı kaydı için çok büyük' : ''}</span></div>
         <div class="row"><button class="btn" data-a="to-menu">İptal</button><button class="btn primary" data-a="db-next" ${over ? 'disabled' : ''}>Veri tabanını yükle ›</button></div></footer>
       ${N.addOpen ? addModal() : ''}</div>`;
   }
   function addModal() {
     const N = S(), have = N.setup.countries, list = Object.keys(FM.COUNTRIES).filter(cc => FM.COUNTRIES[cc].cont === N.addCont);
+    if (N.addMode === 'lg') return `<div class="ns-modal" role="dialog" aria-modal="true" aria-label="Lig ekle"><div class="card"><h2>Lig ekle</h2>
+      <div class="seg wrap">${FM.CONTS.map(c => `<button data-a="db-cont" data-v="${c}" class="${N.addCont === c ? 'on' : ''}">${c}</button>`).join('')}</div>
+      <div class="add-lgs">${list.map(cc => { const C = FM.COUNTRIES[cc]; return `<div class="add-lg"><span class="db-c">${flag(cc)}<strong>${C.n}</strong></span>${C.l.map((ln, t) => { const id = 'al-' + cc + t, cur = have[cc] && lgsOf(have[cc]).includes(t), on = N.addSel[cc + ':' + t] != null ? N.addSel[cc + ':' + t] : cur, lock = C.base && t === 0; return `<label class="add-c" for="${id}"><input type="checkbox" id="${id}" data-a="db-pick-lg" data-cc="${cc}" data-v="${t}" ${on ? 'checked' : ''} ${lock ? 'disabled' : ''}><span>${esc(ln)}</span></label>`; }).join('')}</div>`; }).join('')}</div>
+      <p class="muted">İşaretlediğin ligler eklenir, işaretini kaldırdıkların çıkarılır. Aynı ülkede iki lig varsa aralarında düşme ve yükselme olur; tek lig varsa olmaz.</p>
+      <div class="row end"><button class="btn" data-a="db-add-cancel">İptal</button><button class="btn primary" data-a="db-add-lg-ok">Onayla</button></div></div></div>`;
     return `<div class="ns-modal" role="dialog" aria-modal="true" aria-label="Ülke ekle"><div class="card"><h2>Ülke ekle</h2>
       <div class="seg wrap">${FM.CONTS.map(c => `<button data-a="db-cont" data-v="${c}" class="${N.addCont === c ? 'on' : ''}">${c}</button>`).join('')}</div>
       <div class="add-grid">${list.map(cc => { const on = have[cc] || N.addSel[cc]; return `<label class="add-c ${have[cc] ? 'has' : ''}" for="add-${cc}"><input type="checkbox" id="add-${cc}" data-a="db-pick" data-cc="${cc}" ${on ? 'checked' : ''} ${have[cc] ? 'disabled' : ''}>${flag(cc)}<span>${FM.COUNTRIES[cc].n}</span></label>`; }).join('')}</div>
-      <p class="muted">Eklenen ülkeler önce yalnızca 1. ligiyle ve oynanabilir olarak gelir; tablodan değiştirebilirsin.</p>
+      <p class="muted">Eklenen ülkeler önce yalnızca birinci ligiyle ve oynanabilir olarak gelir. İkinci ligi tablodan ya da “Lig ekle” ile ekleyebilirsin.</p>
       <div class="row end"><button class="btn" data-a="db-add-cancel">İptal</button><button class="btn primary" data-a="db-add-ok">Onayla</button></div></div></div>`;
   }
 
@@ -97,15 +103,32 @@
   UI.newScreen = () => { const N = S(); return N.step === 'team' ? teamHtml() : N.step === 'mgr' ? mgrHtml() : dbHtml(); };
   const keep = () => { const y = window.scrollY; render(); window.scrollTo(0, y); };
   Object.assign(acts, {
-    'db-depth': (d, el) => { S().setup.countries[d.cc].depth = +el.value; keep(); },
+    'db-lg': d => {
+      const N = S(), o = N.setup.countries[d.cc], t = +d.v, cur = lgsOf(o);
+      const next = cur.includes(t) ? cur.filter(x => x !== t) : cur.concat(t).sort();
+      delete o.depth;
+      if (!next.length) { delete N.setup.countries[d.cc]; toast(`${FM.COUNTRIES[d.cc].n} kaldırıldı: hiç ligi kalmadı.`); } else o.leagues = next;
+      keep();
+    },
+    'db-add-lg': () => { const N = S(); N.addOpen = true; N.addMode = 'lg'; N.addSel = {}; keep(); },
+    'db-pick-lg': (d, el) => { S().addSel[d.cc + ':' + d.v] = el.checked; },
+    'db-add-lg-ok': () => {
+      const N = S(), cs = N.setup.countries;
+      for (const k in N.addSel) {
+        const [cc, t] = k.split(':'), tt = +t, o = cs[cc] || (cs[cc] = { leagues: [], mode: 'play' }), cur = lgsOf(o); delete o.depth;
+        o.leagues = (N.addSel[k] ? [...new Set(cur.concat(tt))] : cur.filter(x => x !== tt)).sort();
+        if (!o.leagues.length) delete cs[cc];
+      }
+      N.addOpen = false; keep();
+    },
     'db-mode': (d, el) => { S().setup.countries[d.cc].mode = el.value; keep(); },
     'db-del': d => { delete S().setup.countries[d.cc]; keep(); },
-    'db-preset': d => { const p = PRESETS[+d.v][2], cs = {}; for (const cc in p) cs[cc] = { depth: p[cc][0], mode: p[cc][1] }; S().setup.countries = cs; keep(); },
-    'db-add': () => { const N = S(); N.addOpen = true; N.addSel = {}; keep(); },
+    'db-preset': d => { const p = PRESETS[+d.v][2], cs = {}; for (const cc in p) cs[cc] = { leagues: Array.from({ length: p[cc][0] }, (_, i) => i), mode: p[cc][1] }; S().setup.countries = cs; keep(); },
+    'db-add': () => { const N = S(); N.addOpen = true; N.addMode = 'cc'; N.addSel = {}; keep(); },
     'db-cont': d => { S().addCont = d.v; keep(); },
     'db-pick': (d, el) => { S().addSel[d.cc] = el.checked; },
     'db-add-cancel': () => { S().addOpen = false; keep(); },
-    'db-add-ok': () => { const N = S(); for (const cc in N.addSel) if (N.addSel[cc] && !N.setup.countries[cc]) N.setup.countries[cc] = { depth: 1, mode: 'play' }; N.addOpen = false; keep(); },
+    'db-add-ok': () => { const N = S(); for (const cc in N.addSel) if (N.addSel[cc] && !N.setup.countries[cc]) N.setup.countries[cc] = { leagues: [0], mode: 'play' }; N.addOpen = false; keep(); },
     'db-next': () => { const N = S(); N.step = 'team'; const lg = leagues()[N.lgi] || leagues()[0]; if (!clubOf(N.club)) N.club = lg.clubs[0].key; render(); window.scrollTo(0, 0); },
     'ns-lg': (d, el) => { const N = S(); N.lgi = +el.value; const lg = leagues()[N.lgi]; N.club = lg.clubs.slice().sort((a, b) => b.rep - a.rep)[0].key; keep(); },
     'ns-club': d => { S().club = d.v; keep(); },
