@@ -150,7 +150,7 @@
     return {
       tid: team.id, formation: team.formation, slots: FM.FORMATIONS[team.formation],
       on: team.lineup.slice(), bench: benchOf(team), subsLeft: 5, ment: isUser ? team.ment : 1,
-      tac: { ...team.tac }, sp: { ...team.sp }, yel: {}, played: team.lineup.filter(x => x != null), user: !!isUser,
+      tac: Object.fromEntries(Object.keys(FM.TAC).map(k => [k, team.tac[k] != null ? team.tac[k] : FM.TAC_DEF(team, k)])), sp: { ...team.sp }, yel: {}, played: team.lineup.filter(x => x != null), user: !!isUser,
       plan: isUser && team.plan ? { ...team.plan } : { focus: 0, mark: null }, chem: team.chem == null ? 60 : team.chem, cap: team.cap, start: team.lineup.slice(), mgr: { yc: 0, out: false },
       mod: (isUser && hook('sideMod', team)) || 1, shout: null,
       pi: isUser && team.pi ? { ...team.pi } : {}, spr: isUser && team.spr ? { ...team.spr } : { ck: 'mix', fk: 'direct', wall: 4 }
@@ -190,7 +190,11 @@
     let pr = 0, pu = 0, di = 0;
     if (side.pi) side.on.forEach(id => { const k = id != null && side.pi[id]; if (k === 'press') pr++; else if (k === 'push') pu++; else if (k === 'dist') di++; });
     pr = Math.min(3, pr); pu = Math.min(3, pu); di = Math.min(3, di);
-    const pi = { att: 1 + pu * .01, ctl: 1 + pr * .012 + di * .008, def: 1 - pr * .006 - pu * .008 };   // kariyer etkileri (takvim, hazırlık, devre arası) ve kenardan talimat
+    const pi = { att: 1 + pu * .01, ctl: 1 + pr * .012 + di * .008, def: 1 - pr * .006 - pu * .008 };
+    const tx = side.tac || {}, g3 = (k, a) => a[tx[k] == null ? 1 : tx[k]];   // takım talimatları
+    pi.ctl *= g3('pass', [1.04, 1, .95]) * g3('counter', [1.03, 1, .97]) * g3('tackle', [.98, 1, 1.03]) * g3('compact', [.98, 1, 1.02]);
+    pi.att *= g3('pass', [.98, 1, 1.03]) * g3('counter', [.98, 1, 1.02]) * g3('fb', [.98, 1, 1.03]);
+    pi.def *= g3('fb', [1.02, 1, .97]) * g3('counter', [1.01, 1, .99]) * g3('compact', [1.03, 1, .98]);   // kariyer etkileri (takvim, hazırlık, devre arası) ve kenardan talimat
     return {
       att: Math.max(8, (f + mi * .45) / 3.8 * am * lead * md * (sh.att || 1) * pi.att),
       def: Math.max(8, (d * 1.15 + mi * .25 + gk) / 6.6 * dm * lead * md * (sh.def || 1) * pi.def),
@@ -208,7 +212,7 @@
     if (!outfield.length) return null;
     const inXI = id => id != null && side.on.includes(id) && slotRole(side, id) !== 'GK';
     const x0 = R(), wide = tac.width === 2;
-    const kind = x0 < .014 ? 'pen' : x0 < .12 ? 'fk' : x0 < (wide ? .27 : .2) ? 'ck' : 'open';
+    const kind = x0 < .014 ? 'pen' : x0 < .12 * [.8, 1, 1.25][opp.tac.tackle] ? 'fk' : x0 < .12 * [.8, 1, 1.25][opp.tac.tackle] + (wide ? .15 : .08) + (tac.fb === 2 ? .03 : 0) ? 'ck' : 'open';
     const roleW = { FWD: 5, MID: 2, DEF: .6 };
     let sh, as = null;
     const spr = side.spr || {}, pi = side.pi || {}, cross = kind === 'fk' && spr.fk === 'cross';
@@ -240,12 +244,13 @@
       pg *= kind === 'fk' ? (sh.trait === 'fk' ? 1.25 : .62) : kind === 'ck' ? .8 : 1;
       pg *= [1.06, 1, .95][tac.tempo] * [1.05, 1, .96][tac.width];
       if (opp.tac.line === 2 && kind === 'open') pg *= sh.role === 'SF' ? 1.15 : 1.08;
+      if (kind === 'open') pg *= [1, 1, .96][tac.pass] * [.97, 1, 1.07][opp.tac.trap] * (tac.counter === 2 && opp.ment === 2 ? 1.06 : 1);
       if (sh.trait === 'cool') pg *= 1.08;
       if (sh.trait === 'big' && m.cup) pg *= 1.1;
       pg *= m.wx.t === 'snow' ? .9 : m.wx.t === 'rain' ? .95 : 1;
       pg = clamp(pg * (side._pg || 1) * spF, .03, .45);
     }
-    if (kind === 'open' && R() < .085 * [.7, 1, 1.5][opp.tac.line] * (sh.role === 'SF' ? 1.3 : 1)) { m.st.off[s]++; return { type: 'off', min: m.min, side: s, pid: sh.id, text: txt('off', { p: sh.name }) }; }
+    if (kind === 'open' && R() < .085 * [.7, 1, 1.5][opp.tac.line] * [.55, 1, 1.6][opp.tac.trap] * [.9, 1, 1.25][tac.pass] * (sh.role === 'SF' ? 1.3 : 1)) { m.st.off[s]++; return { type: 'off', min: m.min, side: s, pid: sh.id, text: txt('off', { p: sh.name }) }; }
     m.st.shots[s]++;
     const e = { type: 'chance', kind, min: m.min, side: s, pid: sh.id, aid: as ? as.id : null, kid: keeperId, xg: Math.round(pg * 100) / 100 };
     if (m.xg) m.xg[s] += pg;
@@ -343,14 +348,16 @@
       const side = m.s[s], o = 1 - s, pos = s ? 1 - poss0 : poss0, tac = side.tac;
       const homeF = m.neutral ? 1 : s === 0 ? (side.user ? 1.03 + G.fans / 100 * .07 : 1.07) : .95;
       const pm = planMod(m, s); side._pg = pm.pg;
-      const pc = .142 * (.55 + .9 * pos) * Math.pow(r[s].att / r[o].def, 1.7) * homeF * [.9, 1, 1.1][tac.tempo] * [.96, 1, 1.05][tac.width] * (.75 + .5 * m.terr[s]) * pm.pc * (m.derby && s === 0 ? 1.04 : 1) * (side.fire > m.min ? 1.06 : 1);
-      const np = Math.round(1.5 + 5 * pos + R() * 2), acc = clamp(.66 + (r[s].ctl - 62) * .005 - (m.s[o].tac.press - 1) * .03 - (m.wx.t !== 'clear' ? .03 : 0), .5, .93);
+      const pc = .142 * (.55 + .9 * pos) * Math.pow(r[s].att / r[o].def, 1.7) * homeF * [.9, 1, 1.1][tac.tempo] * [.96, 1, 1.05][tac.width] * (.75 + .5 * m.terr[s]) * pm.pc * (m.derby && s === 0 ? 1.04 : 1) * (side.fire > m.min ? 1.06 : 1)
+        * [.95, 1, 1.04][tac.pass] * (tac.counter === 2 ? (m.s[o].ment === 2 || m.s[o].tac.line === 2 ? 1.1 : 1.02) : tac.counter === 0 ? .96 : 1)
+        * (tac.width === 2 && m.s[o].tac.compact === 0 ? 1.05 : tac.width === 0 && m.s[o].tac.compact === 2 ? 1.05 : 1) * (tac.fb === 2 ? 1.03 : 1);
+      const np = Math.round(1.5 + 5 * pos + R() * 2), acc = clamp(.66 + (r[s].ctl - 62) * .005 - (m.s[o].tac.press - 1) * .03 - (m.s[o].tac.tackle - 1) * .015 + [.04, 0, -.05][tac.pass] - (m.wx.t !== 'clear' ? .03 : 0), .5, .95);
       m.st.pass[s] += np; m.st.passOk[s] += Math.round(np * acc);
-      if (R() < .3 * [.85, 1, 1.25][tac.press] * (1.3 - pos)) m.st.tack[s]++;
+      if (R() < .3 * [.85, 1, 1.25][tac.press] * [.85, 1, 1.2][tac.tackle] * (1.3 - pos)) m.st.tack[s]++;
       if (R() < pc) { const e = chance(m, s, r); if (e) ev.push(e); }
-      if (R() < .14 * (m.wx.t === 'rain' ? 1.15 : 1) * [.9, 1, 1.15][tac.press]) m.st.fouls[s]++;
+      if (R() < .14 * (m.wx.t === 'rain' ? 1.15 : 1) * [.9, 1, 1.15][tac.press] * [.75, 1, 1.35][tac.tackle]) m.st.fouls[s]++;
       const pl = onPitch(side);
-      if (pl.length && R() < .016 * [.9, 1, 1.2][tac.press]) {
+      if (pl.length && R() < .016 * [.9, 1, 1.2][tac.press] * [.7, 1, 1.45][tac.tackle]) {
         const p = wpick(pl, q => (slotRole(side, q.id) === 'GK' ? .15 : slotRole(side, q.id) === 'FWD' ? .7 : 1.2) * (q.trait === 'hot' ? 2.5 : 1));
         m.st.fouls[s]++;
         if (side.yel[p.id]) sendOff(m, s, p, ev, true);
@@ -368,7 +375,7 @@
         if (side.user && !m.auto && side.subsLeft > 0 && side.bench.length) { side.on[i] = null; ev[ev.length - 1].need = true; ev[ev.length - 1].slot = i; }
         else { const e = injSub(m, s, i); if (e) ev.push(e); else side.on[i] = null; }
       }
-      const drain = [.85, 1, 1.25][tac.press] * [.95, 1, 1.1][tac.tempo] * wxD;
+      const drain = [.85, 1, 1.25][tac.press] * [.95, 1, 1.1][tac.tempo] * [1, 1, 1.04][tac.fb] * [.97, 1, 1.05][tac.tackle] * [1, 1, 1.03][tac.counter] * wxD;
       for (const p of pl2) p.fit = Math.max(20, p.fit - (slotRole(side, p.id) === 'GK' ? .06 : (.19 + side.ment * .025) * drain * (p.trait === 'iron' ? .7 : 1)));
       if (!side.user) {
         if ((m.min === 60 || m.min === 70 || m.min === 80 || m.min === 100) && side.subsLeft > 0) {

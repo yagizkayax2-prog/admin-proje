@@ -30,7 +30,7 @@
   function target(d) {
     if (d.ov) return d.ov;
     if (d.cv) return d.cv;   // topu süren oyuncu
-    if (d === S.presser && S.phase === 'play') {   // topa en yakın rakip baskıya çıkar
+    if (S.pressers && S.pressers.includes(d) && S.phase === 'play') {   // topa en yakın rakip baskıya çıkar
       const b = S.ball, gx = dirRight(d.s) ? -.035 : .035;
       return { x: clamp(b.x - gx, .02, .98), y: clamp(b.y + (d.y > b.y ? .03 : -.03), .04, .96) };
     }
@@ -44,6 +44,17 @@
       if (S.poss !== d.s) nx += -.04 + (tac.press - 1) * .035;
       ny = sl[2] + (by - .5) * .16;
       if (S.poss === d.s && tac.width !== 1) ny = .5 + (ny - .5) * (tac.width === 2 ? 1.12 : .86);
+      const wideSlot = sl[2] < .3 || sl[2] > .7;
+      if (S.poss === d.s) {   // hücumda takım talimatları
+        if (sl[0] === 'DEF' && wideSlot) nx += [-.03, 0, .14][tac.fb];                         // bek bindirmesi
+        if (S.ctr && S.ctr.s === d.s && S.t < S.ctr.until && sl[0] !== 'DEF') nx += .11;      // kontra koşusu
+        if (tac.counter === 0 && sl[0] !== 'FWD') nx -= .02;                                  // topu tut: sabırlı yerleşim
+        if (tac.pass === 2 && sl[0] === 'FWD') nx += .06;                                     // uzun topa derinlik koşusu
+        if (tac.pass === 0 && sl[0] !== 'DEF') { nx -= .02; ny = .5 + (ny - .5) * .9; }       // kısa pas: yakın üçgenler
+      } else {                // savunmada
+        ny = .5 + (ny - .5) * [.7, 1, 1.12][tac.compact] + (by - .5) * [.14, 0, -.04][tac.compact];   // dar blok topun olduğu tarafa kayar
+        if (sl[0] === 'DEF') nx += [-.03, 0, .05][tac.trap];                                  // ofsayt için hat öne çıkar
+      }
       if (S.kickT > 0) nx = Math.min(nx, .47);
       nx += Math.sin(S.t * .9 + d.ph) * .012; ny += Math.cos(S.t * .7 + d.ph * 2) * .016;
     }
@@ -85,8 +96,9 @@
     const mates = S.dots.filter(d => d.s === s && d !== h && active(d));
     if (!mates.length) return;
     // top sürme: önü boşsa oyuncu topu ileri taşır, pas sonra gelir
-    const hx = ownX(s, h.x), free = S.dots.filter(d => d.s !== s && active(d)).every(d => d === S.presser || pdist(d, h) > .05);
-    if (h.i > 0 && !h.cv && free && hx < .8 && Math.random() < .42) {
+    const tc = S.m.s[s].tac, ctr = S.ctr && S.ctr.s === s && S.t < S.ctr.until;
+    const hx = ownX(s, h.x), free = S.dots.filter(d => d.s !== s && active(d)).every(d => (S.pressers || []).includes(d) || pdist(d, h) > .05);
+    if (h.i > 0 && !h.cv && free && hx < .8 && Math.random() < (ctr ? .65 : [.32, .42, .3][tc.pass])) {
       const fy = dirRight(s) ? h.y : 1 - h.y, ny = clamp(fy + (Math.random() - .5) * .12, .08, .92);
       h.cv = toPitch(s, Math.min(.82, hx + .07 + Math.random() * .07), ny);
       S.passT = .5 + Math.random() * .4; return;
@@ -94,20 +106,22 @@
     h.cv = null;
     const wts = mates.map(d => {
       const dist = Math.hypot(d.x - h.x, (d.y - h.y) * .65), fwd = ownX(s, d.x) - ownX(s, h.x);
-      return (d.i === 0 ? .12 : 1) * (1 / (.06 + Math.abs(dist - .16))) * (fwd > 0 ? 1.5 : 1);
+      const pref = [.12, .17, .32][tc.pass], fw = ctr ? 3.2 : tc.counter === 0 ? 1.15 : [1.25, 1.5, 2.3][tc.pass], role = S.m.s[s].slots[d.i][0];
+      return (d.i === 0 ? (tc.pass === 0 ? .3 : .12) : 1) * (1 / (.06 + Math.abs(dist - pref))) * (fwd > 0 ? fw : 1) * (tc.pass === 2 && role === 'FWD' ? 1.7 : 1) * (ctr && role === 'FWD' ? 1.8 : 1);
     });
     let r = Math.random() * wts.reduce((a, b) => a + b, 0), rec = mates[0];
     for (let i = 0; i < mates.length; i++) { r -= wts[i]; if (r <= 0) { rec = mates[i]; break; } }
     const near = S.dots.filter(d => d.s !== s && active(d) && d.i > 0).reduce((mn, d) => Math.min(mn, Math.hypot(d.x - rec.x, (d.y - rec.y) * .65)), 1);
-    if (Math.random() < .05 + .3 * (1 - share) + Math.max(0, .1 - near) * 2.2 + (S.m.s[1 - s].tac.press - 1) * .04) {
+    const otc = S.m.s[1 - s].tac;
+    if (Math.random() < (.05 + .3 * (1 - share) + Math.max(0, .1 - near) * 2.2 + (otc.press - 1) * .04) * [.85, 1, 1.18][otc.tackle] * [.85, 1, 1.12][tc.pass]) {
       const opp = S.dots.filter(d => d.s !== s && active(d) && d.i > 0);
       if (opp.length) {
         const thief = opp.reduce((a, b) => (Math.hypot(a.x - rec.x, a.y - rec.y) < Math.hypot(b.x - rec.x, b.y - rec.y) ? a : b));
-        run([mv(() => thief, .38 + pdist(thief, h) * .9, { end: () => { S.holder = thief; S.poss = thief.s; if (Math.random() < .3) pop(thief, 'TOP KAPMA', '#58c4dd'); } })], false);
+        run([mv(() => thief, .38 + pdist(thief, h) * .9, { end: () => { S.holder = thief; S.poss = thief.s; if (Math.random() < .3) pop(thief, otc.tackle === 2 && Math.random() < .5 ? 'SERT MÜDAHALE' : 'TOP KAPMA', '#58c4dd'); if (otc.counter === 2) { S.ctr = { s: thief.s, until: S.t + 2.6 }; S.ctrN = (S.ctrN || 0) + 1; S.passT = .25; if (Math.random() < .35) pop(thief, 'KONTRA!', '#ffc93c'); } else if (otc.counter === 0) S.passT = 1.1; } })], false);
         S.holder = null; return;
       }
     }
-    const dd = pdist(rec, h), far = dd > .3;
+    const dd = pdist(rec, h), far = dd > (tc.pass === 2 ? .22 : .3);
     run([mv(() => rec, .3 + dd * 1.4, { arc: far ? .5 : 0, end: () => { S.holder = rec; FM.Audio.kick(); } })], false);
     S.holder = null;
   }
@@ -118,16 +132,17 @@
     let cur = S.holder && S.holder.s === s && active(S.holder) ? S.holder : null;
     if (!cur) {   // önce topu kazan
       const c = mates().sort((x, y) => pdist(x, b) - pdist(y, b))[0]; if (!c) return steps;
-      cur = c; const d0 = pdist(c, b);
-      steps.push(mv(() => c, .3 + d0 * 1.1, { end: () => { S.holder = c; S.poss = s; if (Math.random() < .35) pop(c, 'TOP KAPMA', '#58c4dd'); } }));
+      cur = c; const d0 = pdist(c, b), kontra = S.m.s[s].tac.counter === 2;
+      steps.push(mv(() => c, .3 + d0 * 1.1, { end: () => { S.holder = c; S.poss = s; if (kontra) { S.ctr = { s, until: S.t + 3 }; S.ctrN = (S.ctrN || 0) + 1; pop(c, 'KONTRA!', '#ffc93c'); } else if (Math.random() < .35) pop(c, 'TOP KAPMA', '#58c4dd'); } }));
     }
+    const tc = S.m.s[s].tac, maxP = tc.counter === 2 && !(S.holder && S.holder.s === s) ? 2 : tc.pass === 0 ? 5 : tc.pass === 2 ? 2 : 4, pref = [.15, .2, .3][tc.pass], pause = tc.counter === 2 ? .05 : tc.pass === 0 ? .28 : .18;
     let x = ownX(s, cur.x), guard = 0;
-    while (x < toX && guard++ < 4) {
-      const prev = cur, opts = mates().filter(d => d !== prev && ownX(s, d.x) > x + .04 && pdist(d, prev) < .38);
+    while (x < toX && guard++ < maxP) {
+      const prev = cur, opts = mates().filter(d => d !== prev && ownX(s, d.x) > x + .04 && pdist(d, prev) < (tc.pass === 2 ? .5 : .38));
       if (!opts.length) break;
-      const nx = opts.sort((a, c) => Math.abs(pdist(a, prev) - .2) - Math.abs(pdist(c, prev) - .2))[Math.floor(Math.random() * Math.min(2, opts.length))];
+      const nx = opts.sort((a, c) => Math.abs(pdist(a, prev) - pref) - Math.abs(pdist(c, prev) - pref))[Math.floor(Math.random() * Math.min(2, opts.length))];
       const dd = pdist(nx, prev);
-      steps.push(wait(.18 + Math.random() * .2), mv(() => nx, .3 + dd * 1.4, { arc: dd > .3 ? .4 : 0, end: () => { S.holder = nx; FM.Audio.kick(); } }));
+      steps.push(wait(pause + Math.random() * .2), mv(() => nx, .3 + dd * 1.4, { arc: dd > .3 ? .4 : 0, end: () => { S.holder = nx; FM.Audio.kick(); } }));
       cur = nx; x = ownX(s, nx.x);
     }
     return steps;
@@ -769,15 +784,19 @@
     }
     if (dt > 0) {
       // topa en yakın savunan oyuncu baskıya çıkar
-      S.presser = null;
-      if (S.phase === 'play' && S.holder && !S.script) { let best = 1; for (const d of S.dots) if (d.s !== S.holder.s && d.i > 0 && active(d) && !d.ov) { const q = pdist(d, S.ball); if (q < best) { best = q; S.presser = d; } } if (best > .25) S.presser = null; }
+      // topa en yakın savunanlar baskıya çıkar: sayısı ve mesafesi pres talimatına bağlı
+      S.pressers = [];
+      if (S.phase === 'play' && S.holder && !S.script) {
+        const dt2 = S.m.s[1 - S.holder.s].tac, rad = [.16, .25, .34][dt2.press];
+        S.pressers = S.dots.filter(d => d.s !== S.holder.s && d.i > 0 && active(d) && !d.ov && pdist(d, S.ball) < rad).sort((a, b) => pdist(a, S.ball) - pdist(b, S.ball)).slice(0, dt2.press === 2 ? 2 : 1);
+      }
       const cap = S.phase === 'play';
       for (const d of S.dots) {
         if (!active(d) || d.fix) continue;
         const tg = target(d), k = Math.min(1, dt * (d.ov ? 3.4 : 2.6));
         let sx = (tg.x - d.x) * k, sy = (tg.y - d.y) * k;
         if (cap) {   // hız sınırı: oyuncular koşar, ışınlanmaz (saha boyu / sn)
-          const vmax = (d.ov ? .3 : d === S.presser ? .26 : d.cv ? .17 : .21) * dt, st = Math.hypot(sx, sy * .65);
+          const vmax = (d.ov ? .3 : S.pressers.includes(d) ? [.22, .26, .3][S.m.s[d.s].tac.tackle] : d.cv ? .17 : (S.ctr && S.ctr.s === d.s && S.t < S.ctr.until) ? .28 : .21) * dt, st = Math.hypot(sx, sy * .65);
           if (st > vmax) { sx *= vmax / st; sy *= vmax / st; }
         }
         d.x += sx; d.y += sy;

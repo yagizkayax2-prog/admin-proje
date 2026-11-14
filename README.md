@@ -9,7 +9,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Three.js ile 3D, kadro değerine göre büyüyen 5 kademeli stadyum; maç öncesi seremoni ve ev sahibi tribün koreografisi (kart mozaiği, tribün yazısı, meşale)
 - TV tarzı skor bandı: golde takım renginde GOOOL ve golcü şeridi
 - Hava durumu (yağmur, kar, gece maçı), maç sonu gol tekrarı, oyuncu maç puanları ve maçın adamı
-- Maç içinde hız, taktik talimatları (pres, tempo, savunma hattı, hücum yönü), 5 oyuncu değişikliği
+- Maç içinde hız, taktik talimatları (pres, tempo, savunma hattı, hücum yönü, pas tercihi, top kazanınca, bekler, savunma genişliği, ofsayt taktiği, müdahale), 5 oyuncu değişikliği; talimatlar hem maç motorunu hem sahadaki hareketi değiştirir (bek bindirmesi, kontra koşuları, dar blok, hattı öne çıkarma, iki kişilik baskı)
 - Diziliş, ilk 11, duran top görevlileri, oyuncu rolleri ve özel yetenekler
 - Transfer dönemleri, pazarlık, serbest kalma bedeli, kiralama, sözleşme yenileme, scout raporları, altyapı
 - Basın toplantıları, oyuncu görüşmeleri, yönetim güveni ve taraftar desteği, görevden alınma ve iş teklifleri

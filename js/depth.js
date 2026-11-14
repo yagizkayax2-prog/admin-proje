@@ -28,6 +28,7 @@
     d.tl = d.tl || []; d.paper = d.paper || []; d.wire = d.wire || []; d.coaches = d.coaches || {}; d.heat = d.heat || {}; d.pool = d.pool || [];
     d.trophies = d.trophies || []; d.nemRec = d.nemRec || { w: 0, d: 0, l: 0 }; d.xgS = d.xgS && d.xgS.s === G.season ? d.xgS : { s: G.season, f: 0, a: 0, gf: 0, ga: 0 };
     d.bon = d.bon && d.bon.s === G.season ? d.bon : { s: G.season, v: 0 };
+    for (const t of G.teams) for (const k in FM.TAC) if (t.tac[k] == null) t.tac[k] = FM.TAC_DEF(t, k);
     for (const t of G.teams) if (!d.coaches[t.id]) d.coaches[t.id] = { s: G.season, w: 0 };
     if (!d.tl.length) tl('start', `${G.manager}, ${me().name} ile teknik direktörlük kariyerine başladı.`);
   }
@@ -137,8 +138,14 @@
     const fk = t.sp && t.sp.fk != null ? P(t.sp.fk) : null;
     if (fk && fk.a.sho >= 76 && spr.fk === 'cross') out.push([`${fk.name} iyi frikikçi (şut ${fk.a.sho}); frikikleri direkt kullanmayı öneririm.`, 'tactics']);
     if (o.tac && o.tac.press === 2) out.push(['Rakip önde basıyor. Orta sahadaki pasöre "Pas dağıt" talimatı vermek presi kırmaya yardım eder.', 'tactics']);
+    const tt = t.tac, ot = o.tac;
+    if (ot.line === 2 && tt.counter !== 2) out.push(['Rakibin savunma hattı önde. "Top kazanınca: Hızlı kontra" ve arkaya uzun toplar çok etkili olur.', 'tactics']);
+    if (ot.width === 2 && tt.compact === 0) out.push(['Rakip kanatlardan oynuyor; dar blokla ortalara açık kalırız. Savunma genişliğini Normal ya da Geniş yap.', 'tactics']);
+    if (ot.width === 0 && tt.compact === 2) out.push(['Rakip merkezden oynuyor; geniş blok ortayı boşaltıyor. Savunma genişliğini Dar yapmayı düşün.', 'tactics']);
+    if (ot.pass === 2 && tt.trap !== 2 && tt.line !== 0) out.push(['Rakip uzun top oynuyor. Ofsayt taktiğini sık uygularsak forvetlerini ofsayta düşürebiliriz.', 'tactics']);
+    if (ot.tackle === 2) out.push(['Rakip sert müdahale ediyor: daha çok frikik kazanacağız, iyi bir frikikçi önemli.', null]);
     const nm = D().nem; if (nm && FM.coachOf(oppId) === nm) out.push([`Karşıda ezeli hasmın ${nm} var. Basın bu maçı çok konuşacak, kazanmak itibarını artırır.`, null]);
-    return out.slice(0, 6);
+    return out.slice(0, 7);
   }
   function htAdvice(m, us) {
     const side = m.s[us], o = 1 - us, xg = [0, 0], out = [];

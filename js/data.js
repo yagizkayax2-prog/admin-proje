@@ -39,8 +39,15 @@ FM.TAC = {
   press: ['Pres', ['Geride karşıla', 'Dengeli', 'Önde bas'], 'Önde baskı topu kazandırır ama yorar ve arkada boşluk bırakır.'],
   tempo: ['Tempo', ['Sabırlı', 'Normal', 'Yüksek'], 'Yüksek tempo daha çok pozisyon üretir, pozisyon kalitesi düşer.'],
   line: ['Savunma hattı', ['Derin', 'Normal', 'Önde'], 'Öndeki hat orta sahayı güçlendirir, arkaya atılan toplara açık kalır.'],
-  width: ['Hücum yönü', ['Merkezden', 'Karma', 'Kanatlardan'], 'Kanat oyunu çok orta ve korner getirir; merkez oyunu daha net pozisyon.']
+  width: ['Hücum yönü', ['Merkezden', 'Karma', 'Kanatlardan'], 'Kanat oyunu çok orta ve korner getirir; merkez oyunu daha net pozisyon.'],
+  pass: ['Pas tercihi', ['Kısa pas', 'Karışık', 'Uzun top'], 'Kısa pas topu elde tutar ve isabeti artırır; uzun top hızlı ve direkt ama isabeti düşük, ofsayt riski yüksek.'],
+  counter: ['Top kazanınca', ['Topu tut', 'Dengeli', 'Hızlı kontra'], 'Hızlı kontra, öne çıkmış rakibe karşı çok etkilidir; topu tutmak oyunu sakinleştirir.'],
+  fb: ['Bekler', ['Geride kal', 'Dengeli', 'Bindirme'], 'Bindiren bekler kanat hücumuna sayı katar ama arkada boşluk bırakır ve yorulur.'],
+  compact: ['Savunma genişliği', ['Dar', 'Normal', 'Geniş'], 'Dar blok merkezi kapatır ama kanat ortalarına açıktır; geniş blok kanatları kapatır.'],
+  trap: ['Ofsayt taktiği', ['Kapalı', 'Ara sıra', 'Sürekli'], 'Hattı sık sık öne çıkarmak rakibi ofsayta düşürür; kırılırsa forvet kaleciyle karşı karşıya kalır.'],
+  tackle: ['Müdahale', ['Dikkatli', 'Normal', 'Sert'], 'Sert müdahale daha çok top kazandırır ama faul ve kart getirir.']
 };
+FM.TAC_DEF = (t, k) => (t.id === (FM.G && FM.G.teamId) ? 1 : (t.id * 7 + k.length * 3) % 3);   // eksik talimat için varsayılan
 FM.CUP_ROUNDS = { 24: '1. Tur', 16: 'Son 16', 8: 'Çeyrek final', 4: 'Yarı final', 2: 'Final' };
 FM.WX_TR = { clear: 'Açık', rain: 'Yağmurlu', snow: 'Karlı' };
 FM.PRESS = [
