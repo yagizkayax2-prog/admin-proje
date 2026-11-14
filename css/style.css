@@ -872,6 +872,26 @@ body.noscroll { overflow: hidden; }
 /* Ayar: sakin mod ve haber şeridi */
 .calm *, .calm *::before, .calm *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 .no-ticker .ticker { display: none; } .no-ticker body:has(.ticker) { padding-bottom: 0; }
+/* --- Ek özellikler: tünel, haftanın 11'i ve golü, başkan, inşaat, tribün olayları --- */
+.mv-tunnel { position: absolute; inset: 0; z-index: 4; background: linear-gradient(180deg, #05070b, #1a1f2a 60%, #3a4250); animation: fade .3s; }
+.mv-tunnel[hidden] { display: none; }
+.tun { display: grid; place-items: center; gap: 10px; align-content: center; height: 100%; } .tun p { color: var(--chalk); font: 700 20px var(--display); letter-spacing: .06em; text-transform: uppercase; text-align: center; padding: 0 12px; }
+.tun-row { display: flex; gap: 6px; } .tun-row i { width: 18px; height: 34px; border-radius: 9px 9px 4px 4px; background: var(--c); border: 2px solid var(--b); animation: walkT 2.4s var(--d) both; }
+@keyframes walkT { from { transform: translateY(40px) scale(.6); opacity: 0; } 40% { opacity: 1; } to { transform: translateY(-30px) scale(1.15); opacity: .9; } }
+.mv-pitch .mv-ctl { z-index: 5; }
+.totw { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 6px; }
+.tw { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 7px 9px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 7px; text-align: left; color: var(--chalk); }
+.tw span { display: grid; min-width: 0; } .tw small { color: var(--muted); font-size: 12px; } .tw b { font: 700 18px var(--display); color: var(--ok); } .tw.mine { border-color: var(--flood); }
+.gotw { display: grid; gap: 8px; }
+.gw { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; background: var(--bg-2); border-radius: 8px; border: 1px solid var(--line); }
+.gw > div:first-child { display: grid; } .gw small { color: var(--muted); font-size: 12px; } .gw.mine { border-color: var(--flood); } .gw.voted { border-color: var(--ok); }
+.gw-bar { position: relative; height: 22px; background: var(--surface); border-radius: 5px; overflow: hidden; } .gw-bar i { position: absolute; inset: 0 auto 0 0; background: var(--sky); opacity: .55; } .gw-bar b { position: relative; padding-left: 8px; line-height: 22px; font: 700 14px var(--display); }
+@media (max-width: 560px) { .gw { grid-template-columns: 1fr; } }
+.ex-pres .pres { display: flex; gap: 12px; align-items: flex-start; } .ex-pres .pres strong { font: 700 20px var(--display); margin-right: 6px; }
+.ex-pres .pa { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font: 700 18px var(--display); flex: none; }
+.ex-build { border-color: var(--flood); }
+.fd.flare, .fd.invader { border-color: var(--red); }
+
 @media (prefers-reduced-motion: reduce) { .ticker { overflow-x: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 .set-row > div:first-child { display: grid; gap: 2px; } .set-row > div:first-child small { color: var(--muted); font-size: 12.5px; }
 

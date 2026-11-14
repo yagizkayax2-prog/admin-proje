@@ -48,6 +48,11 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Kulübe özel ritimde sentezlenen tezahüratlar (gol ve derbi)
 - Klavye kısayolları (? ile liste), kayıtlı transfer filtreleri, oyuncu notları, 4 oyunculuk karşılaştırma
 - Takım penceresinde kafa kafaya geçmiş; kariyer sayfasında zaman çizelgesi
+- Başkan tipleri ve iki sezonda bir başkanlık seçimi; tesis yükseltmeleri haftalarca süren inşaatla tamamlanır (stadyum inşaatında kapasite düşer)
+- Forma ve mağaza geliri (yıldız transferinde satış patlaması); havanın oyuna etkisi (yağmurda kaygan zemin, karda yavaş oyun) ve zemin kalitesine bağlı sakatlık riski
+- Kulüp göreviyle birlikte milli takımı çalıştırma: milli ara maçları, Kıta Şampiyonası, federasyon güveni
+- Tünel sahnesi, gol sevinci çeşitleri, meşale ve sahaya giren taraftar olayları; ev sahibi tribün olaylarında para cezası ve kapalı tribün
+- Haftanın 11'i ve haftanın golü oylaması
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
 ## Dosyalar
@@ -62,6 +67,8 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | `js/banners.js` | Taraftar pankartları ve tribün protestoları |
 | `js/settings.js` | Oyun ayarları |
 | `js/depth.js` | Maç raporu ve xG, yardımcı önerileri, sözleşme maddeleri, takas ve söylentiler, kadro planlayıcı, sezon akışı, teknik direktör gelişimi, diğer hocalar, gazete |
+| `js/extras.js` | Başkan ve seçimler, süreli inşaat, forma geliri, milli takım görevi, tribün olaylarında disiplin, haftanın 11'i ve golü |
+| `js/extras-ui.js` | Bu eklerin ekranları (başkan, inşaat, milli takım, haftanın 11'i ve golü) |
 | `js/depth-ui.js` | Bu sistemlerin ekranları ve klavye kısayolları |
 | `js/ui-more.js` | Menü, rehber ve tur, maç öncesi ekranı, basın salonu ve yeni ekranlar |
 | `js/boot.js` | Açılış |

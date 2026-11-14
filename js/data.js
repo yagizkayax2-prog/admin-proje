@@ -159,3 +159,15 @@ FM.FANS = ['Yıldız Tayfası', 'Fırtına Gençliği', 'İmbatçılar', 'Kartal
   'Kıyı Çocukları', 'Pamuk Eller', 'İnci Tayfası', 'Safran Ordusu', 'Likya Gezginleri', 'Yayla Kurtları', 'Bağ Bozumu', 'Kubbe Altı', 'Şelale Gençliği', 'Mavi Kumlar', 'Vadi Ruhu', 'Batık Şehir'];
 FM.TEAMS.forEach((t, i) => { t.fans = FM.FANS[i]; });
 ['Adlerfront', 'Havnens Drenge', 'Penya Daurada', 'Brigade Lumière', 'Gipfelsturm', 'Duna Brigád', 'Glen Army', 'Riva Boys', 'Maré Azul', 'Vistula Front', 'Liman Tayfası', 'Curva Naviglio'].forEach((n, i) => { FM.FOREIGN[i].fans = n; });
+
+/* ---------- Ek özellikler: başkan tipleri, milli takım rakipleri, tribün olayları, gol sevinçleri ---------- */
+FM.PRES_T = {
+  sabirsiz: ['Sabırsız', 'Hedefin bir sıra üstünü bekler; kötü gidişte güven hızlı düşer.', -1],
+  yatirimci: ['Yatırımcı', 'Zaman zaman transfer bütçesine kendi cebinden ekleme yapar.', 0],
+  tutumlu: ['Tutumlu', 'Ek bütçe pek vermez ama hedefleri makuldür.', 1],
+  altyapici: ['Altyapıcı', 'Gençlere süre verildikçe memnun olur.', 0]
+};
+FM.NATIONS = [['Almanya', 80], ['Fransa', 81], ['İspanya', 80], ['İtalya', 78], ['Hollanda', 77], ['Portekiz', 78], ['Belçika', 75], ['Hırvatistan', 74], ['Danimarka', 72], ['İsviçre', 72], ['Polonya', 70], ['Avusturya', 70], ['Çekya', 69], ['Macaristan', 67], ['İskoçya', 67], ['Norveç', 70], ['Sırbistan', 69], ['Ukrayna', 69], ['Galler', 66], ['Yunanistan', 66]];
+FM.TXT.flare = ['Tribünden sahaya meşale atıldı! Hakem maçı durdurdu.', 'Sahaya yabancı madde atılıyor, oyun durdu.'];
+FM.TXT.invader = ['Bir taraftar sahaya girdi! Güvenlik peşinde.', 'Sahaya taraftar girdi, oyun bir süre durdu.'];
+FM.CELEB = { corner: 'köşeye koştu', pile: 'takım arkadaşları üstüne çıktı', fans: 'tribüne koştu', slide: 'dizlerinin üstünde kaydı', flag: 'köşe bayrağında dans etti' };

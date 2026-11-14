@@ -168,6 +168,8 @@
     };
     for (const s of m.s) for (const id of s.played) m.rt[id] = 6 + (R() - .5) * .7;
     if (G.mgrBan) for (const sd of m.s) if (sd.user) { sd.mgr.out = true; sd.mgr.ban = true; }
+    m.inc = []; m.pitchF = 1.3 - (T(fx.h).fac ? Math.min(5, T(fx.h).fac.stadium) : 3) * .06;
+    if (G.ex && G.ex.closed && fx.h === G.teamId && !opts.cup && !opts.euro) { m.closed = true; fx.closed = true; }
     return m;
   }
   const rate = (m, id, d) => { if (id != null && m.rt[id] != null) m.rt[id] += d; };
@@ -247,7 +249,7 @@
       if (kind === 'open') pg *= [1, 1, .96][tac.pass] * [.97, 1, 1.07][opp.tac.trap] * (tac.counter === 2 && opp.ment === 2 ? 1.06 : 1);
       if (sh.trait === 'cool') pg *= 1.08;
       if (sh.trait === 'big' && m.cup) pg *= 1.1;
-      pg *= m.wx.t === 'snow' ? .9 : m.wx.t === 'rain' ? .95 : 1;
+      pg *= m.wx.t === 'snow' ? .92 : m.wx.t === 'rain' ? 1.07 : 1; // yağmurda kaygan zemin, kaleci hataları
       pg = clamp(pg * (side._pg || 1) * spF, .03, .45);
     }
     if (kind === 'open' && R() < .085 * [.7, 1, 1.5][opp.tac.line] * [.55, 1, 1.6][opp.tac.trap] * [.9, 1, 1.25][tac.pass] * (sh.role === 'SF' ? 1.3 : 1)) { m.st.off[s]++; return { type: 'off', min: m.min, side: s, pid: sh.id, text: txt('off', { p: sh.name }) }; }
@@ -350,7 +352,7 @@
       const pm = planMod(m, s); side._pg = pm.pg;
       const pc = .142 * (.55 + .9 * pos) * Math.pow(r[s].att / r[o].def, 1.7) * homeF * [.9, 1, 1.1][tac.tempo] * [.96, 1, 1.05][tac.width] * (.75 + .5 * m.terr[s]) * pm.pc * (m.derby && s === 0 ? 1.04 : 1) * (side.fire > m.min ? 1.06 : 1)
         * [.95, 1, 1.04][tac.pass] * (tac.counter === 2 ? (m.s[o].ment === 2 || m.s[o].tac.line === 2 ? 1.1 : 1.02) : tac.counter === 0 ? .96 : 1)
-        * (tac.width === 2 && m.s[o].tac.compact === 0 ? 1.05 : tac.width === 0 && m.s[o].tac.compact === 2 ? 1.05 : 1) * (tac.fb === 2 ? 1.03 : 1);
+        * (tac.width === 2 && m.s[o].tac.compact === 0 ? 1.05 : tac.width === 0 && m.s[o].tac.compact === 2 ? 1.05 : 1) * (tac.fb === 2 ? 1.03 : 1) * (m.wx.t === 'snow' ? .88 : 1);
       const np = Math.round(1.5 + 5 * pos + R() * 2), acc = clamp(.66 + (r[s].ctl - 62) * .005 - (m.s[o].tac.press - 1) * .03 - (m.s[o].tac.tackle - 1) * .015 + [.04, 0, -.05][tac.pass] - (m.wx.t !== 'clear' ? .03 : 0), .5, .95);
       m.st.pass[s] += np; m.st.passOk[s] += Math.round(np * acc);
       if (R() < .3 * [.85, 1, 1.25][tac.press] * [.85, 1, 1.2][tac.tackle] * (1.3 - pos)) m.st.tack[s]++;
@@ -368,7 +370,7 @@
         }
       } else if (pl.length && R() < .0007) sendOff(m, s, pick(pl), ev, false);
       const pl2 = onPitch(side);
-      if (pl2.length && R() < .0009 * wxD) {
+      if (pl2.length && R() < .0009 * wxD * (m.pitchF || 1)) {
         const p = wpick(pl2, q => (q.trait === 'glass' ? 3 : 1)), i = side.on.indexOf(p.id), role = side.slots[i][0];
         injure(p);
         ev.push({ type: 'inj', min: m.min, side: s, pid: p.id, text: txt('inj', { p: p.name }) });
@@ -387,6 +389,11 @@
         }
         if (m.min >= 70) side.ment = m.score[s] < m.score[o] ? 2 : m.score[s] > m.score[o] && m.min >= 80 ? 0 : 1;
       }
+    }
+    // tribün olayları (ev sahibi taraftar): meşale ve sahaya giren taraftar
+    if (!m.neutral && m.inc && m.min > 5 && m.min < 88) {
+      if (R() < .0011 * (m.derby ? 3 : 1)) { m.inc.push('flare'); ev.push({ type: 'flare', min: m.min, side: 0, text: txt('flare', {}) }); }
+      else if (R() < .0005) { m.inc.push('invader'); ev.push({ type: 'invader', min: m.min, side: 0, text: txt('invader', {}) }); }
     }
     // tartışmalı kararlar: yapay zekâ hocaları itiraz eder, kullanıcıya seçim sunulur
     const extra = [];
@@ -450,6 +457,7 @@
       }
     }
     m.motm = motm; fx.motm = motm != null ? P(motm).name : null;
+    if (!m.cup && !m.euro && FM.Ext) FM.Ext.recordWeek(m);
     const us = m.s[0].user ? 0 : m.s[1].user ? 1 : -1;
     if (us >= 0) afterUserMatch(m, us);
   }
@@ -644,7 +652,7 @@
   }
   const squadValue = t => t.players.reduce((s, id) => s + P(id).value, 0);
   function stadiumTier(t) { const v = squadValue(t) / 1e6 + (t.fac.stadium - 1) * 10; return v < 12 ? 1 : v < 24 ? 2 : v < 42 ? 3 : v < 62 ? 4 : 5; }
-  function stadiumCap(t) { return Math.round((3000 + stadiumTier(t) * 7500) * (1 + (t.fac.stadium - 1) * .12) / 100) * 100; }
+  function stadiumCap(t) { return Math.round((FM.Ext && G && t.id === G.teamId ? FM.Ext.capMult() : 1) * (3000 + stadiumTier(t) * 7500) * (1 + (t.fac.stadium - 1) * .12) / 100) * 100; }
   function newCup() { return { alive: G.teams.filter(t => t.div < 2).map(t => t.id), ties: [], hist: [], winner: null, name: '', final: false }; }
   function setupClub(me) {
     const wages = wageBill(me);
@@ -711,7 +719,7 @@
   const wageBill = team => team.players.reduce((s, id) => s + P(id).wage, 0);
   function expectation(team) {
     const order = divTeams(team.div).sort((a, b) => b.rep - a.rep || a.id - b.id);
-    return clamp(order.indexOf(team) + 2, 1, 12);
+    return clamp(order.indexOf(team) + 2 + (team.id === G.teamId && FM.Ext ? FM.Ext.expAdj() : 0), 1, 12);
   }
   function trainPlayer(p, mult, focus) {
     if (p.ovr >= p.pot) return false;
@@ -732,7 +740,7 @@
     const me = T(G.teamId), fx = userFixture(), home = fx && fx.h === G.teamId;
     const tb = table(), myPos = tb.findIndex(r => r.id === G.teamId) + 1, cap = stadiumCap(me);
     const refP = 15 - me.div * 4, price = G.fin.ticket, derby = fx && T(fx.h).rival === fx.a;
-    const att = home ? Math.round(cap * clamp((.32 + G.fans / 100 * .5 + (12 - myPos) * .012 + R() * .06 + (derby ? .15 : 0)) * clamp(1 - (price - refP) / refP * .45, .3, 1.2), .08, 1)) : 0;
+    const att = home ? Math.round((fx && fx.closed ? .7 : 1) * cap * clamp((.32 + G.fans / 100 * .5 + (12 - myPos) * .012 + R() * .06 + (derby ? .15 : 0)) * clamp(1 - (price - refP) / refP * .45, .3, 1.2), .08, 1)) : 0;
     if (home) G.fans += price > refP * 1.4 ? -1.5 : price < refP * .7 ? 1 : 0;
     const won = fx && fx.hs != null && (fx.h === G.teamId ? fx.hs > fx.as : fx.as > fx.hs), deal = G.fin.deal;
     const stHold = home && G.fin.stS === G.season ? Math.min(att, G.fin.stSold || 0) : 0, tickets = (att - stHold) * price, wages = wageBill(me), sponsor = deal ? deal.weekly + (won ? deal.win : 0) : G.fin.sponsor;

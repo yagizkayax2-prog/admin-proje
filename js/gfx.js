@@ -202,6 +202,7 @@
       }
     }
     return {
+      boo() { burst(260, .32, 2.2, 'lowpass'); for (let i = 0; i < 4; i++) setTimeout(() => { if (!ctx) return; const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime; o.type = 'sine'; o.frequency.setValueAtTime(2600 + Math.random() * 600, t); g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(.04, t + .05); g.gain.exponentialRampToValueAtTime(0.001, t + .5); o.connect(g); g.connect(master); o.start(t); o.stop(t + .52); }, i * 180); },
       init, crowd, whistle, kick, anthem, chant,
       cheer: () => { burst(950, .55, 2.8); burst(1900, .18, 2.2); },
       groan: () => burst(380, .22, 1.1, 'lowpass'),
