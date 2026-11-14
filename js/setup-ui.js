@@ -32,7 +32,7 @@
       <section class="card ns-main"><div class="ns-bar"><div class="row"><button class="btn primary" data-a="db-add">Ülke ekle +</button><button class="btn" data-a="db-add-lg">Lig ekle +</button></div><span class="chip">Aktif ligler · ${ccs.reduce((a, cc) => a + lgsOf(cs[cc]).length, 0)}</span></div>
         <h2>Aktif durumdaki ülkeler <small>(${ccs.length})</small></h2>
         <div class="scroll"><table class="tbl db-t"><thead><tr><th class="l">Ülke</th><th class="l">Ligler <small>(eklemek ya da çıkarmak için dokun)</small></th><th class="l">Ayar</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section></div>
-      <footer class="ns-foot"><div class="ns-stats"><span>Veri tabanı boyutu <b>${e.players.toLocaleString('tr-TR')} futbolcu · ${e.teams} kulüp</b></span><span class="speed"><i style="--p:${ring}%"></i>Tahmini oyun hızı <b>${e.speed}</b></span><span class="${over ? 'neg-v' : ''}">Kayıt boyutu ≈ <b>${(e.kb / 1024).toFixed(1).replace('.', ',')} MB</b>${over ? ' · tarayıcı kaydı için çok büyük' : ''}</span></div>
+      <footer class="ns-foot"><div class="ns-stats"><span>Veri tabanı boyutu <b>${e.players.toLocaleString('tr-TR')} futbolcu · ${e.teams} kulüp</b></span><span class="speed"><i style="--p:${ring}%"></i>Tahmini oyun hızı <b>${e.speed}</b></span><span class="${over ? 'neg-v' : ''}">Kayıt boyutu ≈ <b>${e.kb < 1024 ? e.kb + ' KB' : (e.kb / 1024).toFixed(1).replace('.', ',') + ' MB'}</b>${over ? ' · tarayıcı kaydı için çok büyük' : ''}</span></div>
         <div class="row"><button class="btn" data-a="to-menu">İptal</button><button class="btn primary" data-a="db-next" ${over ? 'disabled' : ''}>Veri tabanını yükle ›</button></div></footer>
       ${N.addOpen ? addModal() : ''}</div>`;
   }
@@ -53,7 +53,7 @@
   /* ---------- 2. Takım seç ---------- */
   function clubOf(key) { for (const lg of leagues()) { const c = lg.clubs.find(x => x.key === key); if (c) return { c, lg }; } return null; }
   function rivalOf(c) {
-    if (c.cc === 'TR') { const i = +c.key.split(':')[1], pr = FM.RIVALS.find(p => p.includes(i)); return pr ? W.clubs('TR')[pr[0] === i ? pr[1] : pr[0]] : null; }
+    if (c.cc === 'TR' && +c.key.split(':')[1] < 24) { const i = +c.key.split(':')[1], pr = FM.RIVALS.find(p => p.includes(i)); return pr ? W.clubs('TR')[pr[0] === i ? pr[1] : pr[0]] : null; }
     return c.rivalKey ? W.clubs(c.cc).find(x => x.key === c.rivalKey) : null;
   }
   function detailHtml(key) {
@@ -97,7 +97,9 @@
       <section class="card ns-mgr" style="--k1:${c.c1};--k2:${c.c2}"><div class="sg-info">${FM.crest(c, 64)}<div><strong>${esc(c.name)}</strong><span>${esc(hit.lg.name)} · ${W.expectLabel(hit.lg, c).lab}</span></div></div>
         <label for="mgr">Teknik direktör adı</label>
         <div class="row"><input id="mgr" type="text" maxlength="24" placeholder="Adın" autocomplete="off" value="${esc(N.name || '')}"><button class="btn primary big" data-a="start">Kariyere başla</button></div>
-        <p class="muted">Veri tabanı: ${Object.keys(N.setup.countries).map(cc => FM.COUNTRIES[cc].n).join(', ')}.</p></section></div>`;
+        <p class="muted">Veri tabanı: ${Object.keys(N.setup.countries).map(cc => FM.COUNTRIES[cc].n).join(', ')}.</p></section>
+      <div class="grid2"><section class="card"><h2>Zorluk</h2><div class="opts">${(FM.World2 ? FM.World2.DIFF : []).map(([n, d], i) => `<button class="opt ${(N.setup.diff == null ? 1 : N.setup.diff) === i ? 'on' : ''}" data-a="ns-diff" data-v="${i}" aria-pressed="${(N.setup.diff == null ? 1 : N.setup.diff) === i}"><strong>${n}</strong><span>${d}</span></button>`).join('')}</div></section>
+      <section class="card"><h2>Başlangıç</h2><div class="opts">${[['club', `${esc(c.name)} ile başla`, 'Seçtiğin kulübün teknik direktörüsün.'], ['nat', 'Kulüp + milli takım', `${esc(c.name)} ile birlikte ${esc((FM.COUNTRIES[c.cc] || {}).n || 'ülkenin')} milli takımını da ilk günden çalıştırırsın.`], ['jobless', 'İşsiz başla', 'Kulübün yok: açık pozisyonlara başvurup mülakata girersin. Seçtiğin kulüp yalnızca ülkeni belirler.']].map(([k, n, d]) => `<button class="opt ${(N.setup.start || 'club') === k ? 'on' : ''}" data-a="ns-start" data-v="${k}" aria-pressed="${(N.setup.start || 'club') === k}"><strong>${n}</strong><span>${d}</span></button>`).join('')}</div></section></div></div>`;
   }
 
   UI.newScreen = () => { const N = S(); return N.step === 'team' ? teamHtml() : N.step === 'mgr' ? mgrHtml() : dbHtml(); };
@@ -134,6 +136,8 @@
     'ns-club': d => { S().club = d.v; keep(); },
     'ns-rand': () => { const N = S(), lgs = leagues().map((l, i) => [l, i]).filter(([l]) => l.mode === 'play'), [lg, i] = lgs[Math.floor(Math.random() * lgs.length)]; N.lgi = i; N.club = lg.clubs[Math.floor(Math.random() * lg.clubs.length)].key; keep(); },
     'ns-mgr': () => { S().step = 'mgr'; render(); window.scrollTo(0, 0); },
+    'ns-diff': d => { const el = $('mgr'); if (el) S().name = el.value; S().setup.diff = +d.v; keep(); },
+    'ns-start': d => { const el = $('mgr'); if (el) S().name = el.value; S().setup.start = d.v; keep(); },
     'ns-back': () => { const N = S(); if (N.step === 'mgr') { const el = $('mgr'); if (el) N.name = el.value; } N.step = N.step === 'mgr' ? 'team' : 'db'; render(); window.scrollTo(0, 0); }
   });
   // sihirbazdan menüye dönünce durum sıfırlanır

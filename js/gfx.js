@@ -189,15 +189,24 @@
       f.connect(out); out.connect(master);
       for (const dt of [-22, -8, 6, 19]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq; o.detune.value = dt; o.connect(f); o.start(t); o.stop(t + len + .05); }
     }
-    const RHY = [[0, .5, 1, 1.5, 1.75, 2.25, 2.5], [0, .25, .5, 1, 1.5, 1.75, 2], [0, .5, .75, 1.25, 1.5, 2, 2.5], [0, .33, .66, 1, 1.5, 2], [0, .5, 1, 1.25, 1.5, 2, 2.75]];
-    const MEL = [[0, 0, 2, 4, 2, 0, -1, 0], [0, 2, 4, 4, 2, 0], [4, 4, 2, 0, 2, 4], [0, -3, 0, 2, 4, 2, 0], [7, 4, 4, 2, 0, 2]];
+    const RHY = [[0, .5, 1, 1.5, 1.75, 2.25, 2.5], [0, .25, .5, 1, 1.5, 1.75, 2], [0, .5, .75, 1.25, 1.5, 2, 2.5], [0, .33, .66, 1, 1.5, 2], [0, .5, 1, 1.25, 1.5, 2, 2.75],
+      [0, .75, 1, 1.75, 2, 2.75], [0, .5, 1, 2, 2.5, 3], [0, .25, .5, .75, 1.5, 2.25], [0, 1, 1.5, 2, 2.25, 2.5, 2.75]];
+    const MEL = [[0, 0, 2, 4, 2, 0, -1, 0], [0, 2, 4, 4, 2, 0], [4, 4, 2, 0, 2, 4], [0, -3, 0, 2, 4, 2, 0], [7, 4, 4, 2, 0, 2],
+      [0, 0, 0, 5, 4, 2, 0], [2, 4, 5, 4, 2, 0, 2], [0, 4, 7, 4, 0], [5, 5, 4, 2, 4, 0]];
+    /* davul: tribündeki büyük davul, alçak frekanslı darbe */
+    function drum(t, g) {
+      const o = ctx.createOscillator(), gn = ctx.createGain();
+      o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(48, t + .16);
+      gn.gain.setValueAtTime(0.001, t); gn.gain.exponentialRampToValueAtTime(g, t + .008); gn.gain.exponentialRampToValueAtTime(0.001, t + .3);
+      o.connect(gn); gn.connect(master); o.start(t); o.stop(t + .32);
+    }
     function chant(seed, derby) {
       if (!ctx || muted) return;
       seed = Math.abs(seed | 0) + 3;
       const r = RHY[seed % RHY.length], ml = MEL[Math.floor(seed / 2) % MEL.length], base = 185 * Math.pow(2, (seed * 7 % 6) / 12), beat = derby ? .34 : .4, t0 = ctx.currentTime + .1, reps = derby ? 3 : 2, bar = beat * 3.2;
       for (let k = 0; k < reps; k++) {
         const tk = t0 + k * bar;
-        r.forEach(b => clap(tk + b * beat, derby ? .45 : .3));
+        r.forEach((b, j) => { clap(tk + b * beat, derby ? .45 : .3); if (j % 2 === 0 || derby) drum(tk + b * beat, derby ? .5 : .32); });
         ml.forEach((n, i) => voice(tk + i * bar / ml.length, base * Math.pow(2, n / 12), bar / ml.length * .92, derby ? .05 : .034));
       }
     }
@@ -205,6 +214,28 @@
       boo() { burst(260, .32, 2.2, 'lowpass'); for (let i = 0; i < 4; i++) setTimeout(() => { if (!ctx) return; const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime; o.type = 'sine'; o.frequency.setValueAtTime(2600 + Math.random() * 600, t); g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(.04, t + .05); g.gain.exponentialRampToValueAtTime(0.001, t + .5); o.connect(g); g.connect(master); o.start(t); o.stop(t + .52); }, i * 180); },
       init, crowd, whistle, kick, anthem, chant,
       cheer: () => { burst(950, .55, 2.8); burst(1900, .18, 2.2); },
+      /* kaçan pozisyonda tribünün "ooo"su: sesli harf formantı yükselip düşer */
+      ooh() {
+        if (!ctx) return;
+        const t = ctx.currentTime, s = noise(1.6), f = ctx.createBiquadFilter(), g = ctx.createGain();
+        f.type = 'bandpass'; f.Q.value = 2.2; f.frequency.setValueAtTime(330, t); f.frequency.linearRampToValueAtTime(560, t + .45); f.frequency.linearRampToValueAtTime(300, t + 1.5);
+        g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(.5, t + .25); g.gain.exponentialRampToValueAtTime(0.001, t + 1.55);
+        s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + 1.6);
+      },
+      /* alkış: dağınık el çırpmaları */
+      applause(sec) {
+        if (!ctx) return;
+        const t0 = ctx.currentTime, n = Math.round((sec || 1.8) * 38);
+        for (let i = 0; i < n; i++) clap(t0 + Math.random() * (sec || 1.8), .05 + Math.random() * .09);
+      },
+      /* direk: metalik tını */
+      clang() {
+        if (!ctx) return;
+        const t = ctx.currentTime;
+        for (const [f, g] of [[1180, .14], [1730, .08], [2610, .05]]) { const o = ctx.createOscillator(), gn = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; gn.gain.setValueAtTime(g, t); gn.gain.exponentialRampToValueAtTime(0.001, t + .9); o.connect(gn); gn.connect(master); o.start(t); o.stop(t + .95); }
+      },
+      /* kalabalık uğultusunun şiddeti (0–1): baskı arttıkça yükselir */
+      level(x) { if (crowdG && ctx) crowdG.gain.setTargetAtTime(.03 + Math.max(0, Math.min(1, x)) * .09, ctx.currentTime, .6); },
       groan: () => burst(380, .22, 1.1, 'lowpass'),
       get muted() { return muted; },
       toggle() {

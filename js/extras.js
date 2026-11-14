@@ -97,7 +97,11 @@
 
   /* ---------- milli takım ---------- */
   const pois = l => { let k = 0, p = 1; const L = Math.exp(-l); do { k++; p *= R(); } while (p > L && k < 12); return k - 1; };
-  function natSquad() { const G = G_(); return Object.values(G.players).filter(p => p.tid != null && T(p.tid).div < 2 && !p.inj && !p.y && !FM.FFIRST.includes(p.name.split(' ')[0])).sort((a, b) => b.ovr - a.ovr).slice(0, 23); }
+  /* milli takım: yönetilen ülkenin uyruğundaki oyuncular (yurt dışındakiler dahil) */
+  const natCc = () => X().nat.cc || (FM.clubCc ? FM.clubCc(me()) : 'TR');
+  const natName = () => (FM.COUNTRIES[natCc()] ? FM.COUNTRIES[natCc()].n : 'Türkiye');
+  const rivals = () => FM.NATIONS.filter(o => o[0] !== natName());
+  function natSquad() { const G = G_(), cc = natCc(); return Object.values(G.players).filter(p => p.tid != null && !p.inj && !p.y && (p.nat ? p.nat === cc : T(p.tid).div < 2 && !FM.FFIRST.includes(p.name.split(' ')[0]))).sort((a, b) => b.ovr - a.ovr).slice(0, 23); }
   function natMatch(opp, ko) {
     const G = G_(), n = X().nat, sq = natSquad(), a = sq.slice(0, 11).reduce((s, p) => s + p.ovr, 0) / Math.max(1, Math.min(11, sq.length)) + (n.rep - 50) * .04, b = opp[1];
     const gf = pois(1.3 * Math.pow(a / b, 6)), ga = pois(1.3 * Math.pow(b / a, 6)), sc = [];
@@ -110,14 +114,14 @@
     n.matches.unshift(r); if (n.matches.length > 12) n.matches.length = 12;
     return r;
   }
-  const natLine = r => `Türkiye ${r.gf}–${r.ga} ${r.opp}${r.pens ? ' ' + r.pens : ''}${r.sc.length ? ' (goller: ' + r.sc.join(', ') + ')' : ''}`;
+  const natLine = r => `${natName()} ${r.gf}–${r.ga} ${r.opp}${r.pens ? ' ' + r.pens : ''}${r.sc.length ? ' (goller: ' + r.sc.join(', ') + ')' : ''}`;
   function natBreak() {
-    const res = FM.NATIONS.slice().sort(() => R() - .5).slice(0, 2).map(o => natMatch(o, false));
+    const res = rivals().sort(() => R() - .5).slice(0, 2).map(o => natMatch(o, false));
     FM.mail({ cat: 'KULÜP', from: 'Futbol federasyonu', title: `Milli takım: ${res.map(r => `${r.gf}–${r.ga} ${r.opp}`).join(', ')}`, body: res.map(natLine).join('. ') + `. Federasyon güveni: ${Math.round(X().nat.rep)}.` });
     if (X().nat.rep <= 20) natFire();
   }
   function natTournament() {
-    const n = X().nat, field = FM.NATIONS.slice().sort((a, b) => b[1] - a[1]).slice(0, 10).sort(() => R() - .5).slice(0, 3), lines = [];
+    const n = X().nat, field = rivals().sort((a, b) => b[1] - a[1]).slice(0, 10).sort(() => R() - .5).slice(0, 3), lines = [];
     let champ = true;
     ['Çeyrek final', 'Yarı final', 'Final'].forEach((rn, i) => { if (!champ) return; const r = natMatch(field[i], true); lines.push(`${rn}: ${natLine(r)}`); if (r.win < 0) champ = false; });
     if (champ) { n.titles.push(G_().season); G_().fans = clamp(G_().fans + 8, 0, 100); }
@@ -180,5 +184,5 @@
     }
   };
 
-  FM.Ext = { X, expAdj, capMult, recordWeek, voteGoal, natSquad, BUILD_W, facName };
+  FM.Ext = { X, natCc, natName, expAdj, capMult, recordWeek, voteGoal, natSquad, BUILD_W, facName };
 })();

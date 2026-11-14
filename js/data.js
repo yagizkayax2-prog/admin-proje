@@ -251,3 +251,41 @@ FM.FANS_G = ['Ultras', 'Tayfası', 'Ordusu', 'Gençliği', 'Kuzey Tribünü', 'K
   add('CA', 'Kanada', 'Kuzey Amerika', ['#ff0000', '#ffffff'], [2, 1], [''], ['FC', 'SC', 'United', 'City', 'Athletic'], [['Hali', 'Winni', 'Regi', 'Kelow', 'Sudbu', 'Monc', 'Saska', 'Thunder'], ['fax', 'peg', 'na', 'na', 'ry'], ['', ' Bay', ' Valley', 'ton']]);
   add('CR', 'Kosta Rika', 'Kuzey Amerika', ['#002b7f', '#ffffff', '#ce1126'], [2, 1], ['Club Sport', 'Deportivo', 'AD', 'Municipal'], [''], [['Here', 'Ala', 'Carta', 'Punta', 'Liberia', 'Limón', 'Grecia', 'Pérez'], ['dia', 'juela', 'go', 'renas', ''], ['', ' Norte', ' Sur', ' Viejo']]);
 })();
+
+/* ---------- Ülkeye özel oyuncu adları (dil gruplarına göre) ---------- */
+FM.NAMEPOOLS = {
+  de: [['Lukas', 'Jonas', 'Felix', 'Leon', 'Maximilian', 'Tim', 'Niklas', 'Jan', 'Moritz', 'Paul', 'Florian', 'Tobias', 'Julian', 'Sebastian', 'Kevin', 'Marco', 'Dominik', 'Fabian'], ['Müller', 'Schmidt', 'Weber', 'Wagner', 'Becker', 'Hoffmann', 'Schulz', 'Koch', 'Richter', 'Klein', 'Wolf', 'Neumann', 'Braun', 'Zimmermann', 'Hartmann', 'Krüger', 'Lange', 'Vogel']],
+  en: [['Jack', 'Harry', 'James', 'Oliver', 'George', 'Charlie', 'Thomas', 'Liam', 'Ryan', 'Callum', 'Connor', 'Daniel', 'Sam', 'Lewis', 'Jordan', 'Reece', 'Kieran', 'Ben'], ['Smith', 'Jones', 'Taylor', 'Brown', 'Wilson', 'Evans', 'Walker', 'Wright', 'Robinson', 'Hughes', 'Clarke', 'Hall', 'Wood', 'Turner', 'Cooper', 'Morris', 'Bennett', 'Graham']],
+  es: [['Sergio', 'Pablo', 'Javier', 'Diego', 'Álvaro', 'Iker', 'Raúl', 'Mario', 'Adrián', 'Hugo', 'Marcos', 'Alejandro', 'Nicolás', 'Mateo', 'Santiago', 'Lucas', 'Martín', 'Gonzalo'], ['García', 'Rodríguez', 'Martínez', 'López', 'Sánchez', 'Pérez', 'Gómez', 'Díaz', 'Moreno', 'Romero', 'Navarro', 'Torres', 'Ruiz', 'Herrera', 'Castro', 'Vargas', 'Rojas', 'Silva']],
+  it: [['Lorenzo', 'Matteo', 'Alessandro', 'Federico', 'Andrea', 'Riccardo', 'Davide', 'Simone', 'Nicolò', 'Gianluca', 'Marco', 'Stefano', 'Luca', 'Daniele', 'Fabio', 'Tommaso', 'Gabriele', 'Paolo'], ['Rossi', 'Russo', 'Ferrari', 'Esposito', 'Bianchi', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco', 'Bruno', 'Gallo', 'Conti', 'De Luca', 'Costa', 'Mancini', 'Lombardi', 'Moretti']],
+  fr: [['Lucas', 'Hugo', 'Théo', 'Antoine', 'Maxime', 'Louis', 'Nathan', 'Mathis', 'Clément', 'Julien', 'Romain', 'Quentin', 'Baptiste', 'Yanis', 'Kylian', 'Ousmane', 'Moussa', 'Enzo'], ['Martin', 'Bernard', 'Dubois', 'Thomas', 'Robert', 'Petit', 'Durand', 'Leroy', 'Moreau', 'Simon', 'Laurent', 'Lefebvre', 'Michel', 'Garnier', 'Rousseau', 'Fontaine', 'Mercier', 'Blanc']],
+  pt: [['João', 'Rafael', 'Tiago', 'Diogo', 'Gonçalo', 'Pedro', 'Bruno', 'Rúben', 'André', 'Gabriel', 'Lucas', 'Matheus', 'Thiago', 'Vinícius', 'Felipe', 'Gustavo', 'Caio', 'Renan'], ['Silva', 'Santos', 'Ferreira', 'Pereira', 'Oliveira', 'Costa', 'Rodrigues', 'Martins', 'Sousa', 'Fernandes', 'Gomes', 'Lopes', 'Carvalho', 'Almeida', 'Ribeiro', 'Barbosa', 'Araújo', 'Moura']],
+  nl: [['Daan', 'Sem', 'Lars', 'Thijs', 'Bram', 'Ruben', 'Jesse', 'Stijn', 'Joris', 'Wout', 'Niels', 'Koen', 'Matthijs', 'Jasper', 'Teun', 'Milan', 'Arne', 'Jelle'], ['de Jong', 'Jansen', 'de Vries', 'van den Berg', 'Bakker', 'Visser', 'Smit', 'Meijer', 'Mulder', 'de Boer', 'Bos', 'Vos', 'Peeters', 'Maes', 'Claes', 'Willems', 'Janssens', 'Wouters']],
+  nor: [['Erik', 'Lars', 'Magnus', 'Oskar', 'Emil', 'Viktor', 'Anders', 'Jonas', 'Mikkel', 'Rasmus', 'Kasper', 'Sander', 'Mathias', 'Henrik', 'Isak', 'Elias', 'Filip', 'Gustav'], ['Hansen', 'Johansson', 'Nielsen', 'Andersen', 'Larsen', 'Karlsson', 'Pedersen', 'Olsen', 'Lindqvist', 'Berg', 'Holm', 'Dahl', 'Strand', 'Lund', 'Nyberg', 'Eriksen', 'Solberg', 'Haugen']],
+  sl: [['Jakub', 'Mateusz', 'Kamil', 'Tomáš', 'Ondřej', 'Luka', 'Ivan', 'Marko', 'Nikola', 'Stefan', 'Dmytro', 'Andriy', 'Oleksandr', 'Petar', 'Filip', 'Bartosz', 'Josip', 'Milan'], ['Kowalski', 'Nowak', 'Wiśniewski', 'Novák', 'Svoboda', 'Dvořák', 'Horvat', 'Kovačić', 'Babić', 'Jovanović', 'Petrović', 'Nikolić', 'Shevchenko', 'Kovalenko', 'Bondarenko', 'Lewandowski', 'Marić', 'Popović']],
+  gr: [['Giorgos', 'Dimitris', 'Kostas', 'Nikos', 'Giannis', 'Christos', 'Vasilis', 'Panagiotis', 'Andreas', 'Petros'], ['Papadopoulos', 'Georgiou', 'Nikolaou', 'Karagiannis', 'Vlachos', 'Dimitriou', 'Makris', 'Oikonomou', 'Pappas', 'Antoniou']],
+  ro: [['Andrei', 'Alexandru', 'Ionuț', 'Florin', 'Mihai', 'Răzvan', 'Cristian', 'Vlad', 'Bogdan', 'Darius'], ['Popescu', 'Ionescu', 'Stan', 'Dumitru', 'Munteanu', 'Constantin', 'Marin', 'Stoica', 'Rusu', 'Lungu']],
+  jp: [['Takumi', 'Haruto', 'Yuto', 'Kaito', 'Sota', 'Ren', 'Daiki', 'Kenta', 'Ryota', 'Shota', 'Hiroki', 'Yuki'], ['Sato', 'Suzuki', 'Takahashi', 'Tanaka', 'Watanabe', 'Ito', 'Yamamoto', 'Nakamura', 'Kobayashi', 'Kato', 'Yoshida', 'Yamada']],
+  kr: [['Min-jun', 'Seo-jun', 'Ji-ho', 'Hyun-woo', 'Jun-young', 'Dong-hyun', 'Sung-min', 'Jae-won', 'Tae-yang', 'Woo-jin'], ['Kim', 'Lee', 'Park', 'Choi', 'Jung', 'Kang', 'Cho', 'Yoon', 'Jang', 'Lim']],
+  cn: [['Wei', 'Hao', 'Jun', 'Lei', 'Yang', 'Peng', 'Bo', 'Tao', 'Zhen', 'Xin'], ['Wang', 'Li', 'Zhang', 'Liu', 'Chen', 'Yang', 'Zhao', 'Huang', 'Zhou', 'Wu']],
+  ar: [['Mohammed', 'Ahmed', 'Omar', 'Youssef', 'Khalid', 'Abdullah', 'Hassan', 'Ali', 'Karim', 'Sami', 'Fahad', 'Saad', 'Amine', 'Yacine', 'Riyad', 'Bilal'], ['Al-Harbi', 'Al-Qahtani', 'Al-Dosari', 'Mansour', 'Haddad', 'Saleh', 'Nasser', 'El-Sayed', 'Benali', 'Bensaid', 'Ziani', 'Brahimi', 'Hamdi', 'Trabelsi', 'Jaziri', 'Kamal']],
+  ir: [['Ali', 'Reza', 'Mehdi', 'Amir', 'Sardar', 'Saeed', 'Hossein', 'Milad', 'Ehsan', 'Karim'], ['Karimi', 'Hosseini', 'Rezaei', 'Ahmadi', 'Moradi', 'Jafari', 'Rahimi', 'Ghasemi', 'Mohammadi', 'Azizi']],
+  id: [['Budi', 'Agus', 'Rizky', 'Dimas', 'Fajar', 'Andi', 'Bayu', 'Yoga', 'Eko', 'Arif'], ['Santoso', 'Wijaya', 'Saputra', 'Hidayat', 'Pratama', 'Kurniawan', 'Setiawan', 'Nugroho', 'Gunawan', 'Siregar']],
+  wa: [['Chinedu', 'Emeka', 'Kwame', 'Kofi', 'Samuel', 'Victor', 'Ibrahima', 'Moussa', 'Cheikh', 'Abdoulaye', 'Joseph', 'Daniel', 'Sadio', 'Thomas'], ['Okafor', 'Adeyemi', 'Mensah', 'Boateng', 'Asamoah', 'Diallo', 'Ndiaye', 'Sarr', 'Diop', 'Osei', 'Eze', 'Nwosu', 'Owusu', 'Faye']],
+  za: [['Thabo', 'Sipho', 'Themba', 'Lebo', 'Bongani', 'Kagiso', 'Mandla', 'Ruan', 'Pieter', 'Teboho'], ['Nkosi', 'Dlamini', 'Mokoena', 'Zulu', 'Khumalo', 'Ndlovu', 'van Wyk', 'Botha', 'Mabaso', 'Shabalala']],
+  au: [['Jack', 'Lachlan', 'Mitchell', 'Cooper', 'Riley', 'Harrison', 'Brandon', 'Josh', 'Liam', 'Nathan'], ['Smith', 'Jones', 'Williams', 'Brown', 'Wilson', 'Taylor', 'Mitchell', 'Kelly', 'Ryan', 'Campbell']]
+};
+FM.LANG = { DE: 'de', AT: 'de', CH: 'de', EN: 'en', SC: 'en', US: 'en', CA: 'en', AU: 'au', ES: 'es', AR: 'es', MX: 'es', CO: 'es', CL: 'es', UY: 'es', PE: 'es', CR: 'es', IT: 'it', FR: 'fr', BE: 'nl', NL: 'nl', PT: 'pt', BR: 'pt', DK: 'nor', SE: 'nor', NO: 'nor', PL: 'sl', CZ: 'sl', HR: 'sl', RS: 'sl', UA: 'sl', GR: 'gr', RO: 'ro', JP: 'jp', KR: 'kr', CN: 'cn', SA: 'ar', QA: 'ar', AE: 'ar', EG: 'ar', TN: 'ar', DZ: 'ar', MA: 'ar', IR: 'ir', ID: 'id', NG: 'wa', GH: 'wa', SN: 'wa', ZA: 'za', EU: 'mix' };
+/* Ülke kuralları: maç kadrosunda en fazla yabancı oyuncu (yoksa sınırsız) */
+FM.RULES = { TR: { fl: 8 }, EN: { fl: 11 }, ES: { fl: 5 }, IT: { fl: 6 }, DE: { fl: 11 }, FR: { fl: 6 }, RU: { fl: 6 }, SA: { fl: 8 }, QA: { fl: 6 }, AE: { fl: 6 }, CN: { fl: 5 }, JP: { fl: 5 }, KR: { fl: 4 }, US: { fl: 8 }, MX: { fl: 9 }, BR: { fl: 9 }, AR: { fl: 6 }, IR: { fl: 0 } };
+
+/* ---------- Üçüncü lig: her ülkeye otomatik eklenir (isteğe bağlı kurulur) ---------- */
+(function () {
+  for (const cc in FM.COUNTRIES) {
+    const C = FM.COUNTRIES[cc];
+    if (C.l.length < 3) C.l.push(cc === 'TR' ? 'Gelecek Ligi' : C.n + ' Üçüncü Lig');
+    if (C.rep && C.rep.length < 3) C.rep.push(Math.max(1, C.rep[1] - 1));
+  }
+  // Türkiye 3. lig kasabaları (uydurma, coğrafi heceler)
+  FM.TR_TOWNS3 = ['Karaağaç', 'Yenipınar', 'Akçadere', 'Kızıltepe Ova', 'Sarıkaya', 'Göldere', 'Çamyaka', 'Taşoba', 'Yeşilkent', 'Ilıcabük', 'Çaykent', 'Akyurt Ova'];
+})();

@@ -40,7 +40,21 @@
   }
   function refresh(p) { p.ovr = ovrAs(p, p.pos); if (p.pot < p.ovr) p.pot = p.ovr; p.value = calcValue(p); }
   let foreignGen = false;
-  function genName() { if (foreignGen) return pick(FM.FFIRST) + ' ' + pick(FM.FLAST); for (;;) { const n = pick(FM.FIRST) + ' ' + pick(FM.LAST); if (!FM.NAME_BLOCK.includes(n)) return n; } }
+  /* foreignGen: false ya da ülke kodu. Adlar ülkenin dil havuzundan; her kadroda ~%15 yabancı. lastNat oyuncunun uyruğu olur. */
+  let lastNat = 'TR';
+  function natOf(cc) {
+    if (!FM.NAMEPOOLS) return cc;
+    if (cc === 'EU' || (!(FM.RULES && FM.RULES[cc] && FM.RULES[cc].fl === 0) && R() < (cc === 'TR' ? .12 : .15))) {   // yabancı oyuncu
+      const ccs = Object.keys(FM.LANG).filter(c => c !== 'EU' && c !== cc && FM.COUNTRIES[c]); return pick(ccs);
+    }
+    return cc;
+  }
+  function genName() {
+    const cc = natOf(foreignGen === true ? 'EU' : foreignGen || 'TR'); lastNat = cc;
+    const pool = cc !== 'TR' && FM.NAMEPOOLS && FM.NAMEPOOLS[FM.LANG[cc]];
+    if (pool) return pick(pool[0]) + ' ' + pick(pool[1]);
+    if (cc !== 'TR') return pick(FM.FFIRST) + ' ' + pick(FM.FLAST);
+    for (;;) { const n = pick(FM.FIRST) + ' ' + pick(FM.LAST); if (!FM.NAME_BLOCK.includes(n)) return n; } }
   function roleFor(p) {
     const a = p.a;
     if (p.pos === 'GK') return 'GK';
@@ -56,7 +70,7 @@
       a[k] = clamp(Math.round(v), 5, 97);
     }
     const p = {
-      id: G.nextId++, name: genName(), pos, age, a, tid: null,
+      id: G.nextId++, name: genName(), nat: lastNat, pos, age, a, tid: null,
       fit: ri(88, 100), mor: ri(60, 80), inj: 0, susp: 0, con: ri(1, 4), loan: null, sc: 0,
       g: 0, as: 0, apps: 0, yc: 0, rc: 0, rs: 0, rn: 0, form: [],
       look: [ri(0, 4), ri(0, 4), ri(0, 3)], num: ri(2, 99)
@@ -78,9 +92,18 @@
   function est(p) { if (known(p)) return [p.ovr, p.ovr]; const lo = clamp(p.ovr - 2 - (p.id % 4), 30, 95); return [lo, Math.min(97, lo + 7)]; }
   function eff(p, role) {
     const base = p.pos === role ? p.ovr : ovrAs(p, role) * .92;
-    return base * (.72 + .28 * p.fit / 100) * (.96 + .08 * p.mor / 100) * (p.rust ? .95 : 1) * (p.jab ? .92 : 1);
+    return base * (.72 + .28 * p.fit / 100) * (.96 + .08 * p.mor / 100) * (p.rust ? .95 : 1) * (p.jab ? .92 : 1) * (p.adapt ? .94 : 1) * (G.diff != null && p.tid === G.teamId ? DIFF_MUL[G.diff] : 1);
   }
+  const DIFF_MUL = [1.04, 1, .965];
+  /* Yabancı kuralı ve uyum: oyuncunun uyruğu kulübün ülkesinden farklıysa yabancıdır; yeni bir ülkeye gelen yabancı 8 hafta uyum sürecinde biraz düşük oynar */
+  const clubCc = t => (t.cc ? t.cc : t.div === 2 ? 'EU' : 'TR');
+  const isForeign = (p, t) => !!p.nat && p.nat !== clubCc(t);
+  const foreignCount = t => t.players.reduce((n, id) => n + (isForeign(P(id), t) ? 1 : 0), 0);
+  const foreignLimit = t => { const r = FM.RULES && FM.RULES[clubCc(t)]; return r ? r.fl : 10; };
+  const foreignOk = (p, t) => !isForeign(p, t) || foreignCount(t) < foreignLimit(t);
   function addToTeam(p, team) {
+    if (G.fixtures && team.div !== 2 && isForeign(p, team) && p.cx !== clubCc(team)) p.adapt = 8;
+    if (G.fixtures) p.cx = clubCc(team);
     p.tid = team.id; team.players.push(p.id);
     if (team.id === G.teamId) p.sc = 1;
     const used = new Set(team.players.filter(id => id !== p.id).map(id => P(id).num));
@@ -647,7 +670,7 @@
   const cDivs = cc => LDIVS().filter(d => ccOf(d) === cc).sort((a, b) => tierOf(a) - tierOf(b));
   const teamQ = t => (t.div === 2 ? 59 + t.rep * 3.6 : 58 + t.rep * 3.6 - tierOf(t) * 7);
   function buildSquad(team) {
-    foreignGen = team.div === 2;
+    foreignGen = team.cc && team.cc !== 'TR' ? team.cc : team.div === 2 ? 'EU' : false;
     const q = teamQ(team), plan = [['GK', 3], ['DEF', 7], ['MID', 7], ['FWD', 5]], starters = { GK: 1, DEF: 4, MID: 4, FWD: 2 };
     for (const [pos, n] of plan) for (let i = 0; i < n; i++) {
       const st = i < starters[pos];
@@ -668,21 +691,21 @@
     me.ment = 1; ensureLineup(me);
   }
   function addLeagues(setup) {
-    const tiersOf = o => (o && o.leagues ? o.leagues.slice() : Array.from({ length: Math.min(2, (o && o.depth) || 2) }, (_, i) => i)).filter(x => x === 0 || x === 1).sort();
+    const tiersOf = o => (o && o.leagues ? o.leagues.slice() : Array.from({ length: Math.min(2, (o && o.depth) || 2) }, (_, i) => i)).filter(x => x >= 0 && x <= 2).sort();
     const trT = setup && setup.countries && setup.countries.TR ? tiersOf(setup.countries.TR) : [0, 1];
     G.lg = { 0: { cc: 'TR', tier: 0, mode: 'play' } };
     if (trT.includes(1)) G.lg[1] = { cc: 'TR', tier: 1, mode: 'play' };
     let div = 3; const keyId = {};
     G.teams.forEach((t, i) => { t.key = 'TR:' + i; t.cc = 'TR'; keyId[t.key] = t.id; if (FM.World) { const c = FM.World.clubs('TR')[i]; if (c) t.info = c.info; } });
     for (const cc of Object.keys((setup && setup.countries) || {})) {
-      if (cc === 'TR' || !FM.COUNTRIES[cc] || !FM.World) continue;
+      if (!FM.COUNTRIES[cc] || !FM.World) continue;
       const o = setup.countries[cc], all = FM.World.clubs(cc);
       for (const tier of tiersOf(o)) {
+        if (cc === 'TR' && tier < 2) continue;   // Türkiye'nin ilk iki ligi yukarıda kuruldu
         G.lg[div] = { cc, tier, mode: o.mode === 'view' ? 'view' : 'play' };
-        foreignGen = true;
         for (const c of all.filter(x => x.tier === tier)) {
           const t = { ...c, id: G.teams.length, div, players: [], lineup: [], formation: pick(['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '4-4-2']), ment: 1, tac: { press: ri(0, 2), tempo: ri(0, 2), line: ri(0, 2), width: ri(0, 2) }, sp: {}, fac: { training: 1, youth: 1, stadium: 1 } };
-          G.teams.push(t); keyId[t.key] = t.id; buildSquad(t); autoPick(t);
+          G.teams.push(t); keyId[t.key] = t.id; buildSquad(t); autoPick(t); foreignGen = cc; t.coach = genName(); foreignGen = false;
         }
         foreignGen = false; div++;
       }
@@ -706,6 +729,7 @@
       buildSquad(t); autoPick(t);
     });
     addLeagues(setup);
+    G.diff = setup && setup.diff != null ? setup.diff : 1; G.startMode = (setup && setup.start) || 'club';
     if (typeof teamId === 'string') { G.teamId = teamId = G.keyId[teamId] != null ? G.keyId[teamId] : 0; }
     for (let i = 0; i < 28; i++) genFree();
     const me = T(teamId);
@@ -714,33 +738,40 @@
     G.fixtures = []; for (const d of LDIVS()) G.fixtures[d] = makeFixtures(divTeams(d).map(t => t.id));
     G.cup = newCup();
     ensureWorld(); hook('ensure'); hook('newGame'); sponsorOffer();
-    news(`${G.manager}, ${me.name} teknik direktörlüğüne getirildi. Yönetim hedefi: ${FM.DIV_TR[me.div]}'nde ${expectation(me)}. sıra veya üstü.`, 'club');
+    if (G.phase !== 'jobless') news(`${G.manager}, ${me.name} teknik direktörlüğüne getirildi. Yönetim hedefi: ${FM.DIV_TR[me.div]}'nde ${expectation(me)}. sıra veya üstü.`, 'club');
     save();
     return G;
   }
   function genFree() {
     const pos = wpick(['GK', 'DEF', 'MID', 'FWD'], p => (p === 'GK' ? 1 : 3));
-    const p = genPlayer(pos, ri(52, 74), ri(18, 33));
+    const ccs = G.lg ? [...new Set(Object.values(G.lg).map(l => l.cc))] : ['TR']; foreignGen = pick(ccs); if (foreignGen === 'TR') foreignGen = false;
+    const p = genPlayer(pos, ri(52, 74), ri(18, 33)); foreignGen = false;
     p.con = 0; G.free.push(p.id);
     return p;
   }
-  function save() { if (!G || (FM.Settings && !FM.Settings.get('autoSave') && !FM.forceSave)) return; G.savedAt = Date.now(); try { localStorage.setItem(slotKey(SLOT), JSON.stringify(G)); localStorage.setItem('saha-kenari-slot', SLOT); } catch (e) { if (!FM.saveWarned && FM.ui && FM.ui.toast) { FM.saveWarned = true; FM.ui.toast('Kariyer kaydedilemedi: tarayıcı kayıt alanı dolu. Daha küçük bir veri tabanıyla yeni kariyer başlatmayı dene.', 'bad'); } } }
+  /* Kayıt sıkıştırma: LZ ile 4–6 kat küçülür; eski (düz JSON) kayıtlar da okunur */
+  const LZ = () => (typeof window !== 'undefined' && window.LZString) || (typeof LZString !== 'undefined' ? LZString : null);
+  const pack = g => { const j = JSON.stringify(g), z = LZ(); return z ? 'LZ1' + z.compressToUTF16(j) : j; };
+  const unpack = s => (s && s.startsWith('LZ1') ? JSON.parse(LZ().decompressFromUTF16(s.slice(3))) : JSON.parse(s));
+  const metaOf = g => ({ team: g.teams[g.teamId].name, tid: g.teamId, manager: g.manager, season: g.season, week: g.week, div: g.teams[g.teamId].div, at: g.savedAt || 0, jobless: !!g.jobless });
+  function save() { if (!G || (FM.Settings && !FM.Settings.get('autoSave') && !FM.forceSave)) return; G.savedAt = Date.now(); try { localStorage.setItem(slotKey(SLOT), pack(G)); localStorage.setItem(slotKey(SLOT) + '-meta', JSON.stringify(metaOf(G))); localStorage.setItem('saha-kenari-slot', SLOT); } catch (e) { if (!FM.saveWarned && FM.ui && FM.ui.toast) { FM.saveWarned = true; FM.ui.toast('Kariyer kaydedilemedi: tarayıcı kayıt alanı dolu. Daha küçük bir veri tabanıyla yeni kariyer başlatmayı dene.', 'bad'); } } }
   function load() {
-    try { const s = localStorage.getItem(slotKey(SLOT)); if (!s) return null; const g = JSON.parse(s); if (g && g.v === 2) { G = g; if (!G.inbox) G.inbox = []; ensureWorld(); hook('ensure'); return G; } } catch (e) { /* bozuk kayıt */ }
+    try { const s = localStorage.getItem(slotKey(SLOT)); if (!s) return null; const g = unpack(s); if (g && g.v === 2) { G = g; if (!G.inbox) G.inbox = []; ensureWorld(); hook('ensure'); return G; } } catch (e) { /* bozuk kayıt */ }
     return null;
   }
-  function reset() { try { localStorage.removeItem(slotKey(SLOT)); } catch (e) { /* yok say */ } G = null; }
+  function reset() { try { localStorage.removeItem(slotKey(SLOT)); localStorage.removeItem(slotKey(SLOT) + '-meta'); } catch (e) { /* yok say */ } G = null; }
   const close = () => { G = null; };
   function slots() {
     const out = [];
     for (let n = 1; n <= 3; n++) {
-      let g = null; try { const s = localStorage.getItem(slotKey(n)); g = s ? JSON.parse(s) : null; } catch (e) { g = null; }
-      out.push(g && g.v === 2 && g.teams && g.teams[g.teamId] ? { n, team: g.teams[g.teamId].name, tid: g.teamId, manager: g.manager, season: g.season, week: g.week, div: g.teams[g.teamId].div, at: g.savedAt || 0 } : { n, empty: true });
+      let m = null;
+      try { const mm = localStorage.getItem(slotKey(n) + '-meta'); if (mm && localStorage.getItem(slotKey(n))) m = JSON.parse(mm); else { const s = localStorage.getItem(slotKey(n)); const g = s ? unpack(s) : null; if (g && g.v === 2 && g.teams && g.teams[g.teamId]) m = metaOf(g); } } catch (e) { m = null; }
+      out.push(m ? { n, ...m } : { n, empty: true });
     }
     return out;
   }
   function useSlot(n) { SLOT = n; G = null; return load(); }
-  function deleteSlot(n) { try { localStorage.removeItem(slotKey(n)); } catch (e) { /* yok say */ } if (n === SLOT) G = null; }
+  function deleteSlot(n) { try { localStorage.removeItem(slotKey(n)); localStorage.removeItem(slotKey(n) + '-meta'); } catch (e) { /* yok say */ } if (n === SLOT) G = null; }
   const slot = () => SLOT;
   const setSlot = n => { SLOT = n; };
   const exportSave = () => JSON.stringify(G);
@@ -840,34 +871,47 @@
     hook('endWeek');
     if (CUP_AFTER.includes(G.week) && !G.cup.winner) drawCup();
     const er = EURO_AFTER.indexOf(G.week); if (er >= 0 && G.euro && !G.euro.winner) startEuroRound(er);
-    if (G.board <= 10 && G.week >= 8) sack();
+    if (G.board <= [5, 10, 15][G.diff == null ? 1 : G.diff] && G.week >= 8) sack();
+    for (const id in G.players) { const p = G.players[id]; if (p.adapt) p.adapt--; }
     save();
   }
-  /* Diğer kulüpler de transfer yapar: serbest oyuncu imzalar, birbirinden oyuncu alır */
+  /* Yapay zekâ kulüpleri: en zayıf mevkisini bulur, bütçesine (itibar) ve yabancı sınırına uygun oyuncu arar.
+     Önce kendi ülkesinden, bazen yurt dışından alır; şişkin kadrolu kulüpler yedek ve yaşlıları satar. */
+  const NEED = { GK: 2, DEF: 7, MID: 7, FWD: 4 };
+  function needOf(t) {
+    const ps = t.players.map(P), out = [];
+    for (const pos of ['GK', 'DEF', 'MID', 'FWD']) {
+      const g = ps.filter(p => p.pos === pos), best = g.map(p => p.ovr).sort((a, b) => b - a), starters = { GK: 1, DEF: 4, MID: 4, FWD: 2 }[pos];
+      const weak = best.length >= starters ? best[starters - 1] : 0;
+      out.push({ pos, gap: (NEED[pos] - g.length) * 3 + (teamQ(t) - weak) });
+    }
+    return out.sort((a, b) => b.gap - a.gap)[0];
+  }
+  const budgetOf = t => 300000 * Math.pow(2.2, t.rep) * [1, .45, .2][tierOf(t)] || 200000;
   function aiTransfers() {
-    const others = G.teams.filter(t => t.id !== G.teamId && t.div < 2);
-    if (R() < .4 && G.free.length) {
-      const club = pick(others.filter(t => t.players.length < 26));
-      const cands = club ? G.free.map(P).filter(p => p.ovr >= teamQ(club) - 3 && p.ovr <= teamQ(club) + 8) : [];
-      if (cands.length) {
-        const p = cands.sort((a, b) => b.ovr - a.ovr)[0];
-        G.free = G.free.filter(id => id !== p.id); addToTeam(p, club); p.con = ri(2, 4); autoPick(club);
-        news(`${club.name}, serbest oyuncu ${p.name} ile anlaştı.`, 'info');
+    const others = G.teams.filter(t => t.id !== G.teamId && t.div !== 2 && (!G.lg || G.lg[t.div]));
+    const n = Math.max(2, Math.round(others.length / 18));
+    for (let k = 0; k < n; k++) {
+      const club = pick(others); if (!club || club.players.length >= 26) continue;
+      const need = needOf(club); if (need.gap < 2) continue;
+      const q = teamQ(club), cc = clubCc(club), abroad = R() < .22, bud = budgetOf(club);
+      const fits = p => p.pos === need.pos && p.ovr >= q - 2 && p.ovr <= q + 9 && p.age <= 31 && foreignOk(p, club);
+      let cands = G.free.map(P).filter(fits).map(p => [p, 0]);
+      for (const t of others) {
+        if (t === club || t.players.length <= 19 || (abroad ? clubCc(t) === cc : clubCc(t) !== cc)) continue;
+        if ((t.rep - tierOf(t) * 2) > (club.rep - tierOf(club) * 2) + 1) continue;   // büyük kulüpten oyuncu koparamaz
+        for (const id of t.players) { const p = P(id); if (!p.loan && fits(p) && !t.lineup.slice(0, 11).includes(id)) { const fee = r10k(p.value * 1.1); if (fee <= bud) cands.push([p, fee]); } }
       }
+      if (!cands.length) continue;
+      cands.sort((a, b) => (b[0].ovr + (b[0].pot - b[0].ovr) * .3 - b[1] / 4e6) - (a[0].ovr + (a[0].pot - a[0].ovr) * .3 - a[1] / 4e6));
+      const [p, fee] = cands[Math.floor(R() * Math.min(3, cands.length))];
+      if (p.tid == null) { G.free = G.free.filter(id => id !== p.id); addToTeam(p, club); p.con = ri(1, 3); autoPick(club); if (p.ovr >= 68) news(`${club.name}, serbest oyuncu ${p.name} ile anlaştı.`, 'info'); continue; }
+      const seller = T(p.tid); removeFromTeam(p); addToTeam(p, club); p.con = ri(2, 4); autoPick(seller); autoPick(club);
+      if (p.ovr >= 66 || ccOf(club.div) === ccOf(T(G.teamId).div)) news(`${p.name}, ${money(fee)} karşılığında ${seller.name} takımından ${club.name} takımına transfer oldu${clubCc(seller) !== cc ? ' (yurt dışı transferi)' : ''}.`, 'info');
+      hook('aiSale', p, fee, seller.id, club.id);
     }
-    if (R() < .25) {
-      const seller = pick(others.filter(t => t.players.length > 20));
-      const buyer = seller && pick(others.filter(t => t !== seller && t.players.length < 26 && (t.rep - tierOf(t) * 2) >= (seller.rep - tierOf(seller) * 2)));
-      if (buyer) {
-        const cands = seller.players.map(P).filter(p => !p.loan && !seller.lineup.includes(p.id) && p.ovr >= teamQ(buyer) - 4);
-        if (cands.length) {
-          const p = pick(cands);
-          removeFromTeam(p); addToTeam(p, buyer); p.con = ri(2, 4); autoPick(seller); autoPick(buyer);
-          news(`${p.name}, ${money(r10k(p.value * 1.15))} karşılığında ${seller.name} takımından ${buyer.name} takımına transfer oldu.`, 'info');
-          hook('aiSale', p, r10k(p.value * 1.15), seller.id, buyer.id);
-        }
-      }
-    }
+    // kadro budama: 27+ oyuncusu olan kulüp en düşük katkılı oyuncusunu serbest bırakır
+    for (const t of others) if (t.players.length >= 27) { const p = t.players.map(P).filter(x => !x.loan && !t.lineup.includes(x.id)).sort((a, b) => (a.ovr - a.age * .3) - (b.ovr - b.age * .3))[0]; if (p) { removeFromTeam(p); p.con = 0; G.free.push(p.id); autoPick(t); } }
   }
   function sack() {
     const me = T(G.teamId);
@@ -908,34 +952,59 @@
   }
 
   /* ---------- Sezon sonu ---------- */
+  /* Play-off: 2.–5. sıradakiler; yarı final (2–5, 3–4) ve final. Ev sahibi avantajı üst sıradakinde, beraberlikte penaltı. */
+  function playoff(ids, div) {
+    const lines = [];
+    const tie = (h, a, rn) => {
+      const f = { h, a }; quickResult(f); let w = f.hs > f.as ? h : f.hs < f.as ? a : null, pen = '';
+      if (!w) { w = R() < .5 + (teamQ(T(h)) - teamQ(T(a))) * .02 ? h : a; pen = ' (penaltılarla ' + T(w).name + ')'; }
+      lines.push(`${rn}: ${T(h).name} ${f.hs}–${f.as} ${T(a).name}${pen}`); return w;
+    };
+    if (ids.length < 4) return { div, ids, winner: ids[0], lines };
+    const s1 = tie(ids[0], ids[3], 'Yarı final'), s2 = tie(ids[1], ids[2], 'Yarı final');
+    const winner = tie(s1, s2, 'Final');
+    return { div, ids, winner, lines };
+  }
   function seasonEnd() {
     const me = T(G.teamId), myC = cDivs(ccOf(me.div)), tbs = myC.map(d => table(d)), tb = table(me.div);
     G.moves = [];
-    for (const cc of [...new Set(LDIVS().map(ccOf))]) { const ds = cDivs(cc); if (ds.length < 2) continue; const a = table(ds[0]), b = table(ds[1]); a.slice(-2).forEach(r => G.moves.push([r.id, ds[1]])); b.slice(0, 2).forEach(r => G.moves.push([r.id, ds[0]])); }
+    G.playoffs = [];
+    for (const cc of [...new Set(LDIVS().map(ccOf))]) {
+      const ds = cDivs(cc);
+      for (let i = 0; i + 1 < ds.length; i++) {   // her basamak: son 2 düşer; lider doğrudan, 2–5. sıradakilerin play-off galibi yükselir
+        const a = table(ds[i]), b = table(ds[i + 1]);
+        a.slice(-2).forEach(r => G.moves.push([r.id, ds[i + 1]]));
+        G.moves.push([b[0].id, ds[i]]);
+        const po = playoff(b.slice(1, 5).map(r => r.id), ds[i + 1]);
+        G.moves.push([po.winner, ds[i]]); G.playoffs.push(po);
+      }
+    }
     const pos = tb.findIndex(r => r.id === G.teamId) + 1, exp = expectation(me);
-    const prize = Math.round(((13 - pos) * 450000 + (pos === 1 ? 2500000 : 0)) * (tierOf(me) ? .4 : 1));
+    const prize = Math.round(((13 - pos) * 450000 + (pos === 1 ? 2500000 : 0)) * [1, .4, .2][tierOf(me)] || 0);
     G.fin.balance += prize;
     let top = null;
     for (const id in G.players) { const p = G.players[id]; if (p.tid != null && T(p.tid).div === me.div && (!top || p.g > top.g)) top = p; }
     const myTop = me.players.map(P).sort((a, b) => b.g - a.g)[0];
     if (myTop && myTop.g > 0 && (!G.rec.goals || myTop.g > G.rec.goals.g)) G.rec.goals = { name: myTop.name, g: myTop.g, s: G.season };
     if (!G.rec.pts || tb[pos - 1].pts > G.rec.pts.v) G.rec.pts = { v: tb[pos - 1].pts, s: G.season };
-    const down = tbs.length > 1 ? tbs[0].slice(-2).map(r => r.id) : [], up = tbs.length > 1 ? tbs[1].slice(0, 2).map(r => r.id) : [];
+    const down = G.moves.filter(([id, d]) => T(id).div === me.div && tierOf(d) > tierOf(me)).map(m => m[0]).concat(G.moves.filter(([id, d]) => d === me.div && tierOf(T(id)) < tierOf(me)).map(m => m[0]));
+    const up = G.moves.filter(([id, d]) => T(id).div === me.div && tierOf(d) < tierOf(me)).map(m => m[0]).concat(G.moves.filter(([id, d]) => d === me.div && tierOf(T(id)) > tierOf(me)).map(m => m[0]));
+    const myPo = G.playoffs.find(po => po.ids.includes(G.teamId));
     const champ = tierOf(me) === 0 && pos === 1;
     if (champ) { G.museum.titles.push(G.season); unlock('champion'); if (G.cup.winner === G.teamId) unlock('double'); }
-    if (up.includes(G.teamId)) unlock('promoted');
+    if (G.moves.some(([id, d]) => id === G.teamId && tierOf(d) < tierOf(me))) unlock('promoted');
     if (G.season >= 3) unlock('loyal');
     G.board = clamp(G.board + (pos <= exp ? 10 : -8), 0, 100);
     G.jobOffers = [];
     if (pos <= Math.max(1, exp - 2) || champ) {
       G.jobOffers = G.teams.filter(t => t.div !== 2 && (!G.lg || G.lg[t.div]) && t.id !== me.id && (t.rep - tierOf(t) * 2) > (me.rep - tierOf(me) * 2)).sort(() => R() - .5).slice(0, 2).map(t => t.id);
     }
-    G.summary = { season: G.season, div: me.div, pos, exp, prize, champion: tbs[0][0].id, top: top ? { name: top.name, g: top.g, tid: top.tid } : null, table: tb.slice(0, 3).map(r => r.id), up, down, cup: G.cup.winner };
+    G.summary = { season: G.season, div: me.div, pos, exp, prize, champion: tbs[0][0].id, top: top ? { name: top.name, g: top.g, tid: top.tid } : null, table: tb.slice(0, 3).map(r => r.id), up, down, cup: G.cup.winner, po: myPo || G.playoffs.find(po => po.div === me.div) || G.playoffs.find(po => ccOf(po.div) === ccOf(me.div)) || null };
     G.summary.awards = awards(me.div); G.euroQ = tbs[0].slice(0, 4).map(r => r.id); G.summary.euro = G.euro ? G.euro.winner : null;
     G.history.push({ season: G.season, div: me.div, pos, champion: T(tbs[0][0].id).name, pts: tb[pos - 1].pts, team: me.name, cup: G.cup.winner != null ? T(G.cup.winner).name : '—' });
     hook('seasonEnd', tbs);
     G.phase = 'seasonEnd';
-    if (G.board <= 10) { sack(); G.phase = 'sacked'; }
+    if (G.board <= [5, 10, 15][G.diff == null ? 1 : G.diff]) { sack(); G.phase = 'sacked'; }
   }
   function startNewSeason() {
     const retired = [], left = [], s = G.summary;
@@ -944,7 +1013,7 @@
     if (G.moves) for (const [id, d] of G.moves) T(id).div = d; else { for (const id of s.down) T(id).div = 1; for (const id of s.up) T(id).div = 0; }
     G.moves = null;
     for (const t of G.teams) {
-      const mine = t.id === G.teamId; foreignGen = t.div === 2;
+      const mine = t.id === G.teamId; foreignGen = t.cc && t.cc !== 'TR' ? t.cc : t.div === 2 ? 'EU' : false;
       for (const id of t.players.slice()) {
         const p = P(id);
         p.age++; p.g = 0; p.as = 0; p.apps = 0; p.yc = 0; p.rc = 0; p.rs = 0; p.rn = 0; p.inj = 0; p.susp = 0; p.fit = 100; p.mor = clamp(p.mor + 5, 40, 85); p.idle = 0; p._ap = 0; p.rust = 0; p.jab = 0; p.injT = null; p.unhappy = false; p.asked = 0;
@@ -959,7 +1028,11 @@
       }
       const q = teamQ(t), min = mine ? { GK: 2, DEF: 5, MID: 5, FWD: 3 } : { GK: 2, DEF: 6, MID: 6, FWD: 4 };
       for (const pos of ['GK', 'DEF', 'MID', 'FWD']) while (t.players.filter(id => P(id).pos === pos).length < min[pos]) { const p = genPlayer(pos, q + ri(-6, 1), ri(17, 22)); p.con = 3; addToTeam(p, t); }
-      if (!mine) autoPick(t);
+      if (!mine && t.div !== 2) {   // yapay zekâ altyapısı: her sezon 1–2 genç; kadro şişerse en yaşlı yedek ayrılır
+        for (let k = R() < .6 ? 1 : 2; k > 0; k--) { const p = genPlayer(pick(['GK', 'DEF', 'DEF', 'MID', 'MID', 'FWD']), q - ri(6, 12), ri(17, 19)); p.pot = clamp(p.ovr + ri(8, 22), p.ovr, 92); p.con = 3; addToTeam(p, t); }
+        while (t.players.length > 25) { const o = t.players.map(P).filter(p => !p.loan).sort((a, b) => b.age - a.age)[0]; if (!o) break; removeFromTeam(o); if (o.age >= 33) delete G.players[o.id]; else { o.con = 0; G.free.push(o.id); } }
+      }
+      if (!mine) { while (t.players.length < 20) { const p = genPlayer(pick(['DEF', 'MID', 'MID', 'FWD']), q + ri(-6, 0), ri(17, 21)); p.con = 3; addToTeam(p, t); } autoPick(t); }
     }
     foreignGen = false;
     const keepFree = new Set(left.length ? G.free.slice(-left.length) : []);
@@ -1005,6 +1078,7 @@
   function canDeal(p) {
     if (p.tid != null && !windowOpen()) return 'Transfer dönemi kapalı. Yalnızca serbest oyuncular alınabilir.';
     if (T(G.teamId).players.length >= 28) return 'Kadro dolu (en fazla 28 oyuncu).';
+    if (!foreignOk(p, T(G.teamId))) return `Yabancı sınırı dolu: ${FM.COUNTRIES[clubCc(T(G.teamId))] ? FM.COUNTRIES[clubCc(T(G.teamId))].n : 'Bu'} liginde kadroda en fazla ${foreignLimit(T(G.teamId))} yabancı olabilir.`;
     if (G.cool[p.id]) return 'Bu hafta bu oyuncu için görüşme kapandı.';
     return null;
   }
@@ -1158,7 +1232,8 @@
     });
     for (const [a, b] of FM.RIVALS) if (T(a).rival == null) { T(a).rival = b; T(b).rival = a; }
     for (const t of G.teams) if (t.chem == null) t.chem = 60;
-    for (const t of G.teams) if (!t.coach) { foreignGen = t.div === 2; t.coach = genName(); foreignGen = false; }
+    for (const t of G.teams) if (!t.coach) { foreignGen = t.cc && t.cc !== 'TR' ? t.cc : t.div === 2 ? 'EU' : false; t.coach = genName(); foreignGen = false; }
+    for (const id in G.players) { const p = G.players[id]; if (!p.nat) p.nat = FM.FFIRST.includes(p.name.split(' ')[0]) ? 'EU' : 'TR'; }
     const me = T(G.teamId);
     G.staff = G.staff || { coach: 0, fitness: 0, scout: 0, physio: 0 }; G.promises = G.promises || []; G.social = G.social || []; G.stats = G.stats || newStats(); G.shots = G.shots || [];
     G.youth = G.youth || []; G.u19 = G.u19 || { w: 0, d: 0, l: 0, last: '' };
@@ -1204,7 +1279,7 @@
 
   /* ---- altyapı (U19) ---- */
   function genYouth(n) {
-    const me = T(G.teamId);
+    const me = T(G.teamId); foreignGen = me.cc && me.cc !== 'TR' ? me.cc : false;
     for (let i = 0; i < n; i++) {
       const p = genPlayer(wpick(['GK', 'DEF', 'MID', 'FWD'], x => (x === 'GK' ? 1 : 3)), ri(42, 52) + me.fac.youth * 2 - (me.div === 1 ? 2 : 0), ri(15, 18));
       p.pot = clamp(p.ovr + ri(10, 24) + me.fac.youth * 2, p.ovr, 94); refresh(p); p.wage = 500; p.con = 3; p.y = 1; p.sc = 1;
@@ -1340,7 +1415,7 @@
     return done;
   }
 
-  Object.assign(FM, { LDIVS, ccOf, tierOf, cDivs,
+  Object.assign(FM, { LDIVS, ccOf, tierOf, cDivs, clubCc, isForeign, foreignCount, foreignLimit, foreignOk, budgetOf,
     WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, injSub, protest, coachOf, finishMatch, doSub, ratings, winnerSide,
     table, userFixture, newGame, save, load, reset, exportSave, importSave, endWeek, startNewSeason, simOthers, askPrice, isClause, marketList, buy, sellOffer, sell,
     loanIn, loanOut, loanedOut, renew, renewTerms, scout, known, est, avgRating, talk, answerPress, takeJob, windowOpen, deadline, cupTie, playCupRound,

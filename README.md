@@ -55,12 +55,24 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Haftanın 11'i ve haftanın golü oylaması
 - Maç akışı: oyun dakikası ~1,15 sn; kendi yarısında sabırlı kurulum, orta sahada ileri pas, son bölümde dolaştırma; pozisyon öncesi topu kazanma ve kısa paslarla ilerleme; oyuncu animasyonları (vuruş, plonjon, kayarak müdahale, kafa için sıçrama, gol sevinci, üzüntü)
 - Yeni kariyer sihirbazı: veri tabanı kurulumu (48 ülke, her ülkenin liglerini tek tek ekleme ve çıkarma, oynanabilir ya da yalnızca izle, futbolcu sayısı, oyun hızı ve kayıt boyutu tahmini), takım seçme ekranı (kulüp profili, formalar, kültür, tesisler, rakipler, yönetim beklentisi) ve menajer profili; her ülkede ayrı lig, düşme-yükselme ve kupa
+- Her ülkede 3 lig (üçüncü lig isteğe bağlı): lider doğrudan yükselir, 2–5. sıradakiler play-off oynar (yarı final + final), son iki düşer
+- Ülkeye göre oyuncu adları ve uyruk (her kadroda ~%15 yabancı); yabancı oyuncu sınırı ülke kuralına göre; başka ülkeye gelen oyuncu 8 hafta uyum sürecinde
+- Ülkeler arası transfer: pazarda ülke/kıta filtresi, kıta başına scout ağı (ağ olmayan kıtada güç tahmini daha belirsiz, scout daha pahalı)
+- Daha akıllı yapay zekâ kulüpleri: en zayıf mevkiye, bütçeye ve yabancı sınırına göre transfer; bazen yurt dışından alım; her sezon altyapıdan 1–2 genç
+- Zorluk seviyeleri (Kolay / Normal / Zor) ve başlangıç türü: kulüple, kulüp + milli takımla ya da işsiz başla (açık pozisyonlara başvuru ve 3 soruluk mülakat; kovulunca da başvurulabilir)
+- Dünya → Ülke sekmesi: milli takım (uyruğa göre aday kadro, yurt dışındakiler dahil), ülkenin ligleri, yabancı kuralı
+- Oyuncu kariyer grafiği (sezonlara göre güç ve gol) ve kulüp tarihi grafiği (sezonlara göre lig sırası)
+- Maçta top fiziği (görsel): sürtünmeyle yavaşlayan yerden pas, yerçekimli havadan top ve sekme, uzun topta falso, sahipsiz topun yuvarlanması
+- Sesler: kaçan pozisyonda tribünün "ooo"su, kurtarışa alkış, direğe metalik tını, topun yerine göre yükselen kalabalık uğultusu, davullu ve 9 farklı ritimde tezahürat
+- Sıkıştırılmış kayıt (LZ, ~10 kat küçük): büyük veri tabanları da tarayıcıya sığar
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
 ## Dosyalar
 
 | Yol | İçerik |
 | --- | --- |
+| `js/global.js` | Dünya katmanı: zorluk, işsiz başlangıç ve mülakat, scout ağı, kariyer ve kulüp geçmişi |
+| `js/global-ui.js` | Dünya katmanının ekranları: iş ekranı, Ülke sekmesi, pazar filtresi, grafikler |
 | `js/data.js` | Kulüpler, isimler, dizilişler, spiker metinleri |
 | `js/core.js` | Oyun çekirdeği: maç motoru, lig, transfer, finans |
 | `js/gfx.js` | Üretilen armalar, oyuncu portreleri, ikonlar, sentezlenen sesler |

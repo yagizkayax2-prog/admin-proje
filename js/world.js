@@ -21,7 +21,17 @@
   function clubs(cc) {
     if (cache[cc]) return cache[cc];
     const C = FM.COUNTRIES[cc];
-    if (C.base) return (cache[cc] = FM.TEAMS.map((t, i) => profile({ ...t, key: 'TR:' + i, cc, tier: t.div || (i >= 12 ? 1 : 0), city: t.stadium.split(' ')[0] })));
+    if (C.base) {
+      const base = FM.TEAMS.map((t, i) => profile({ ...t, key: 'TR:' + i, cc, tier: t.div || (i >= 12 ? 1 : 0), city: t.stadium.split(' ')[0] }));
+      const r3 = rng('clubs3:TR'), SUF = ['spor', ' Gençlik', ' Belediye', ' İdman Yurdu', ' Gücü', 'spor'];
+      (FM.TR_TOWNS3 || []).forEach((town, k) => {
+        const c1 = PALETTE[Math.floor(r3() * PALETTE.length)]; let c2 = PALETTE[Math.floor(r3() * PALETTE.length)]; if (Math.abs(lum(c1) - lum(c2)) < 60) c2 = lum(c1) > 128 ? '#14202f' : '#ffffff';
+        const w = town.split(' ')[0];
+        base.push(profile({ key: 'TR:' + (24 + k), cc, tier: 2, name: w + SUF[Math.floor(r3() * SUF.length)], short: w.slice(0, 3).toLocaleUpperCase('tr'), c1, c2, rep: 1, city: w, stadium: w + ' İlçe Stadı', crest: [Math.floor(r3() * 3), Math.floor(r3() * 4), Math.floor(r3() * 2)], fans: w + ' ' + FM.FANS_G[Math.floor(r3() * FM.FANS_G.length)] }));
+      });
+      base.slice(24).forEach((c, i, a) => { const j = i % 2 ? i - 1 : i + 1; if (a[j]) c.rivalKey = a[j].key; });
+      return (cache[cc] = base);
+    }
     const r = rng('clubs:' + cc), out = [];
     const used = new Set();
     if (!C.towns) {   // heceden şehir adı üretimi
@@ -29,14 +39,25 @@
       while (tw.size < 24 && g++ < 2000) { const [a, b, c] = C.syl; const w = a[Math.floor(rs() * a.length)] + b[Math.floor(rs() * b.length)] + c[Math.floor(rs() * c.length)]; const n = w.trim(); if (n.length >= 4) tw.add(n.charAt(0).toUpperCase() + n.slice(1)); }
       C.towns = [...tw];
     }
+    if (C.towns.length < 36) {   // 3. lig için 12 kasaba daha: hece varsa heceden, yoksa dil havuzundaki soyadlarından
+      const tw = new Set(C.towns), rs = rng('towns3:' + cc), pool = FM.NAMEPOOLS && FM.NAMEPOOLS[FM.LANG[cc]]; let g = 0;
+      while (tw.size < 36 && g++ < 3000) {
+        let n;
+        if (C.syl) { const [a, b, c] = C.syl; n = (a[Math.floor(rs() * a.length)] + b[Math.floor(rs() * b.length)] + c[Math.floor(rs() * c.length)]).trim(); n = n.charAt(0).toUpperCase() + n.slice(1); }
+        else if (pool) n = pool[1][Math.floor(rs() * pool[1].length)];
+        else n = C.towns[Math.floor(rs() * 24)] + ' ' + (g % 2 ? 'Kuzey' : 'Güney');
+        if (n.length >= 4) tw.add(n);
+      }
+      C.towns = [...tw].slice(0, 36);
+    }
     C.towns.forEach((town, i) => {
-      const tier = i < 12 ? 0 : 1, k = i % 12, pre = C.pre[Math.floor(r() * C.pre.length)], suf = C.suf[Math.floor(r() * C.suf.length)];
+      const tier = Math.floor(i / 12), k = i % 12, pre = C.pre[Math.floor(r() * C.pre.length)], suf = C.suf[Math.floor(r() * C.suf.length)];
       let name = (pre ? (r() < .3 && suf && suf !== pre ? [pre, town, suf] : [pre, town]) : [town, suf || 'FC']).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
       if (used.has(name)) name = town + ' ' + (C.suf.find(x => x && !used.has(town + ' ' + x)) || 'FC');
       used.add(name);
       const c1 = PALETTE[Math.floor(r() * PALETTE.length)]; let c2 = PALETTE[Math.floor(r() * PALETTE.length)];
       if (Math.abs(lum(c1) - lum(c2)) < 60) c2 = lum(c1) > 128 ? '#14202f' : '#ffffff';
-      const rep = Math.max(1, Math.min(5, C.rep[tier] - Math.floor(k / (tier ? 4 : 3)) + (r() < .2 ? 1 : 0)));
+      const rep = Math.max(1, Math.min(5, (C.rep[tier] != null ? C.rep[tier] : 1) - Math.floor(k / (tier ? 4 : 3)) + (r() < .2 ? 1 : 0)));
       const short = (town.replace(/[^A-Za-zÇĞİÖŞÜçğıöşü]/g, '').slice(0, 3)).toLocaleUpperCase('tr');
       out.push(profile({ key: cc + ':' + i, cc, tier, name, short, c1, c2, rep, city: town, stadium: town + ' ' + STAD[Math.floor(r() * STAD.length)], crest: [Math.floor(r() * 3), Math.floor(r() * 4), Math.floor(r() * 2)], fans: town + ' ' + FM.FANS_G[Math.floor(r() * FM.FANS_G.length)] }));
     });
@@ -71,7 +92,7 @@
   function expectLabel(lg, club) {
     const order = lg.clubs.slice().sort((a, b) => b.rep - a.rep || a.key.localeCompare(b.key)), i = order.indexOf(club) + 1;
     const pos = Math.max(1, Math.min(12, i + (lg.tier ? 0 : 0)));
-    const lab = lg.tier ? (pos <= 2 ? 'Yükselme' : pos <= 5 ? 'Play-off yarışı' : pos <= 9 ? 'Orta sıralar' : 'Ligde kalma') : (pos === 1 ? 'Şampiyonluk' : pos <= 4 ? 'Kıta Kupası\'na katılım' : pos <= 6 ? 'Üst sıralar' : pos <= 9 ? 'Orta sıraların altı' : 'Küme düşme savaşı');
+    const lab = lg.tier ? (pos === 1 ? 'Doğrudan yükselme' : pos <= 5 ? 'Play-off yarışı' : pos <= 9 ? 'Orta sıralar' : 'Ligde kalma') : (pos === 1 ? 'Şampiyonluk' : pos <= 4 ? 'Kıta Kupası\'na katılım' : pos <= 6 ? 'Üst sıralar' : pos <= 9 ? 'Orta sıraların altı' : 'Küme düşme savaşı');
     return { pos, lab };
   }
   /* Basit forma çizimi */
@@ -89,9 +110,9 @@
     let teams = 0, play = 0;
     for (const cc of Object.keys(setup.countries)) { const o = setup.countries[cc], n = 12 * tiers(o).length; teams += n; if (o.mode === 'play') play += n; }
     teams += 12;   // Kıta Kupası kulüpleri
-    const players = teams * 22 + 28 + 14, kb = Math.round(teams * 12.5 + 150);
+    const players = teams * 22 + 28 + 14, kb = Math.round(teams * 1.6 + 30);   // sıkıştırılmış kayıt (LZ), birkaç sezon sonrası payıyla
     const speed = play <= 48 ? 'Hızlı' : play <= 96 ? 'Dengeli' : play <= 144 ? 'Yavaş' : 'Çok yavaş';
     return { teams, players, kb, speed, play };
   }
-  FM.World = { tiers, clubs, leagues, repName, finName, facName, expectLabel, kit, estimate, profile, LIMIT_KB: 4300 };
+  FM.World = { tiers, clubs, leagues, repName, finName, facName, expectLabel, kit, estimate, profile, LIMIT_KB: 1600 };
 })();

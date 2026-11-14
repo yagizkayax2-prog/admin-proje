@@ -339,6 +339,7 @@ h2 small, h3 small { font: 500 13px var(--body); text-transform: none; letter-sp
 .tfwin { grid-template-columns: 1fr auto; align-items: center; border-left: 4px solid var(--red); }
 .tfwin.open { border-left-color: var(--ok); }
 .tbl tr.up td:first-child { box-shadow: inset 3px 0 0 var(--ok); } .tbl tr.down td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.tbl tr.po td:first-child { box-shadow: inset 3px 0 0 var(--gold, #f2c230); }
 .fx .won { font-weight: 700; color: var(--flood); } .sc small { font-size: 11px; color: var(--muted); }
 .cup-head, .st-head { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .cup-head { justify-content: flex-start; }
@@ -1044,3 +1045,26 @@ kbd { display: inline-block; min-width: 30px; text-align: center; padding: 3px 7
 
 .paper .btn { background: #1b1b1b; border-color: #1b1b1b; color: #f3efe4; font-family: var(--body); }
 .tm-c { display: inline-flex; gap: 8px; align-items: center; }
+
+/* ---------- Dünya katmanı: iş ekranı, mülakat, ülke sekmesi, kariyer grafikleri ---------- */
+.jobless .team-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.job-c { display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; cursor: default; }
+.job-c .btn { margin-top: 6px; width: 100%; }
+.jobless .kpis { margin: 14px 0; }
+.iv h3 { font-size: 22px; margin: 16px 0 10px; }
+.iv .sg-info { display: flex; gap: 12px; align-items: center; }
+.iv .sg-info span { display: block; }
+.cc-svg { width: 100%; max-width: 520px; height: auto; display: block; margin: 8px 0 10px; }
+.cc-line { fill: none; stroke: var(--flood); stroke-width: 2.2; stroke-linejoin: round; }
+.cc-dot { fill: var(--bg); stroke: var(--flood); stroke-width: 2; } .cc-dot.gold { fill: var(--flood); }
+.cc-bar { fill: var(--sky); opacity: .45; }
+.cc-grid { stroke: var(--line); stroke-dasharray: 3 4; }
+.cc-t { fill: var(--muted); font: 10px var(--body); text-anchor: middle; }
+.pm-car { margin-top: 14px; } .pm-car h4 { font-size: 18px; text-transform: uppercase; letter-spacing: .05em; }
+.rank .nm.link { background: none; border: 0; padding: 0; text-align: left; color: inherit; flex: 1; min-width: 0; }
+.rank .flag, .clubn .flag { width: 16px; height: 11px; vertical-align: -1px; }
+.snet .lg-chips { margin: 8px 0; }
+@media (max-width: 560px) {
+  .jobless .team-grid { grid-template-columns: 1fr; }
+  .filters { gap: 8px; } .filters .sp select { max-width: 160px; }
+}

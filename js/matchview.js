@@ -3,7 +3,6 @@
 (function () {
   const { clamp } = FM.util;
   const lerp = (a, b, k) => a + (b - a) * k;
-  const ease = k => (k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
   const MIN_DUR = 1.15, CER_END = 8.4;   // 1 oyun dakikası ≈ 1,15 sn (1x): pozisyonlar arasında oyun kurulur
   const $ = id => document.getElementById(id);
   const LOGO = new Image(); LOGO.src = 'assets/logo.svg';
@@ -78,8 +77,15 @@
     sc.t += dt;
     const k = st.cond && st.cond() ? 1 : Math.min(1, sc.t / st.dur);
     if (st.tf) {
-      const tg = st.tf(), e = ease(k);
-      S.ball.x = lerp(sc.from.x, tg.x, e); S.ball.y = lerp(sc.from.y, tg.y, e); S.ball.z = Math.sin(k * Math.PI) * st.arc;
+      /* Top fiziği (görsel): yerden pas sabit yavaşlamayla (sürtünme) gider, havadan top yerçekimiyle parabol çizer ve hava
+         direnciyle yavaşlar, uzun toplar hafif falso alır. Adım bitince havadan gelen top seker, sahipsiz top yuvarlanmaya devam eder. */
+      const tg = st.tf(), px = S.ball.x, py = S.ball.y, dx = tg.x - sc.from.x, dy = tg.y - sc.from.y, L = Math.hypot(dx, dy);
+      if (st.cv == null) st.cv = st.arc > .2 && L > .22 ? (Math.random() - .5) * .05 : L > .3 ? (Math.random() - .5) * .02 : 0;
+      const e = st.arc > 0 ? 1 - Math.pow(1 - k, 1.35) : k * (2 - k), bend = Math.sin(e * Math.PI) * st.cv;
+      S.ball.x = sc.from.x + dx * e + (L ? -dy / L * bend : 0); S.ball.y = sc.from.y + dy * e + (L ? dx / L * bend : 0);
+      S.ball.z = st.arc > 0 ? 4 * k * (1 - k) * st.arc : 0;
+      if (dt > 0) { S.ball.vx = (S.ball.x - px) / dt; S.ball.vy = (S.ball.y - py) / dt; }
+      if (k >= 1 && st.arc > .15) S.bounce = { a: st.arc * .3, t: 0 };
     }
     if (k >= 1) { const cur = S.script; if (st.end) st.end(); if (S.script === cur) next(); }
   }
@@ -220,16 +226,16 @@
       } else steps.push(wait(2.6, () => (replay ? replayNext() : kickoff(o))));
     } else if (e.out === 'save') {
       const sp = toPitch(s, .975, .5 + side * .04);
-      steps.push(wait(.01, () => { gk.ov = sp; gk.dive = { t: 1, d: (dirRight(s) ? side : -side) }; }), mv(() => sp, .34, { arc: arc * .8, end: () => { A.groan(); pop(gk, 'KURTARIŞ', '#58c4dd'); } }), wait(.9, done(gk, o)));
+      steps.push(wait(.01, () => { gk.ov = sp; gk.dive = { t: 1, d: (dirRight(s) ? side : -side) }; }), mv(() => sp, .34, { arc: arc * .8, end: () => { A.ooh ? A.ooh() : A.groan(); if (A.applause) setTimeout(() => A.applause(1.4), 500); pop(gk, 'KURTARIŞ', '#58c4dd'); } }), wait(.9, done(gk, o)));
     } else if (e.out === 'post') {
       const pp = toPitch(s, 1, .5 + side * .058), rb = toPitch(s, .86, .5 + side * .25);
-      steps.push(mv(() => pp, .3, { arc: .2, end: () => { A.kick(); A.groan(); S.shake = .5; S.shakeSide = dirRight(s) ? 1 : 0; pop(sh, 'DİREK!', '#ffc93c'); } }), mv(() => rb, .45, { arc: .5 }), wait(.3, done(gk, o)));
+      steps.push(mv(() => pp, .3, { arc: .2, end: () => { A.kick(); if (A.clang) A.clang(); if (A.ooh) A.ooh(); else A.groan(); S.shake = .5; S.shakeSide = dirRight(s) ? 1 : 0; pop(sh, 'DİREK!', '#ffc93c'); } }), mv(() => rb, .45, { arc: .5 }), wait(.3, done(gk, o)));
     } else if (e.out === 'block') {
       const bp = toPitch(s, .93, v.shotY), cp = toPitch(s, 1.03, flank < .5 ? .04 : .96);
       steps.push(mv(() => bp, .2), mv(() => cp, .5, { arc: .6, end: () => A.groan() }), wait(.5, done(gk, o)));
     } else {
       const mp = toPitch(s, 1.05, .5 + side * (.1 + Math.random() * .08));
-      steps.push(mv(() => mp, .38, { arc: .9, end: () => A.groan() }), wait(.6, done(gk, o)));
+      steps.push(mv(() => mp, .38, { arc: .9, end: () => (A.ooh && e.min > 0 && Math.random() < .5 ? A.ooh() : A.groan()) }), wait(.6, done(gk, o)));
     }
     run(steps, true);
   }
@@ -873,16 +879,21 @@
     if (dt > 0 && S.phase === 'cer') ceremony(dt);
     else if (dt > 0) {
       S.t += dt;
+      if ((S.lvT = (S.lvT || 0) - raw) < 0 && S.ball && FM.Audio.level) { S.lvT = .6; FM.Audio.level(Math.max(0, Math.abs(S.ball.x - .5) * 2.4 - .5) + (S.m.derby ? .25 : 0)); }
       if (S.kickT > 0) S.kickT -= dt;
       if (S.phase === 'play') { S.terrAcc[0] += ownX(0, S.ball.x); S.terrAcc[1] += ownX(1, S.ball.x); S.terrN++; }
       if (S.choreoA > .28) S.choreoA = Math.max(.28, S.choreoA - dt * .035);
       if (S.discA > 0) S.discA = Math.max(0, S.discA - dt * .7);
       tickScript(dt);
+      if (S.bounce) { const b = S.bounce; b.t += dt; const decay = Math.exp(-b.t * 3.2); S.ball.z = Math.max(S.ball.z, b.a * decay * Math.abs(Math.sin(b.t * Math.PI * 2.6))); if (b.t > 1.4 || S.holder) S.bounce = null; }
       const live = S.phase === 'play';
       if (!S.script && live) {
         if (S.queue.length) handle(S.queue.shift());
         else if (!S.ended) {
-          if (S.holder && active(S.holder)) { S.ball.x = lerp(S.ball.x, S.holder.x + (dirRight(S.holder.s) ? .012 : -.012), Math.min(1, dt * 12)); S.ball.y = lerp(S.ball.y, S.holder.y, Math.min(1, dt * 12)); S.ball.z = 0; }
+          if (!S.holder && S.ball.vx != null) {   // sahipsiz top: sürtünmeyle yavaşlayarak yuvarlanır
+            const f = Math.exp(-3.2 * dt); S.ball.x = clamp(S.ball.x + S.ball.vx * dt, -.02, 1.02); S.ball.y = clamp(S.ball.y + S.ball.vy * dt, -.02, 1.02); S.ball.vx *= f; S.ball.vy *= f;
+          }
+          if (S.holder && active(S.holder)) { S.ball.vx = S.ball.vy = 0; S.ball.x = lerp(S.ball.x, S.holder.x + (dirRight(S.holder.s) ? .012 : -.012), Math.min(1, dt * 12)); S.ball.y = lerp(S.ball.y, S.holder.y, Math.min(1, dt * 12)); S.ball.z = 0; }
           S.passT -= dt;
           if (S.passT <= 0) { S.passT = (.55 + Math.random() * .7) * [1.3, 1, .78][S.m.s[S.poss].tac.tempo]; ambientPass(); }
         }
