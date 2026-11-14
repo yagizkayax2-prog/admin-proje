@@ -289,3 +289,33 @@ FM.RULES = { TR: { fl: 8 }, EN: { fl: 11 }, ES: { fl: 5 }, IT: { fl: 6 }, DE: { 
   // Türkiye 3. lig kasabaları (uydurma, coğrafi heceler)
   FM.TR_TOWNS3 = ['Karaağaç', 'Yenipınar', 'Akçadere', 'Kızıltepe Ova', 'Sarıkaya', 'Göldere', 'Çamyaka', 'Taşoba', 'Yeşilkent', 'Ilıcabük', 'Çaykent', 'Akyurt Ova'];
 })();
+
+/* ---------- Spiker metinleri: ek çeşitlilik ---------- */
+(function () {
+  const add = (k, a) => { FM.TXT[k] = (FM.TXT[k] || []).concat(a); };
+  add('goal', ['Ve top ağlarda! {p} bu fırsatı affetmedi!', 'GOL GOL GOL! {p} tribünleri ayağa kaldırıyor!', '{p} soğukkanlı, ölçülü bir vuruş… ve gol!', 'Kalecinin uzanamayacağı köşe! {p} sahnede!', 'Bunu kaçırmazdı zaten: {p}, gol!', 'Ceza sahasında karambol… ve {p} dokunuyor, GOL!']);
+  add('assist', ['{a} adeta elle bıraktı.', 'Ölçülü pas {a} ayağından.', '{a} savunmanın arkasına mükemmel topu attı.', 'Hazırlayan {a}, ustaca.']);
+  add('save', ['Müthiş refleks! {k}, {p}\'nin vuruşunu son anda çeliyor!', '{k} yerinde, {p}\'nin şutu kucağında.', '{p} köşeyi aradı, {k} parmak uçlarıyla kornere çeldi!', 'Bu kurtarışı izlemek lazım: {k} harika!']);
+  add('miss', ['{p} gelişine vurdu, top yan ağlarda… tribün golü sandı!', '{p} kaleyi boş buldu ama topu üstten auta yolladı. Akılalmaz!', 'Uzaktan deneme: {p}, top kale direğinin yanından dışarı.', '{p} acele etti, vuruşu çok zayıf.']);
+  add('post', ['Top direği yalayıp çıktı! {p} şanssız.', 'Üst direk! {p}\'nin füzesi kale çerçevesinden geri döndü!', '{p} vurdu, direkte patladı! Tribünden derin bir "ooo" yükseliyor.']);
+  add('block', ['{p} vurdu ama savunmacı bedenini siper etti!', 'Bloke edildi! {p}\'nin şutu ceza sahasında takıldı.']);
+  add('yellow', ['Hakem cebine gidiyor: {p} sarı kart.', '{p} geç kaldı, rakibini indirdi. Sarı kart.', '{p} itiraz edince sarıyı gördü.']);
+  add('red', ['Hakem tereddüt etmedi: {p} kırmızı kartla oyun dışında!', '{p} kontrolünü kaybetti, direkt kırmızı!']);
+  add('inj', ['{p} acı içinde kenara işaret ediyor, sağlık ekibi sahada.', 'Kötü haber: {p} devam edemeyecek gibi görünüyor.']);
+  add('sub', ['Kenarda hareket var: {p} oyuna giriyor, {a} kulübeye.', 'Taze kan: {a} yerini {p}\'ye bırakıyor.']);
+  add('pen', ['Hakem beyaz noktayı gösteriyor! Topun başında {p}.', 'PENALTI! Tribünler nefesini tuttu, {p} hazırlanıyor.']);
+  add('penGoal', ['{p} kaleciyi ters köşeye yatırdı, gol!', 'Soğukkanlı! {p} penaltıyı tam köşeye yerleştirdi.']);
+  add('penMiss', ['{k} doğru tarafa uzandı ve kurtardı! {p} yıkıldı.', '{p} penaltıyı direğe nişanladı… ve dışarı!']);
+  add('fkGoal', ['Harika bir frikik! {p} topu doksana astı!', 'Barajın üstünden, kalecinin yetişemeyeceği yere: {p}, gol!']);
+  add('fkSave', ['{p} frikiği çerçeveye gönderdi ama {k} hazırdı.']);
+  add('fkMiss', ['{p} frikikte barajı geçemedi.', 'Frikik: {p}\'nin vuruşu üstten auta.']);
+  add('ckGoal', ['Korner, kafa, GOL! {a} gönderdi, {p} indirdi!', 'Duran toptan gelen gol: {a} ortaladı, {p} yükseldi ve fileler havalandı!']);
+  add('ckSave', ['Korner sonrası {p} kafayla vurdu, {k} çizgide çıkardı!']);
+  add('ckMiss', ['Kornerden gelen topa {p} kafa vurdu ama yön veremedi.', 'Korner kalabalığında top {p}\'nin başını sıyırıp auta gitti.']);
+  add('ko', ['Ve başladık! Top yuvarlanmaya başladı.', 'Hakemin düdüğüyle mücadele başlıyor. Tribünler coşkulu!', 'İlk düdük çaldı, iyi seyirler!']);
+  add('ht', ['Hakem ilk yarıyı bitiren düdüğü çaldı. Takımlar soyunma odasına.', 'Devre arası. Teknik direktörlerin söyleyecekleri çok.']);
+  add('ft', ['Son düdük! Maç sona erdi.', 'Ve hakem karşılaşmayı bitiriyor!', 'Bitti! Doksan dakika tamamlandı.']);
+  add('off', ['Bayrak havada: {p} bir adım önde yakalandı.', '{p} erken koştu, ofsayt.']);
+  add('tackle', ['Müthiş zamanlama! {p} topu ayağından kaptı.', '{p} kayarak girdi, top onda.', '{p} ikili mücadeleden galip çıktı.']);
+  FM.TXT.tacLine = ['Takım öne çıktı: savunma hattı yükseldi.', 'Hoca geri çekilmeyi istedi: blok derine yerleşti.'];
+})();

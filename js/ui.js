@@ -458,7 +458,7 @@
   function render(keepScroll) {
     const G = FM.G, app = $('app'), y = window.scrollY;
     if (!G) { app.innerHTML = U.screen === 'new' || !FM.ui.menuScreen ? (FM.ui.newScreen ? FM.ui.newScreen() : startScreen()) : FM.ui.menuScreen(); if (FM.ui.after) FM.ui.after(); return; }
-    if (G.phase === 'sacked' || G.phase === 'jobless') { app.innerHTML = FM.ui.jobScreen ? FM.ui.jobScreen() : sackedScreen(); if (FM.ui.after) FM.ui.after(); return; }
+    if (G.phase === 'sacked' || G.phase === 'jobless' || G.phase === 'natonly') { app.innerHTML = FM.ui.jobScreen ? FM.ui.jobScreen() : sackedScreen(); if (FM.ui.after) FM.ui.after(); return; }
     if (G.phase === 'seasonEnd') { app.innerHTML = seasonScreen(); confettiBurst(); return; }
     app.innerHTML = shell(VIEWS[U.view]());
     if (keepScroll) { $('view').classList.remove('enter'); window.scrollTo(0, y); }
@@ -533,7 +533,7 @@
       <div class="row end">${FM.ui.confBtn ? FM.ui.confBtn() : ''}<button class="btn primary" data-a="close">Tamam</button></div>`, true);
   }
   function exportModal() {
-    modal(`<h3>Kaydı dışa aktar</h3><p class="muted">Bu metni kopyalayıp sakla. Başka cihazda “Kayıt yükle” ile yapıştır.</p><textarea id="saveText" readonly rows="6">${esc(FM.exportSave())}</textarea><div class="row end"><button class="btn primary" data-a="copy-save">Kopyala</button></div>`, true);
+    modal(`<h3>Kaydı dışa aktar</h3><p class="muted">Bu metni kopyalayıp sakla. Başka cihazda “Kayıt yükle” ile yapıştır.</p><textarea id="saveText" readonly rows="6">${esc(FM.exportSave())}</textarea><div class="row end"><button class="btn" data-a="dl-save">Dosya olarak indir</button><button class="btn primary" data-a="copy-save">Kopyala</button></div>`, true);
   }
   function importModal() {
     modal(`<h3>Kayıt yükle</h3><p class="muted">Dışa aktardığın metni yapıştır ya da kayıt dosyasını seç. Şu anki kariyerin üzerine yazılır.</p><textarea id="loadText" rows="6" placeholder="Kayıt metnini buraya yapıştır"></textarea><label class="filein" for="loadFile">Dosya seç <input type="file" id="loadFile" accept=".json,.txt,application/json,text/plain"></label><div class="row end"><button class="btn primary" data-a="do-import">Yükle</button></div>`, true);

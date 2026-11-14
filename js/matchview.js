@@ -40,6 +40,7 @@
     if (d.i === 0) { nx = .035 + prog * .05; ny = .5 + (by - .5) * .12; }
     else {
       nx = .07 + sl[1] * .5 + prog * .3 + (tac.line - 1) * .03 * (sl[0] === 'DEF' ? 1.4 : .6);
+      nx += ((side.ment == null ? 1 : side.ment) - 1) * (sl[0] === 'FWD' ? .025 : .04);   // oyun anlayışı: hücumcu takım yukarı, savunmacı takım derine yerleşir
       if (S.poss !== d.s) nx += -.04 + (tac.press - 1) * .035;
       ny = sl[2] + (by - .5) * .16;
       if (S.poss === d.s && tac.width !== 1) ny = .5 + (ny - .5) * (tac.width === 2 ? 1.12 : .86);
@@ -840,6 +841,11 @@
     g.fillStyle = 'rgba(0,0,0,.34)'; g.beginPath(); g.ellipse(bq.X, bq.Y + br * .5, br * (1 + S.ball.z * .3), br * .45, 0, 0, 6.29); g.fill();
     g.beginPath(); g.arc(bq.X, bq.Y - br * .4 - lift, br * (1 + S.ball.z * .25), 0, 6.29); g.fillStyle = S.st.snow ? '#ff9a3c' : '#fff'; g.fill(); g.lineWidth = 1.1; g.strokeStyle = '#14202f'; g.stroke();
     g.beginPath(); g.arc(bq.X + Math.cos(S.t * 9) * br * .35, bq.Y - br * .4 - lift + Math.sin(S.t * 9) * br * .35, br * .3, 0, 6.29); g.fillStyle = '#14202f'; g.fill();
+    if (S.tacFlash && S.tacFlash.t > 0) {   // taktik değişikliği şeridi
+      S.tacFlash.t -= dt; const a = Math.min(1, S.tacFlash.t);
+      g.save(); g.globalAlpha = a; g.font = `700 ${Math.round(h * .035)}px 'Barlow Condensed', sans-serif`; const tw = g.measureText('TAKTİK · ' + S.tacFlash.txt).width + 28;
+      g.fillStyle = 'rgba(10,19,34,.85)'; g.fillRect(w / 2 - tw / 2, h * .08, tw, h * .055); g.fillStyle = '#ffc93c'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('TAKTİK · ' + S.tacFlash.txt, w / 2, h * .08 + h * .0275); g.restore();
+    }
     for (const p of S.pops) {
       if (p.t < 0) continue;
       const q = P(p.x, p.y), x = q.X, y = q.Y - (p.mgr ? r0 * q.s * 2.9 : r0) - 12 - p.t * 22, a = clamp(1.6 - p.t, 0, 1);
@@ -881,7 +887,7 @@
       S.t += dt;
       if ((S.lvT = (S.lvT || 0) - raw) < 0 && S.ball && FM.Audio.level) { S.lvT = .6; FM.Audio.level(Math.max(0, Math.abs(S.ball.x - .5) * 2.4 - .5) + (S.m.derby ? .25 : 0)); }
       if (S.kickT > 0) S.kickT -= dt;
-      if (S.phase === 'play') { S.terrAcc[0] += ownX(0, S.ball.x); S.terrAcc[1] += ownX(1, S.ball.x); S.terrN++; }
+      if (S.phase === 'play') { S.terrAcc[0] += ownX(0, S.ball.x); S.terrAcc[1] += ownX(1, S.ball.x); S.terrN++; if (!S.ftAcc) S.ftAcc = [0, 0]; if (ownX(0, S.ball.x) > .68) S.ftAcc[0]++; else if (ownX(1, S.ball.x) > .68) S.ftAcc[1]++; }
       if (S.choreoA > .28) S.choreoA = Math.max(.28, S.choreoA - dt * .035);
       if (S.discA > 0) S.discA = Math.max(0, S.discA - dt * .7);
       tickScript(dt);
@@ -903,6 +909,7 @@
         if (S.acc >= MIN_DUR) {
           S.acc -= MIN_DUR;
           if (S.m.min === 0) feed({ min: 0, type: 'ko', text: FM.TXT.ko[0] });
+          S.m.vis = [clamp(.8 + (S.ftAcc ? S.ftAcc[0] : 0) / Math.max(1, S.terrN) * 1.1, .8, 1.3), clamp(.8 + (S.ftAcc ? S.ftAcc[1] : 0) / Math.max(1, S.terrN) * 1.1, .8, 1.3)]; S.ftAcc = [0, 0];
           S.m.terr = [clamp(S.terrAcc[0] / Math.max(1, S.terrN), .15, .85), clamp(S.terrAcc[1] / Math.max(1, S.terrN), .15, .85)]; S.terrAcc = [0, 0]; S.terrN = 0;
           for (const e of FM.simMinute(S.m)) { if (e.type === 'sub') feed(e); else S.queue.push(e); }
           paintUi();
@@ -976,7 +983,7 @@
     else if ((a === 'ment' || a === 'tac' || a === 'tacp') && side.mgr.out) { talk('Tribündesin: taktik talimatı veremezsin. Değişiklikleri yardımcın yapabilir.'); $('mvOverlay').hidden = true; if (!S.htPending) S.paused = S.wasPaused; }
     else if (a === 'protest') { hideDispute(); const pe = FM.protest(S.m, S.user, S.dispWhy || 'hakem'); if (pe) { feed(pe); pe.fed = true; S.queue.unshift(pe); } }
     else if (a === 'calm') { hideDispute(); talk('Sakin kaldın. Hakemle tartışmaya girmedin.'); }
-    else if (a === 'ment') { side.ment = +b.dataset.v; FM.T(side.tid).ment = side.ment; tacPanel(); }
+    else if (a === 'ment') { side.ment = +b.dataset.v; FM.T(side.tid).ment = side.ment; tacPanel(); feed({ min: S.m.min, side: S.user, type: 'info', text: ['Savunma emri: blok derine iniyor, hatlar sıklaşıyor.', 'Dengeli oyuna dönüldü.', 'Hücum emri: takım öne çıkıyor, bekler bindiriyor.'][side.ment] }); S.tacFlash = { t: 2.5, txt: ['SAVUNMA', 'DENGELİ', 'HÜCUM'][side.ment] }; }
     else if (a === 'tac') { side.tac[b.dataset.k] = +b.dataset.v; FM.T(side.tid).tac[b.dataset.k] = +b.dataset.v; tacPanel(); }
     else if (a === 'cam') { S.cam = (S.cam + 1) % 4; talk('Kamera: ' + ['Yayın açısı', 'Kuşbakışı', 'Kale arkası', 'Saha kenarı'][S.cam]); }
     else if (a === 'skip') skip();

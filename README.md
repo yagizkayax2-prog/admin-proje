@@ -64,6 +64,15 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Oyuncu kariyer grafiği (sezonlara göre güç ve gol) ve kulüp tarihi grafiği (sezonlara göre lig sırası)
 - Maçta top fiziği (görsel): sürtünmeyle yavaşlayan yerden pas, yerçekimli havadan top ve sekme, uzun topta falso, sahipsiz topun yuvarlanması
 - Sesler: kaçan pozisyonda tribünün "ooo"su, kurtarışa alkış, direğe metalik tını, topun yerine göre yükselen kalabalık uğultusu, davullu ve 9 farklı ritimde tezahürat
+- İşsizken ve yalnız milli takım kariyerinde zaman akar: "Haftayı geçir" ile ligler oynanır, yeni ilanlar açılır, milli aralar ve Kıta Şampiyonası gelir; sezon sonunda iş garantisi
+- Canlı transfer piyasası: gelen tekliflerde teklif savaşı, son gün uyarısı, aldığın oyuncu için rakip kulüple açık artırma (teklifi artır ya da çekil)
+- Ekonomi: tesis ve stadyum bakım gideri, alımda %5 menajer ücreti, satışta %10 vergi, her sezon %4 maaş artışı, kasada aşırı birikimin bir kısmını yönetim alır
+- Kıta Kupası tüm kurulu ülkelerden: her ülkenin üst ligindeki ilk 2–3 kulüp (büyük liglerden 3), boşluklar Avrupa kulüpleriyle dolar
+- Özel çalışma: oyuncuya özellik (8–12 hafta) ya da yeni rol (5 hafta) öğret; kiralıktaki oyuncuların maç, gol, puan ve güç gelişimi takibi, 4 haftada bir rapor
+- Maç motoru ile görüntü bağı: topun son üçte birde geçirdiği süre pozisyon üretimini etkiler; oyun anlayışı değişince takım sahada görünür biçimde öne çıkar ya da geri çekilir, sahada taktik şeridi belirir
+- Spiker metinleri iki katından fazla çeşitlendi
+- Onur listesi: kupalar, çalıştırılan kulüpler, en çok maça çıkardığın oyuncular, başarımlar
+- Kaydı dosya olarak indirme (dışa aktarma penceresi) ve dosyadan yükleme; takım seçme ekranında döndürülebilir 3D stadyum önizlemesi
 - Sıkıştırılmış kayıt (LZ, ~10 kat küçük): büyük veri tabanları da tarayıcıya sığar
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 

@@ -184,5 +184,5 @@
     }
   };
 
-  FM.Ext = { X, natCc, natName, expAdj, capMult, recordWeek, voteGoal, natSquad, BUILD_W, facName };
+  FM.Ext = { X, natBreak, natTournament, natCc, natName, expAdj, capMult, recordWeek, voteGoal, natSquad, BUILD_W, facName };
 })();

@@ -375,7 +375,7 @@
       const pm = planMod(m, s); side._pg = pm.pg;
       const pc = .142 * (.55 + .9 * pos) * Math.pow(r[s].att / r[o].def, 1.7) * homeF * [.9, 1, 1.1][tac.tempo] * [.96, 1, 1.05][tac.width] * (.75 + .5 * m.terr[s]) * pm.pc * (m.derby && s === 0 ? 1.04 : 1) * (side.fire > m.min ? 1.06 : 1)
         * [.95, 1, 1.04][tac.pass] * (tac.counter === 2 ? (m.s[o].ment === 2 || m.s[o].tac.line === 2 ? 1.1 : 1.02) : tac.counter === 0 ? .96 : 1)
-        * (tac.width === 2 && m.s[o].tac.compact === 0 ? 1.05 : tac.width === 0 && m.s[o].tac.compact === 2 ? 1.05 : 1) * (tac.fb === 2 ? 1.03 : 1) * (m.wx.t === 'snow' ? .88 : 1);
+        * (tac.width === 2 && m.s[o].tac.compact === 0 ? 1.05 : tac.width === 0 && m.s[o].tac.compact === 2 ? 1.05 : 1) * (tac.fb === 2 ? 1.03 : 1) * (m.wx.t === 'snow' ? .88 : 1) * (m.vis ? m.vis[s] / Math.sqrt(m.vis[0] * m.vis[1]) : 1);   // canlı izlemede: topun son üçte birde geçirdiği süre pozisyon üretimini etkiler
       const np = Math.round(1.5 + 5 * pos + R() * 2), acc = clamp(.66 + (r[s].ctl - 62) * .005 - (m.s[o].tac.press - 1) * .03 - (m.s[o].tac.tackle - 1) * .015 + [.04, 0, -.05][tac.pass] - (m.wx.t !== 'clear' ? .03 : 0), .5, .95);
       m.st.pass[s] += np; m.st.passOk[s] += Math.round(np * acc);
       if (R() < .3 * [.85, 1, 1.25][tac.press] * [.85, 1, 1.2][tac.tackle] * (1.3 - pos)) m.st.tack[s]++;
@@ -514,7 +514,7 @@
     hook('userMatch', m, us, d);
   }
   function unlock(id) {
-    if (G.ach[id]) return;
+    if (G.ach[id] || G.quiet) return;
     G.ach[id] = { s: G.season, w: G.week + 1 };
     news(`Başarım kazanıldı: ${FM.ACH[id][0]}.`, 'good');
     if (FM.onAch) FM.onAch(FM.ACH[id][0]);
@@ -1372,6 +1372,17 @@
     const fo = G.teams.filter(t => t.div === 2).map(t => t.id).sort(() => R() - .5);
     let dom = (G.euroQ || []).filter(id => T(id));
     if (dom.length !== 4) dom = divTeams(cDivs(ccOf(T(G.teamId).div))[0]).sort((a, b) => b.rep - a.rep || a.id - b.id).slice(0, 4).map(t => t.id);
+    // diğer kurulu ülkelerin üst lig kulüpleri: geçen sezonun ilk 2'si (ilk sezonda itibara göre), büyük liglerden 3
+    const myCc = ccOf(T(G.teamId).div), others = [];
+    for (const cc of [...new Set(LDIVS().map(ccOf))]) {
+      if (cc === myCc || cc === 'EU') continue;
+      const top = cDivs(cc)[0]; if (top == null || tierOf(top) !== 0) continue;
+      const n = FM.COUNTRIES[cc] && FM.COUNTRIES[cc].rep && FM.COUNTRIES[cc].rep[0] >= 5 ? 3 : 2;
+      const q = (G.euroQ2 && G.euroQ2[cc] || []).filter(id => T(id) && T(id).div === top);
+      others.push(...(q.length >= n ? q.slice(0, n) : divTeams(top).sort((a, b) => b.rep - a.rep || a.id - b.id).slice(0, n).map(t => t.id)));
+    }
+    const pool = others.sort((a, b) => T(b).rep - T(a).rep).slice(0, 12).concat(fo).slice(0, 12).sort(() => R() - .5);
+    fo.length = 0; fo.push(...pool);
     return { groups: [0, 1, 2, 3].map(i => [dom[i], fo[i * 3], fo[i * 3 + 1], fo[i * 3 + 2]]), md: [], ko: [], cur: [], round: -1, alive: [], winner: null, dom };
   }
   function euroTable(gi) {
@@ -1415,7 +1426,7 @@
     return done;
   }
 
-  Object.assign(FM, { LDIVS, ccOf, tierOf, cDivs, clubCc, isForeign, foreignCount, foreignLimit, foreignOk, budgetOf,
+  Object.assign(FM, { quickResult, drawCup, startEuroRound, seasonEnd, aiTransfers, CUP_AFTER, EURO_AFTER, roleFor, LDIVS, ccOf, tierOf, cDivs, clubCc, isForeign, foreignCount, foreignLimit, foreignOk, budgetOf,
     WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, injSub, protest, coachOf, finishMatch, doSub, ratings, winnerSide,
     table, userFixture, newGame, save, load, reset, exportSave, importSave, endWeek, startNewSeason, simOthers, askPrice, isClause, marketList, buy, sellOffer, sell,
     loanIn, loanOut, loanedOut, renew, renewTerms, scout, known, est, avgRating, talk, answerPress, takeJob, windowOpen, deadline, cupTie, playCupRound,
