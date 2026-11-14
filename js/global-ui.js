@@ -181,10 +181,17 @@
   };
 
   /* ---------- kaydı dosya olarak indir ---------- */
-  acts['dl-save'] = () => {
+  acts['dl-save'] = async () => {
+    const G = FM.G, filename = `saha-kenari-${(T(G.teamId).name || 'kariyer').toLocaleLowerCase('tr').replace(/[^a-z0-9çğıöşü]+/g, '-')}-s${G.season}.json`, data = FM.exportSave();
+    // claude.ai görüntüleyicisinde indirme izni "downloads" yeteneğiyle verilir; başka yerde düz indirme bağlantısı kullanılır
+    let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
+    if (dl) {
+      try { await dl.save({ filename, data }); toast('Kayıt dosyası kaydedildi. Başka cihazda "Kayıt yükle" → "Dosya seç" ile açabilirsin.', 'good'); }
+      catch (e) { toast('Dosya kaydedilmedi. Metni kopyalayarak da saklayabilirsin.', 'bad'); }
+      return;
+    }
     try {
-      const G = FM.G, blob = new Blob([FM.exportSave()], { type: 'application/json' }), a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = `saha-kenari-${(T(G.teamId).name || 'kariyer').toLocaleLowerCase('tr').replace(/[^a-z0-9çğıöşü]+/g, '-')}-s${G.season}.json`;
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = filename;
       document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
       toast('Kayıt dosyası indirildi. Başka cihazda "Kayıt yükle" → "Dosya seç" ile açabilirsin.', 'good');
     } catch (e) { toast('Dosya indirilemedi; metni kopyalayarak saklayabilirsin.', 'bad'); }
