@@ -18,7 +18,7 @@
     const ap = [proj(-.07, -.13), proj(1.07, -.13), proj(1.09, 1.16), proj(-.09, 1.16)];
     const inApron = (X, Y) => { if (Y < ap[0].Y || Y > ap[2].Y) return false; const k = (Y - ap[0].Y) / (ap[2].Y - ap[0].Y); return X > ap[0].X + (ap[3].X - ap[0].X) * k && X < ap[1].X + (ap[2].X - ap[1].X) * k; };
     const roofH = t >= 4 ? H0 * .13 : H0 * .07;
-    const dkHex = lum(o.home.c1) <= lum(o.home.c2) ? o.home.c1 : o.home.c2, ltHex = dkHex === o.home.c1 ? o.home.c2 : o.home.c1, inkHex = Math.abs(lum(dkHex) - lum(ltHex)) < 70 ? '#f3efe4' : ltHex;
+    let dkHex = lum(o.home.c1) <= lum(o.home.c2) ? o.home.c1 : o.home.c2, ltHex = dkHex === o.home.c1 ? o.home.c2 : o.home.c1, inkHex = Math.abs(lum(dkHex) - lum(ltHex)) < 70 ? '#f3efe4' : ltHex;
     const DK = rgb(dkHex), LT = rgb(ltHex), H1 = rgb(o.home.c1), H2 = rgb(o.home.c2), A1 = rgb(o.away.c1), A2 = rgb(o.away.c2), CARD = [239, 234, 224];
     const mk = () => { const cv = document.createElement('canvas'); cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext('2d'); g.scale(dpr, dpr); return [cv, g]; };
     const [bg, g] = mk(), [crowdN, gn] = mk(), [crowdT, gt] = mk();
@@ -76,8 +76,10 @@
       for (let y = Math.floor(top / c) * c; y < bot; y += c) { gt.moveTo(W * .26, y - .35); gt.lineTo(W * .74, y - .35); }
       gt.stroke();
     }
-    sloganLine(bandBot - bandTop >= 16 ? 'ÖLÜMÜNE ' + up1 + '!' : up1, bandTop + c, bandBot + c * .5);
-    if (t >= 4) sloganLine('BURASI ' + o.home.stadium.toLocaleUpperCase('tr'), roofH + c, cyE - (R1 + .03) * H0 * .36 - c * .5);
+    const CH = o.banners ? o.banners.choreo : ['ÖLÜMÜNE ' + up1 + '!', 'BURASI ' + o.home.stadium.toLocaleUpperCase('tr')];
+    if (o.banners && o.banners.protest) inkHex = '#e53935';
+    sloganLine(bandBot - bandTop >= 16 ? CH[0] : up1, bandTop + c, bandBot + c * .5);
+    if (t >= 4) sloganLine(CH[1], roofH + c, cyE - (R1 + .03) * H0 * .36 - c * .5);
     // dev bayrak (sol tribünde açılır)
     const flag = document.createElement('canvas'); flag.width = 300; flag.height = 200;
     { const q = flag.getContext('2d'); q.fillStyle = dkHex; q.fillRect(0, 0, 300, 200); q.fillStyle = ltHex; q.beginPath(); q.moveTo(0, 150); q.lineTo(300, 40); q.lineTo(300, 95); q.lineTo(0, 200); q.fill();

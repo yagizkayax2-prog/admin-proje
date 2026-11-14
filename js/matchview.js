@@ -355,7 +355,7 @@
     S.ct += dt;
     const ct = S.ct, LY = .8;
     S.choreo = clamp((ct - .9) / 3.2, 0, 1.2);
-    const say = [[.3, `İyi seyirler! ${S.info.stadium} tribünleri doldu, ${S.info.att} seyirci var.`], [3.2, `${S.info.home} ile ${S.info.away} karşı karşıya. Tribünlerde koreografi açılıyor.`], [5.8, 'Takımlar selam verdi, yazı tura atılıyor. Az sonra başlıyoruz.']];
+    const say = S.say || [[.3, `İyi seyirler! ${S.info.stadium} tribünleri doldu, ${S.info.att} seyirci var.`], [3.2, `${S.info.home} ile ${S.info.away} karşı karşıya. Tribünlerde koreografi açılıyor.`], [5.8, 'Takımlar selam verdi, yazı tura atılıyor. Az sonra başlıyoruz.']];
     while (S.said < say.length && ct >= say[S.said][0]) talk(say[S.said++][1]);
     S.cheer[0] = Math.max(S.cheer[0], .35);
     if (ct < 6.8) {
@@ -391,7 +391,7 @@
   /* ---------- Çizim (perspektifli) ---------- */
   function resize() {
     const c = S.cv, w = c.parentElement.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1), m = S.m, home = FM.T(m.s[0].tid);
-    const opt = { W: w, dpr, tier: FM.stadiumTier(home), home, away: FM.T(m.s[1].tid), fill: S.fill, wx: m.wx, seatFn: home.id === FM.G.teamId && FM.Club ? FM.Club.seatFn() : null };
+    const opt = { W: w, dpr, tier: FM.stadiumTier(home), home, away: FM.T(m.s[1].tid), fill: S.fill, wx: m.wx, banners: S.ban, seatFn: home.id === FM.G.teamId && FM.Club ? FM.Club.seatFn() : null };
     if (S.st && S.st.dispose) S.st.dispose();
     S.st = (!S.no3d && FM.Stadium3D && FM.Stadium3D.create({ ...opt, canvas: $('mvGL'), logo: LOGO })) || null;
     if (!S.st) { S.no3d = true; S.st = FM.Stadium.create(opt); }
@@ -655,6 +655,8 @@
         rt: 0, discA: 1, said: 0, info: { stadium: h.stadium, home: h.name, away: a.name, att: Math.round(cap * fill).toLocaleString('tr-TR') }, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
         kits: [{ ...kit(h, hk), gk: '#ffc93c' }, { ...kit(a, ak), gk: '#58c4dd' }]
       };
+      S.ban = (info && info.ban) || (FM.Banners ? FM.Banners.forMatch(m.fx, { cup: m.cup, comp: info && info.comp && info.comp.indexOf('Kıta') === 0 ? 'euro' : '' }) : null); m.ban = S.ban;
+      if (S.ban) { const bl = FM.Banners.lines(S.ban, h); S.say = [[.3, `İyi seyirler! ${h.stadium} tribünleri doldu, ${Math.round(cap * fill).toLocaleString('tr-TR')} seyirci var.`], [2.2, bl[0]], [3.6, S.ban.protest ? 'Koreografi yerine protesto: tribünde dev harflerle “YÖNETİM İSTİFA!” yazıyor.' : `${h.name} ile ${a.name} karşı karşıya. Tribünlerde koreografi açılıyor: “${S.ban.choreo[0]}”`], [4.8, bl[1]], [5.8, 'Takımlar selam verdi, yazı tura atılıyor. Az sonra başlıyoruz.']]; }
       for (let s = 0; s < 2; s++) for (let i = 0; i < 11; i++) S.dots.push({ s, i, x: .5, y: 1.2, ph: Math.random() * 6.28, ov: null });
       S.onResize = () => { if (S) resize(); };
       window.addEventListener('resize', S.onResize);

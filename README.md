@@ -27,6 +27,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Finans: bilet fiyatı, sezonluk gelir-gider tablosu, yönetimden ek bütçe isteme
 - Derbiler, Kıta Kupası (ligin ilk ikisi ve 8 yabancı kulüpten 6'sı), sezon ödülleri ve yılın 11'i, oyuncu kariyer geçmişi, kulüp efsaneleri, sosyal akış
 - Bireysel hedef (oyuncuya özel çalışılacak özellik) ve mentörlük (tecrübeli oyuncu genci yanına alır, kişiliğini aktarabilir); kontenjanlar tesis seviyelerine bağlı
+- Taraftar pankartları: 180 pankart 12 kategoride; her kulübün kendi tribün kimliği (ultras, sevdalı, Avrupa tarzı, geleneksel), maç durumuna göre seçim (derbi, şampiyonluk yarışı, küme hattı, kupa, kaptan/golcü/efsane, misafir tribünü). Yönetim ve teknik direktör kötü gidiyorsa tribün “YÖNETİM İSTİFA!” protestosuna döner; pankartlar 3D/2D tribünlerde, maç öncesi ekranında ve spiker yorumlarında görünür
 - Kulüp sayfası alt sekmeleri: Tesisler (kampüs haritası ve yakınlaştırma, 5 tesis + yurt dışı akademi, seviye etkileri, uzun vadeli projeler), Stadyum (koltuk deseni 3D tribünlerde görünür, bilet ve kombine fiyatı tahminleri, stat adı sponsoru, stadyum adı ve büyütme), Forma ve sponsor (3 forma tasarımı maçta kullanılır, forma sponsoru), Maliye, Müze ve kayıt
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
@@ -42,6 +43,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | `js/settings.js` | Oyun ayarları |
 | `js/ui-more.js` | Oyun menüsü, ayarlar, rehber ve tur, yeni ekranlar |
 | `js/club.js` | Kulüp yönetimi: tesisler ve kampüs haritası, stadyum, forma, sponsorlar |
+| `js/banners.js` | Taraftar pankartları ve tribün protestoları |
 | `js/boot.js` | Açılış |
 | `js/gfx.js` | Üretilen armalar, oyuncu portreleri, ikonlar, sentezlenen sesler |
 | `js/stadium3d.js` | Three.js ile 3D stadyum (saha, tribünler, çatı, kaleler, bayrak) |

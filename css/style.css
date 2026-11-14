@@ -835,6 +835,10 @@ body.noscroll { overflow: hidden; }
 .fp-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--bg-2); border: 1px solid var(--line); }
 .fp-list li > span:first-child { flex: 1; display: grid; min-width: 0; } .fp-list small { color: var(--muted); font-size: 12px; } .fp-v { white-space: nowrap; font-size: 13.5px; } .fp-v em { font-style: normal; font-weight: 700; }
 .fp-form { display: grid; gap: 8px; } .fp-form select { width: 100%; }
+.bad-res { background: #3b1a1a !important; color: #ff9b97 !important; }
+.ban-pre { margin-top: 8px; display: grid; justify-items: center; gap: 2px; padding: 6px 12px; border-radius: 6px; background: rgba(22, 38, 60, .85); border: 1px solid var(--line); max-width: 240px; }
+.ban-pre small { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; } .ban-pre span { font: 700 15px var(--display); letter-spacing: .02em; }
+.ban-pre.prot { background: #2a0e0e; border-color: var(--red); } .ban-pre.prot b { color: var(--red); font: 800 13px var(--display); letter-spacing: .12em; text-transform: uppercase; } .ban-pre.prot span { color: #fff; }
 /* Ayar: sakin mod ve haber şeridi */
 .calm *, .calm *::before, .calm *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 .no-ticker .ticker { display: none; } .no-ticker body:has(.ticker) { padding-bottom: 0; }

@@ -498,7 +498,7 @@
     return `<div class="pre" style="--h1:${h.c1};--a1:${a.c1}">
       <div class="pre-bg" aria-hidden="true"></div>${patch(h, 0)}${patch(a, 1)}
       <header class="pre-head">${team(h, 0)}
-        <div class="pre-mid"><img src="${pr.cup ? 'assets/trophy.svg' : 'assets/logo.svg'}" alt="" width="54" height="54"><p class="eyebrow">${pr.comp === 'euro' ? 'Kıta Kupası · ' + esc(G.euro.name) : pr.cup ? 'Kupa · ' + esc(G.cup.name) : FM.DIV_TR[myT.div] + ' · ' + (G.week + 1) + '. hafta'}</p>${!pr.cup && FM.Career.isDerby(fx) ? `<p class="derby-b">${esc(FM.Career.isDerby(fx))}</p>` : ''}<p class="pre-st">${esc(pr.cup && (pr.comp === 'euro' ? G.euro.final : G.cup.final) ? 'Tarafsız saha' : h.stadium)}</p><p class="pre-when">${when}</p><p class="pre-wx">${FM.WX_TR[wx.t]}${wx.n ? ' · Gece' : ''}</p></div>
+        <div class="pre-mid"><img src="${pr.cup ? 'assets/trophy.svg' : 'assets/logo.svg'}" alt="" width="54" height="54"><p class="eyebrow">${pr.comp === 'euro' ? 'Kıta Kupası · ' + esc(G.euro.name) : pr.cup ? 'Kupa · ' + esc(G.cup.name) : FM.DIV_TR[myT.div] + ' · ' + (G.week + 1) + '. hafta'}</p>${!pr.cup && FM.Career.isDerby(fx) ? `<p class="derby-b">${esc(FM.Career.isDerby(fx))}</p>` : ''}<p class="pre-st">${esc(pr.cup && (pr.comp === 'euro' ? G.euro.final : G.cup.final) ? 'Tarafsız saha' : h.stadium)}</p><p class="pre-when">${when}</p><p class="pre-wx">${FM.WX_TR[wx.t]}${wx.n ? ' · Gece' : ''}</p>${pr.ban ? FM.Banners.preHtml(pr.ban) : ''}</div>
         ${team(a, 1)}</header>
       <div class="pre-body">${preBoard(h, kOf(h, 0), 0)}
         <nav class="pre-menu" aria-label="Maç öncesi">
@@ -526,6 +526,7 @@
       U.pre = { key, fx, cup, comp, kit: away && cdist(t.c1, hc) < 150 ? (cdist(t.c2, hc) < 150 ? 2 : 1) : 0, talk: null, talkRes: '', panel: '' };
     }
     U.pre.fx = fx; U.pre.panel = '';
+    if (FM.Banners && !U.pre.ban) U.pre.ban = FM.Banners.forMatch(fx, { cup, comp });
     showPre();
   }
   function teamTalk(k) {
@@ -555,7 +556,7 @@
       U.view = 'home'; U.fxWeek = null; U.sel = null;
       render(); window.scrollTo(0, 0);
       if (cup) cupModal(name, ties, euro); else if (!G.phase) weekModal(wk);
-    }, { comp: euro ? 'Kıta Kupası · ' + name : cup ? 'Kupa · ' + name : `${FM.DIV_TR[t.div]} · ${G.week + 1}. hafta`, kit: pr.kit, derby: !cup && FM.Career.isDerby(fx) });
+    }, { comp: euro ? 'Kıta Kupası · ' + name : cup ? 'Kupa · ' + name : `${FM.DIV_TR[t.div]} · ${G.week + 1}. hafta`, kit: pr.kit, derby: !cup && FM.Career.isDerby(fx), ban: pr.ban });
   }
   function playMatch(force) {
     const G = FM.G, cup = G.cupDue, pend = FM.Inbox.pending();

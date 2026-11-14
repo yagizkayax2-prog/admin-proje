@@ -37,7 +37,9 @@
     const add = (geo, m, x, y, z) => { const mesh = new T3.Mesh(geo, m); disposables.push(geo); if (x != null) mesh.position.set(x, y, z); scene.add(mesh); return mesh; };
     const cv2 = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; };
     const home = o.home, away = o.away;
-    const dkHex = lum(home.c1) <= lum(home.c2) ? home.c1 : home.c2, ltHex = dkHex === home.c1 ? home.c2 : home.c1, inkHex = Math.abs(lum(dkHex) - lum(ltHex)) < 70 ? '#f3efe4' : ltHex;
+    let dkHex = lum(home.c1) <= lum(home.c2) ? home.c1 : home.c2, ltHex = dkHex === home.c1 ? home.c2 : home.c1, inkHex = Math.abs(lum(dkHex) - lum(ltHex)) < 70 ? '#f3efe4' : ltHex;
+    const BAN = o.banners || null, PROT = BAN && BAN.protest;
+    if (PROT) { dkHex = '#141416'; ltHex = '#e6e6e6'; inkHex = '#e53935'; }   // protesto: siyah-beyaz zemin, kırmızı yazı
     const DK = rgb(dkHex), LT = rgb(ltHex), H1 = rgb(home.c1), H2 = rgb(home.c2), A1 = rgb(away.c1), A2 = rgb(away.c2);
 
     /* ---- zemin ve saha ---- */
@@ -91,12 +93,15 @@
       if (text) {
         tg.fillStyle = inkHex; tg.textAlign = 'center'; tg.textBaseline = 'middle';
         tg.font = "800 190px 'Barlow Condensed', Impact, sans-serif";
-        tg.fillText(text, TW * .14, TH * .54, TW * .23);
+        const fs = Math.min(190, 190 * TW * .25 / Math.max(1, tg.measureText(text).width));   // uzun yazı küçülür, sıkışmaz
+        tg.font = `800 ${Math.round(fs)}px 'Barlow Condensed', Impact, sans-serif`;
+        tg.fillText(text, TW * .14, TH * .54, TW * .26);
         tg.strokeStyle = 'rgba(8,11,17,.5)'; tg.lineWidth = 1.2; tg.beginPath();
         for (let x = 0; x < TW * .28; x += CELL) { tg.moveTo(x - .6, 0); tg.lineTo(x - .6, TH); }
         for (let y = 0; y < TH; y += CELL) { tg.moveTo(0, y - .6); tg.lineTo(TW * .28, y - .6); }
         tg.stroke();
       }
+      if (BAN) hangBanners(ng, lower);
       const pos = [], uv = [];
       for (let i = 0; i < US.length - 1; i++) {
         const ua = US[i], ub = US[i + 1]; if (!inc((ua + ub) / 2, lower)) continue;
@@ -110,8 +115,27 @@
       tiers.push({ nc, tc, cc, cg, map, mesh, d0, h0, d1, h1, lower });
     }
     const up1 = home.name.split(' ')[0].toLocaleUpperCase('tr');
-    buildTier(true, 7, 1.2, 25, 11, 'ÖLÜMÜNE ' + up1 + '!');
-    buildTier(false, 27.5, 14.5, 48, 33, 'BURASI ' + home.stadium.toLocaleUpperCase('tr'));
+    /* Ön sıralara asılan pankartlar: kulüp renklerinde; protesto siyah zemin, oyuncuya özel beyaz zemin; misafir tribünü rakip renklerinde */
+    function hangBanners(g, lower) {
+      const H = BAN.hang, list = lower ? [[H.slice(0, 3), .006, .198], [BAN.away, .203, .276, true], [H.slice(3, 4), .832, .955]] : [[H.slice(4, 7), .01, .27]];
+      for (const [items, u0, u1, aw] of list) {
+        let x = u0 * TW;
+        for (const b of items) {
+          if (!b) continue;
+          const txt = b.t.toLocaleUpperCase('tr'); g.font = "800 25px 'Barlow Condensed', Impact, sans-serif";
+          const w = Math.min((u1 - u0) * TW, g.measureText(txt).width + 30); if (x + w > u1 * TW) break;
+          const st = aw ? [away.c1, away.c2, away.c2] : b.k === 'protesto' ? ['#111114', '#e53935', '#f3efe4'] : b.k === 'oyuncu' ? ['#f3efe4', home.c1, home.c1] : [home.c1, home.c2, lum(home.c1) > 150 ? '#14202f' : '#ffffff'];
+          const y = TH - 44;
+          g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(x + 3, y + 4, w, 36);
+          g.fillStyle = st[0]; g.fillRect(x, y, w, 36); g.strokeStyle = st[1]; g.lineWidth = 4; g.strokeRect(x + 2, y + 2, w - 4, 32);
+          g.fillStyle = st[2]; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x + w / 2, y + 19, w - 16);
+          x += w + 16;
+        }
+      }
+    }
+    const CH = BAN ? BAN.choreo : ['ÖLÜMÜNE ' + up1 + '!', 'BURASI ' + home.stadium.toLocaleUpperCase('tr')];
+    buildTier(true, 7, 1.2, 25, 11, CH[0]);
+    buildTier(false, 27.5, 14.5, 48, 33, CH[1]);
     // katlar arası alın ve arka duvar
     function band(d0, h0, d1, h1, color, filter) {
       const pos = [];
