@@ -24,6 +24,11 @@
     if (C.base) return (cache[cc] = FM.TEAMS.map((t, i) => profile({ ...t, key: 'TR:' + i, cc, tier: t.div || (i >= 12 ? 1 : 0), city: t.stadium.split(' ')[0] })));
     const r = rng('clubs:' + cc), out = [];
     const used = new Set();
+    if (!C.towns) {   // heceden şehir adı üretimi
+      const tw = new Set(), rs = rng('towns:' + cc); let g = 0;
+      while (tw.size < 24 && g++ < 2000) { const [a, b, c] = C.syl; const w = a[Math.floor(rs() * a.length)] + b[Math.floor(rs() * b.length)] + c[Math.floor(rs() * c.length)]; const n = w.trim(); if (n.length >= 4) tw.add(n.charAt(0).toUpperCase() + n.slice(1)); }
+      C.towns = [...tw];
+    }
     C.towns.forEach((town, i) => {
       const tier = i < 12 ? 0 : 1, k = i % 12, pre = C.pre[Math.floor(r() * C.pre.length)], suf = C.suf[Math.floor(r() * C.suf.length)];
       let name = (pre ? (r() < .3 && suf && suf !== pre ? [pre, town, suf] : [pre, town]) : [town, suf || 'FC']).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
