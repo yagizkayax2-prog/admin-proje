@@ -591,4 +591,18 @@ textarea { font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vert
 .fd.protest { border-color: #ff8a65; }
 @media (max-width: 760px) { .mv-disp { top: auto; bottom: 8px; right: 8px; width: calc(100% - 16px); } .mv-var { top: 18%; } .mv-var strong { font-size: 17px; } .mv-var > b { font-size: 18px; padding: 0 10px; } }
 
+/* --- VAR köşe görüntüsü --- */
+.mv-varcam { position: absolute; right: 10px; top: 10px; z-index: 3; width: clamp(220px, 32%, 420px); background: #0d1a14; border: 2px solid #1c2a24; border-radius: 6px; overflow: hidden; box-shadow: 0 14px 34px rgba(0, 0, 0, .6); animation: vcIn .4s cubic-bezier(.2, 1.2, .4, 1) both; }
+@keyframes vcIn { from { opacity: 0; transform: translateX(30px) scale(.94); } }
+.vc-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #0b1611; font: 800 14px var(--display); letter-spacing: .06em; color: #f3efe4; }
+.vc-head b { color: var(--sky); } .vc-head span { margin-left: auto; font: 700 12.5px var(--display); color: var(--flood); letter-spacing: .04em; white-space: nowrap; }
+.mv-varcam.ok { border-color: var(--ok); } .mv-varcam.ok .vc-head strong, .mv-varcam.ok .vc-head span { color: var(--ok); }
+.mv-varcam.no { border-color: var(--red); } .mv-varcam.no .vc-head strong, .mv-varcam.no .vc-head span { color: #ff8a80; }
+.mv-varcam canvas { display: block; width: 100%; }
+.mv-pitch.vc-on .mv-disp { top: auto; bottom: 74px; }
+@media (max-width: 760px) {
+  .mv-varcam { top: 38px; right: 6px; width: 60%; } .vc-head { font-size: 12px; padding: 4px 7px; gap: 5px; } .vc-head span { font-size: 11px; }
+  .mv-pitch.vc-on .mv-var { display: none !important; } .mv-pitch.vc-on .mv-disp { bottom: 8px; }
+}
+
 @media (prefers-reduced-motion: reduce) { .ticker { overflow-x: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

@@ -21,7 +21,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Teknik ekip, sakatlık türleri ve iğneyle oynatma, takım uyumu ve kaptanlık
 - U19 altyapı takımı, sponsor anlaşması seçimi, bilet fiyatı
 - Derbiler, sosyal akış, sezon ödülleri, istatistik merkezi (şut haritası, oyuncu karşılaştırma)
-- VAR incelemeleri (gol iptali, penaltı kararı), kenarda tepki veren teknik direktörler, hakeme itiraz, teknik direktöre sarı/kırmızı kart ve men cezası
+- VAR incelemeleri (gol iptali, penaltı kararı), kenarda tepki veren teknik direktörler, hakeme itiraz, teknik direktöre sarı/kırmızı kart ve men cezası; VAR anında köşede kuşbakışı tekrar ve ofsayt çizgisi
 - Maçta 4 kamera açısı ve gol tekrarında yakın çekim; kulüp sayfasında döndürülebilir 3D stadyum
 - Kulüp müzesi: kupalar, rekorlar, efsaneler, başarımlar
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma

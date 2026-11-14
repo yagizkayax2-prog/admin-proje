@@ -113,7 +113,7 @@
       const spot = toPitch(s, .885, .5);
       others.forEach((d, k) => { d.ov = toPitch(s, .775 - (k % 3) * .022, .14 + k / Math.max(1, others.length - 1) * .72); });
       sh.ov = toPitch(s, .84, .5); gk.ov = toPitch(s, .985, .5);
-      if (e.varPen && !replay) steps.push(wait(.01, () => { A.whistle(1); varShow('PENALTI İNCELEMESİ', 'Hakem monitöre gidiyor', ''); S.refs[0].tx = MON.x; S.refs[0].ty = MON.y - .012; S.varOn = true; }), wait(2.6, () => { varShow('PENALTI', 'VAR kararı: penaltı noktası', 'ok'); S.varOn = false; }), wait(1, varHide));
+      if (e.varPen && !replay) steps.push(wait(.01, () => { A.whistle(1); S.varSnap = snap(s, sh); varShow('PENALTI İNCELEMESİ', 'Hakem monitöre gidiyor', ''); startVarCam(e, s, 'pen'); S.refs[0].tx = MON.x; S.refs[0].ty = MON.y - .012; S.varOn = true; }), wait(2.6, () => { varShow('PENALTI', 'VAR kararı: penaltı noktası', 'ok'); varVerdict('pen'); S.varOn = false; }), wait(1.4, varHide));
       steps.push(mv(() => spot, .35, { end: () => { S.holder = null; A.whistle(1); pop(sh, 'PENALTI!', '#ffc93c'); } }), wait(1.5, () => { sh.ov = toPitch(s, .875, .5); }), wait(.3, () => A.kick()));
     } else if (e.kind === 'fk') {
       const spot = toPitch(s, .74, .5 + side * .13);
@@ -137,9 +137,10 @@
     if (e.out === 'goal') {
       const gp = toPitch(s, 1.022, .5 + side * .035);
       if (e.kind === 'pen') steps.push(wait(.01, () => { gk.ov = toPitch(s, .98, .5 - side * .05); }));
+      if ((e.varNo || e.varOk) && !replay) steps.push(wait(.01, () => { S.varSnap = snap(s, sh); }));
       steps.push(mv(() => gp, .3, { arc, end: () => goalFx(e, s, flank, replay) }));
       if ((e.varNo || e.varOk) && !replay) {
-        steps.push(wait(1.5, () => { FM.Audio.whistle(1); varShow('VAR · GOL İNCELEMESİ', 'Pozisyon kontrol ediliyor', ''); S.refs[0].tx = MON.x; S.refs[0].ty = MON.y - .012; S.varOn = true; clearOv(); }),
+        steps.push(wait(1.5, () => { FM.Audio.whistle(1); varShow('VAR · GOL İNCELEMESİ', 'Pozisyon kontrol ediliyor', ''); startVarCam(e, s, 'goal'); S.refs[0].tx = MON.x; S.refs[0].ty = MON.y - .012; S.varOn = true; clearOv(); }),
           wait(1.4, () => { varShow('VAR · GOL İNCELEMESİ', 'Hakem monitörde', ''); }),
           wait(1.5, () => varEnd(e, s)), wait(e.varNo ? 1.6 : 1.4, varHide));
         steps.push(wait(.3, () => (e.varNo ? done(gk, o)() : kickoff(o))));
@@ -165,15 +166,96 @@
     const el = $('mvVar'); el.className = 'mv-var ' + (res || 'chk');
     el.innerHTML = `<b>VAR</b><div><strong>${head}</strong><span>${sub}</span></div>`; el.hidden = false;
   }
-  function varHide() { $('mvVar').hidden = true; S.varOn = false; }
+  function varHide() { $('mvVar').hidden = true; S.varOn = false; const c = $('mvVarCam'); if (c) c.hidden = true; S.varCam = null; const pt = $('mvVar') && $('mvVar').parentElement; if (pt) pt.classList.remove('vc-on'); }
+
+  /* ---------- VAR köşe görüntüsü: pozisyonun kuşbakışı tekrarı ---------- */
+  function snap(s, shD) {
+    return { s, dir: dirRight(s) ? 1 : -1, ball: { x: S.ball.x, y: S.ball.y }, dots: S.dots.filter(active).map(d => ({ x: d.x, y: d.y, s: d.s, gk: d.i === 0, num: FM.P(S.m.s[d.s].on[d.i]).num, sh: d === shD })) };
+  }
+  function startVarCam(e, s, mode) {
+    const sn = S.varSnap || snap(s, dotFor(s, e.pid)); S.varSnap = null;
+    const dir = sn.dir, def = sn.dots.filter(d => d.s !== s).sort((a, b) => (b.x - a.x) * dir);
+    const lineX = def.length > 1 ? def[1].x : (dir > 0 ? .82 : .18), sh = sn.dots.find(d => d.sh) || sn.dots.find(d => d.s === s);
+    if (mode === 'pen' && sh) {
+      const tx = dir > 0 ? .9 : .1, ty = .36 + Math.random() * .28, dx = tx - sh.x, dy = ty - sh.y;
+      for (const d of sn.dots) if (!d.gk) { d.x = clamp(d.x + dx, .02, .98); d.y = clamp(d.y + dy, .03, .97); }
+      sn.ball = { x: sh.x + dir * .012, y: sh.y };
+    }
+    const kind = mode === 'pen' ? 'foul' : e.varNo ? (e.varNo === 'ofsayt' ? 'off' : 'foul') : (Math.random() < .7 ? 'off' : 'foul');
+    if (kind === 'off' && sh) sh.x = lineX + dir * (e.varNo ? .008 : -.011);
+    const foe = kind === 'foul' && sh ? sn.dots.filter(d => d.s !== s && !d.gk).sort((a, b) => Math.hypot(a.x - sh.x, a.y - sh.y) - Math.hypot(b.x - sh.x, b.y - sh.y))[0] : null;
+    if (foe && sh) { foe.x = sh.x - dir * .012; foe.y = sh.y + .02; }
+    const tag = kind === 'off' ? 'Ofsayt çizgisi' : mode === 'pen' ? 'Faul kontrolü' : e.varNo === 'elle oynama' ? 'Elle oynama kontrolü' : 'Faul kontrolü';
+    S.varCam = { t: 0, kind, lineX, sn, sh, foe, verdict: null, mode, clip: 2 + Math.floor(Math.random() * 40) };
+    const el = $('mvVarCam'); el.hidden = false; el.className = 'mv-varcam'; el.parentElement.classList.add('vc-on');
+    $('vcTitle').textContent = mode === 'pen' ? 'PENALTI İNCELEMESİ' : 'GOL İNCELEMESİ'; $('vcTag').textContent = tag;
+    const cv = $('vcCanvas'), w = cv.clientWidth || 300, dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(w * .6 * dpr); cv.style.height = Math.round(w * .6) + 'px';
+  }
+  function varVerdict(v) {
+    const V = S.varCam; if (!V) return;
+    V.verdict = v; V.vt = V.t;
+    const el = $('mvVarCam'); el.className = 'mv-varcam ' + (v === 'ok' ? 'ok' : 'no');
+    $('vcTitle').textContent = v === 'pen' ? 'PENALTI' : v === 'ok' ? 'GOL GEÇERLİ' : 'GOL İPTAL';
+    $('vcTag').textContent = V.kind === 'off' ? (v === 'no' ? 'Ofsayt' : 'Ofsayt değil') : v === 'ok' ? 'Temiz pozisyon' : V.mode === 'pen' ? 'Faul var' : 'İhlal var';
+  }
+  function drawVarCam(dt) {
+    const V = S.varCam, cv = $('vcCanvas'); if (!V || !cv) return;
+    V.t += dt;
+    const g = cv.getContext('2d'), dpr = cv.width / (cv.clientWidth || 1), w = cv.width / dpr, h = cv.height / dpr, sn = V.sn, dir = sn.dir;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const zoom = 1.18 - Math.min(1, V.t / 2.4) * .18, vw = 46 * zoom, vh = vw * h / w, focus = V.sh || sn.ball;
+    const cxm = clamp(focus.x * 105 + dir * 7, vw / 2 - 4, 109 - vw / 2), cym = clamp(focus.y * 68, vh / 2 - 4, 72 - vh / 2);
+    const X = xm => (xm - (cxm - vw / 2)) / vw * w, Y = ym => (ym - (cym - vh / 2)) / vh * h, k = w / vw;
+    g.fillStyle = '#245f33'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#2e7a41' : '#2a703c'; g.fillRect(X(i * 8.75), Y(0), 8.75 * k + .5, 68 * k); }
+    g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = Math.max(1, k * .14);
+    const rect = (x0, y0, x1, y1) => g.strokeRect(X(x0), Y(y0), (x1 - x0) * k, (y1 - y0) * k);
+    rect(0, 0, 105, 68); g.beginPath(); g.moveTo(X(52.5), Y(0)); g.lineTo(X(52.5), Y(68)); g.stroke();
+    g.beginPath(); g.arc(X(52.5), Y(34), 9.15 * k, 0, 6.29); g.stroke();
+    for (const gx of [0, 105]) {
+      const d = gx ? -1 : 1;
+      rect(Math.min(gx, gx + d * 16.5), 13.85, Math.max(gx, gx + d * 16.5), 54.15); rect(Math.min(gx, gx + d * 5.5), 24.85, Math.max(gx, gx + d * 5.5), 43.15);
+      g.beginPath(); g.arc(X(gx + d * 11), Y(34), Math.max(1, k * .25), 0, 6.29); g.fillStyle = '#fff'; g.fill();
+      g.beginPath(); g.arc(X(gx + d * 11), Y(34), 9.15 * k, gx ? Math.PI * .7 : -Math.PI * .3, gx ? Math.PI * 1.3 : Math.PI * .3); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(X(gx ? 105 : -2), Y(30.34), 2 * k, 7.32 * k); g.strokeRect(X(gx ? 105 : -2), Y(30.34), 2 * k, 7.32 * k);
+    }
+    const col = V.verdict == null ? '#ffc93c' : V.verdict === 'ok' ? '#4cc38a' : '#ef5350';
+    if (V.kind === 'off') {
+      const p = clamp((V.t - .5) / .9, 0, 1), lx = X(V.lineX * 105);
+      g.strokeStyle = col; g.lineWidth = 2.5; g.shadowColor = col; g.shadowBlur = 8;
+      g.beginPath(); g.moveTo(lx, 0); g.lineTo(lx, h * p); g.stroke(); g.shadowBlur = 0;
+      if (p >= 1 && V.sh) { g.strokeStyle = '#58c4dd'; g.lineWidth = 1.5; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(X(V.sh.x * 105), 0); g.lineTo(X(V.sh.x * 105), h); g.stroke(); g.setLineDash([]); }
+    }
+    const r = Math.max(5, k * 1.05);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const d of sn.dots) {
+      const x = X(d.x * 105), y = Y(d.y * 68); if (x < -r || x > w + r || y < -r || y > h + r) continue;
+      const kit = S.kits[d.s];
+      g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x + 1.5, y + 2, r, r * .7, 0, 0, 6.29); g.fill();
+      g.beginPath(); g.arc(x, y, r, 0, 6.29); g.fillStyle = d.gk ? kit.gk : kit.fill; g.fill(); g.lineWidth = Math.max(1.2, r * .25); g.strokeStyle = d.gk ? '#f3efe4' : kit.stroke; g.stroke();
+      if (r >= 6) { g.fillStyle = d.gk ? '#14202f' : kit.text; g.font = `700 ${Math.round(r * 1.05)}px Barlow, sans-serif`; g.fillText(d.num, x, y + .5); }
+      if (d.sh) { g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, r + 3 + Math.sin(V.t * 6) * 1.5, 0, 6.29); g.stroke(); }
+    }
+    const b = sn.ball; g.beginPath(); g.arc(X(b.x * 105), Y(b.y * 68), Math.max(2.5, k * .45), 0, 6.29); g.fillStyle = '#fff'; g.fill(); g.strokeStyle = '#14202f'; g.lineWidth = 1; g.stroke();
+    if (V.kind === 'foul' && V.sh && V.t > .5) {
+      const x = X(V.sh.x * 105), y = Y(V.sh.y * 68) + r * .4, rr = r * 3 + Math.sin(V.t * 4) * 2;
+      g.strokeStyle = col; g.lineWidth = 2.5; g.shadowColor = col; g.shadowBlur = 8; g.beginPath(); g.arc(x, y, rr, 0, 6.29); g.stroke(); g.shadowBlur = 0;
+    }
+    g.fillStyle = 'rgba(0,0,0,.06)'; for (let y = 0; y < h; y += 3) g.fillRect(0, y, w, 1);
+    g.font = '600 11px Barlow, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = 'rgba(255,255,255,.8)';
+    const fr = Math.floor(V.t * 25) % 25;
+    g.fillText(`TEKRAR  00:${String(V.clip).padStart(2, '0')}:${String(fr).padStart(2, '0')}`, 8, h - 8);
+    if (V.verdict == null && Math.floor(V.t * 2) % 2) { g.fillStyle = '#ef5350'; g.beginPath(); g.arc(w - 12, h - 12, 4, 0, 6.29); g.fill(); }
+  }
   function varEnd(e, s) {
     S.varOn = false;
     const p = FM.P(e.pid);
     if (e.varNo) {
       S.disp[s]--; paintScore(s); S.conf = []; S.cheer[s] = 0; S.cheer[1 - s] = .8; $('tvb').classList.remove('show');
-      varShow('GOL İPTAL', 'Gerekçe: ' + e.varNo, 'no'); FM.Audio.groan();
+      varShow('GOL İPTAL', 'Gerekçe: ' + e.varNo, 'no'); varVerdict('no'); FM.Audio.groan();
       setMgr(s, 'despair', 2.5); setMgr(1 - s, 'cheer', 2);
-    } else { varShow('GOL GEÇERLİ', 'VAR kararı onayladı', 'ok'); S.cheer[s] = 1; FM.Audio.cheer(); setMgr(s, 'cheer', 2); }
+    } else { varShow('GOL GEÇERLİ', 'VAR kararı onayladı', 'ok'); varVerdict('ok'); S.cheer[s] = 1; FM.Audio.cheer(); setMgr(s, 'cheer', 2); }
     feed({ min: e.min, side: e.side, type: e.varNo ? 'var no' : 'var ok', text: e.text });
     if (e.dispute === S.user) showDispute(e.why);
   }
@@ -627,6 +709,7 @@
       S.conf = S.conf.filter(c => { c.x += c.vx * dt; c.y += c.vy * dt; c.r += dt * 6; c.life -= dt; return c.life > 0 && c.y < 1.1; });
     }
     draw(raw);
+    if (S.varCam) drawVarCam(dt);
     S.raf = requestAnimationFrame(frame);
   }
 
@@ -713,7 +796,7 @@
               <div class="tvb-sub" id="tvbSub"></div>
             </div>
             <div class="mv-talk" id="mvTalk" aria-hidden="true"></div>
-            <div class="mv-var" id="mvVar" role="status" hidden></div><div class="mv-disp" id="mvDisp" hidden></div>
+            <div class="mv-var" id="mvVar" role="status" hidden></div><div class="mv-varcam" id="mvVarCam" hidden aria-label="VAR tekrar görüntüsü"><div class="vc-head"><b>VAR</b><strong id="vcTitle">GOL İNCELEMESİ</strong><span id="vcTag">Ofsayt çizgisi</span></div><canvas id="vcCanvas"></canvas></div><div class="mv-disp" id="mvDisp" hidden></div>
             <div class="mv-pens" id="mvPens" hidden></div><div class="mv-tag" id="mvTag" hidden></div>
             <div class="mv-ctl">
               <button class="btn icon" data-mv="pause" aria-label="Duraklat">${FM.icon('pause')}</button>
