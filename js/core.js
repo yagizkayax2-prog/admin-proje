@@ -464,7 +464,7 @@
   function afterUserMatch(m, us) {
     const me = T(G.teamId), opp = T(m.s[1 - us].tid), gf = m.score[us], ga = m.score[1 - us];
     const d = m.cup && gf === ga ? (winnerSide(m) === us ? 1 : -1) : gf - ga, b0 = G.board, f0 = G.fans;
-    const gap = (opp.rep - opp.div * 2) - (me.rep - me.div * 2);
+    const gap = (opp.rep - tierOf(opp) * 2) - (me.rep - tierOf(me) * 2);
     if (d > 0) { G.board += 3 + (gap > 0 ? 2 : 0); G.fans += 2 + (gap > 0 ? 2 : 0); unlock('firstWin'); if (gf - ga >= 5) unlock('bigWin'); if (gap >= 2) unlock('giant'); }
     else if (d === 0) { G.board += gap > 0 ? 1 : gap < 0 ? -1 : 0; }
     else { G.board -= gap > 0 ? 2 : gap < 0 ? 6 : 4; G.fans -= 3; }
@@ -606,7 +606,7 @@
     const c = G.cup, n = c.alive.length;
     let target = 1; while (target * 2 <= n) target *= 2;
     const matches = target === n ? n / 2 : n - target;
-    const pool = c.alive.slice().sort((a, b) => (T(a).rep - T(a).div * 2) - (T(b).rep - T(b).div * 2) + (R() - .5) * .5);
+    const pool = c.alive.slice().sort((a, b) => (T(a).rep - tierOf(T(a)) * 2) - (T(b).rep - tierOf(T(b)) * 2) + (R() - .5) * .5);
     const playing = (target === n ? pool : pool.slice(0, matches * 2)).sort(() => R() - .5);
     c.name = FM.CUP_ROUNDS[n] || 'Tur';
     c.ties = [];
@@ -640,7 +640,12 @@
   }
 
   /* ---------- Yeni oyun / kayıt ---------- */
-  const teamQ = t => (t.div === 2 ? 59 + t.rep * 3.6 : 58 + t.rep * 3.6 - t.div * 7);
+  /* Çok ülkeli lig yapısı: G.lg[div] = { cc, tier, mode } ('play' tam maç motoru, 'view' hızlı sonuç). Türkiye 0/1, Kıta Kupası kulüpleri 2. */
+  const LDIVS = () => (G && G.lgDivs) || [0, 1];
+  const ccOf = div => (G && G.lg && G.lg[div] ? G.lg[div].cc : div === 2 ? 'EU' : 'TR');
+  const tierOf = t => { const d = typeof t === 'number' ? t : t.div; return G && G.lg && G.lg[d] ? G.lg[d].tier : d === 2 ? 0 : d; };
+  const cDivs = cc => LDIVS().filter(d => ccOf(d) === cc).sort((a, b) => tierOf(a) - tierOf(b));
+  const teamQ = t => (t.div === 2 ? 59 + t.rep * 3.6 : 58 + t.rep * 3.6 - tierOf(t) * 7);
   function buildSquad(team) {
     foreignGen = team.div === 2;
     const q = teamQ(team), plan = [['GK', 3], ['DEF', 7], ['MID', 7], ['FWD', 5]], starters = { GK: 1, DEF: 4, MID: 4, FWD: 2 };
@@ -653,27 +658,57 @@
   const squadValue = t => t.players.reduce((s, id) => s + P(id).value, 0);
   function stadiumTier(t) { const v = squadValue(t) / 1e6 + (t.fac.stadium - 1) * 10; return v < 12 ? 1 : v < 24 ? 2 : v < 42 ? 3 : v < 62 ? 4 : 5; }
   function stadiumCap(t) { return Math.round((FM.Ext && G && t.id === G.teamId ? FM.Ext.capMult() : 1) * (3000 + stadiumTier(t) * 7500) * (1 + (t.fac.stadium - 1) * .12) / 100) * 100; }
-  function newCup() { return { alive: G.teams.filter(t => t.div < 2).map(t => t.id), ties: [], hist: [], winner: null, name: '', final: false }; }
+  function newCup() { const cc = ccOf(T(G.teamId).div); return { alive: G.teams.filter(t => t.div !== 2 && ccOf(t.div) === cc).map(t => t.id), ties: [], hist: [], winner: null, name: '', final: false }; }
   function setupClub(me) {
     const wages = wageBill(me);
-    G.fin = { balance: 1500000 + me.rep * 2500000 - me.div * 1000000, sponsor: Math.round(wages * .8 / 1000) * 1000, last: null, hist: [] };
+    G.fin = { balance: 1500000 + me.rep * 2500000 - tierOf(me) * 1000000, sponsor: Math.round(wages * .8 / 1000) * 1000, last: null, hist: [] };
     G.fin.hist.push(G.fin.balance);
     G.board = 60; G.fans = 55; G.training = { focus: 'bal', intensity: 1 }; G.youthUsed = false; G.streak = { w: 0, u: 0 }; G.offers = []; G.press = null; G.jobOffers = [];
     for (const id of me.players) P(id).sc = 1;
     me.ment = 1; ensureLineup(me);
   }
-  function newGame(teamId, manager) {
+  function addLeagues(setup) {
+    G.lg = { 0: { cc: 'TR', tier: 0, mode: 'play' }, 1: { cc: 'TR', tier: 1, mode: 'play' } };
+    let div = 3; const keyId = {};
+    G.teams.forEach((t, i) => { t.key = 'TR:' + i; t.cc = 'TR'; keyId[t.key] = t.id; if (FM.World) { const c = FM.World.clubs('TR')[i]; if (c) t.info = c.info; } });
+    for (const cc of Object.keys((setup && setup.countries) || {})) {
+      if (cc === 'TR' || !FM.COUNTRIES[cc] || !FM.World) continue;
+      const o = setup.countries[cc], all = FM.World.clubs(cc);
+      for (let tier = 0; tier < Math.min(2, o.depth || 1); tier++) {
+        G.lg[div] = { cc, tier, mode: o.mode === 'view' ? 'view' : 'play' };
+        foreignGen = true;
+        for (const c of all.filter(x => x.tier === tier)) {
+          const t = { ...c, id: G.teams.length, div, players: [], lineup: [], formation: pick(['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '4-4-2']), ment: 1, tac: { press: ri(0, 2), tempo: ri(0, 2), line: ri(0, 2), width: ri(0, 2) }, sp: {}, fac: { training: 1, youth: 1, stadium: 1 } };
+          G.teams.push(t); keyId[t.key] = t.id; buildSquad(t); autoPick(t);
+        }
+        foreignGen = false; div++;
+      }
+    }
+    for (const t of G.teams) if (t.rivalKey && keyId[t.rivalKey] != null) t.rival = keyId[t.rivalKey];
+    G.lgDivs = Object.keys(G.lg).map(Number);
+    G.keyId = keyId;
+    syncNames();
+  }
+  /* Lig adlarını FM.DIV_TR dizisine yazar (div numarasıyla) */
+  function syncNames() {
+    if (!G || !G.lg) return;
+    FM.DIV_TR[2] = 'Kıta Kupası kulüpleri';
+    for (const d of G.lgDivs) { const L = G.lg[d], C = FM.COUNTRIES[L.cc]; if (C && C.l) FM.DIV_TR[d] = C.l[L.tier]; }
+  }
+  function newGame(teamId, manager, setup) {
     G = { v: 2, season: 1, week: 0, teamId, manager: manager || 'Teknik Direktör', nextId: 1, players: {}, teams: [], free: [], news: [], offers: [], history: [], fin: {}, cool: {}, scoutQ: [], ach: {}, rec: {}, museum: { titles: [], cups: [] }, legends: {}, cupDue: false, phase: null, inbox: [] };
     FM.TEAMS.forEach((d, id) => {
       const t = { id, div: 0, ...d, players: [], lineup: [], formation: pick(['4-4-2', '4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2']), ment: 1, tac: { press: ri(0, 2), tempo: ri(0, 2), line: ri(0, 2), width: ri(0, 2) }, sp: {}, fac: { training: 1, youth: 1, stadium: 1 } };
       G.teams.push(t);
       buildSquad(t); autoPick(t);
     });
+    addLeagues(setup);
+    if (typeof teamId === 'string') { G.teamId = teamId = G.keyId[teamId] != null ? G.keyId[teamId] : 0; }
     for (let i = 0; i < 28; i++) genFree();
     const me = T(teamId);
     me.formation = '4-4-2'; me.tac = { press: 1, tempo: 1, line: 1, width: 1 }; autoPick(me);
     setupClub(me);
-    G.fixtures = [0, 1].map(d => makeFixtures(divTeams(d).map(t => t.id)));
+    G.fixtures = []; for (const d of LDIVS()) G.fixtures[d] = makeFixtures(divTeams(d).map(t => t.id));
     G.cup = newCup();
     ensureWorld(); hook('ensure'); hook('newGame'); sponsorOffer();
     news(`${G.manager}, ${me.name} teknik direktörlüğüne getirildi. Yönetim hedefi: ${FM.DIV_TR[me.div]}'nde ${expectation(me)}. sıra veya üstü.`, 'club');
@@ -686,7 +721,7 @@
     p.con = 0; G.free.push(p.id);
     return p;
   }
-  function save() { if (!G || (FM.Settings && !FM.Settings.get('autoSave') && !FM.forceSave)) return; G.savedAt = Date.now(); try { localStorage.setItem(slotKey(SLOT), JSON.stringify(G)); localStorage.setItem('saha-kenari-slot', SLOT); } catch (e) { /* kayıt yoksa oyun yine çalışır */ } }
+  function save() { if (!G || (FM.Settings && !FM.Settings.get('autoSave') && !FM.forceSave)) return; G.savedAt = Date.now(); try { localStorage.setItem(slotKey(SLOT), JSON.stringify(G)); localStorage.setItem('saha-kenari-slot', SLOT); } catch (e) { if (!FM.saveWarned && FM.ui && FM.ui.toast) { FM.saveWarned = true; FM.ui.toast('Kariyer kaydedilemedi: tarayıcı kayıt alanı dolu. Daha küçük bir veri tabanıyla yeni kariyer başlatmayı dene.', 'bad'); } } }
   function load() {
     try { const s = localStorage.getItem(slotKey(SLOT)); if (!s) return null; const g = JSON.parse(s); if (g && g.v === 2) { G = g; if (!G.inbox) G.inbox = []; ensureWorld(); hook('ensure'); return G; } } catch (e) { /* bozuk kayıt */ }
     return null;
@@ -739,7 +774,7 @@
   function endWeek() {
     const me = T(G.teamId), fx = userFixture(), home = fx && fx.h === G.teamId;
     const tb = table(), myPos = tb.findIndex(r => r.id === G.teamId) + 1, cap = stadiumCap(me);
-    const refP = 15 - me.div * 4, price = G.fin.ticket, derby = fx && T(fx.h).rival === fx.a;
+    const refP = 15 - tierOf(me) * 4, price = G.fin.ticket, derby = fx && T(fx.h).rival === fx.a;
     const att = home ? Math.round((fx && fx.closed ? .7 : 1) * cap * clamp((.32 + G.fans / 100 * .5 + (12 - myPos) * .012 + R() * .06 + (derby ? .15 : 0)) * clamp(1 - (price - refP) / refP * .45, .3, 1.2), .08, 1)) : 0;
     if (home) G.fans += price > refP * 1.4 ? -1.5 : price < refP * .7 ? 1 : 0;
     const won = fx && fx.hs != null && (fx.h === G.teamId ? fx.hs > fx.as : fx.as > fx.hs), deal = G.fin.deal;
@@ -819,7 +854,7 @@
     }
     if (R() < .25) {
       const seller = pick(others.filter(t => t.players.length > 20));
-      const buyer = seller && pick(others.filter(t => t !== seller && t.players.length < 26 && (t.rep - t.div * 2) >= (seller.rep - seller.div * 2)));
+      const buyer = seller && pick(others.filter(t => t !== seller && t.players.length < 26 && (t.rep - tierOf(t) * 2) >= (seller.rep - tierOf(seller) * 2)));
       if (buyer) {
         const cands = seller.players.map(P).filter(p => !p.loan && !seller.lineup.includes(p.id) && p.ovr >= teamQ(buyer) - 4);
         if (cands.length) {
@@ -834,8 +869,8 @@
   function sack() {
     const me = T(G.teamId);
     G.phase = 'sacked';
-    const lower = G.teams.filter(t => t.div < 2 && t.id !== me.id && (t.rep - t.div * 2) < (me.rep - me.div * 2)).sort(() => R() - .5);
-    G.jobOffers = (lower.length >= 3 ? lower : G.teams.filter(t => t.div < 2 && t.id !== me.id).sort(() => R() - .5)).slice(0, 3).map(t => t.id);
+    const lower = G.teams.filter(t => t.div !== 2 && t.id !== me.id && (t.rep - tierOf(t) * 2) < (me.rep - tierOf(me) * 2)).sort(() => R() - .5);
+    G.jobOffers = (lower.length >= 3 ? lower : G.teams.filter(t => t.div !== 2 && t.id !== me.id).sort(() => R() - .5)).slice(0, 3).map(t => t.id);
     news(`${me.name} yönetimi ${G.manager} ile yollarını ayırdı.`, 'bad');
     hook('sacked', me);
   }
@@ -871,24 +906,26 @@
 
   /* ---------- Sezon sonu ---------- */
   function seasonEnd() {
-    const me = T(G.teamId), tbs = [table(0), table(1)], tb = tbs[me.div];
+    const me = T(G.teamId), myC = cDivs(ccOf(me.div)), tbs = myC.map(d => table(d)), tb = table(me.div);
+    G.moves = [];
+    for (const cc of [...new Set(LDIVS().map(ccOf))]) { const ds = cDivs(cc); if (ds.length < 2) continue; const a = table(ds[0]), b = table(ds[1]); a.slice(-2).forEach(r => G.moves.push([r.id, ds[1]])); b.slice(0, 2).forEach(r => G.moves.push([r.id, ds[0]])); }
     const pos = tb.findIndex(r => r.id === G.teamId) + 1, exp = expectation(me);
-    const prize = Math.round(((13 - pos) * 450000 + (pos === 1 ? 2500000 : 0)) * (me.div ? .4 : 1));
+    const prize = Math.round(((13 - pos) * 450000 + (pos === 1 ? 2500000 : 0)) * (tierOf(me) ? .4 : 1));
     G.fin.balance += prize;
     let top = null;
     for (const id in G.players) { const p = G.players[id]; if (p.tid != null && T(p.tid).div === me.div && (!top || p.g > top.g)) top = p; }
     const myTop = me.players.map(P).sort((a, b) => b.g - a.g)[0];
     if (myTop && myTop.g > 0 && (!G.rec.goals || myTop.g > G.rec.goals.g)) G.rec.goals = { name: myTop.name, g: myTop.g, s: G.season };
     if (!G.rec.pts || tb[pos - 1].pts > G.rec.pts.v) G.rec.pts = { v: tb[pos - 1].pts, s: G.season };
-    const down = tbs[0].slice(-2).map(r => r.id), up = tbs[1].slice(0, 2).map(r => r.id);
-    const champ = me.div === 0 && pos === 1;
+    const down = tbs.length > 1 ? tbs[0].slice(-2).map(r => r.id) : [], up = tbs.length > 1 ? tbs[1].slice(0, 2).map(r => r.id) : [];
+    const champ = tierOf(me) === 0 && pos === 1;
     if (champ) { G.museum.titles.push(G.season); unlock('champion'); if (G.cup.winner === G.teamId) unlock('double'); }
     if (up.includes(G.teamId)) unlock('promoted');
     if (G.season >= 3) unlock('loyal');
     G.board = clamp(G.board + (pos <= exp ? 10 : -8), 0, 100);
     G.jobOffers = [];
     if (pos <= Math.max(1, exp - 2) || champ) {
-      G.jobOffers = G.teams.filter(t => t.div < 2 && t.id !== me.id && (t.rep - t.div * 2) > (me.rep - me.div * 2)).sort(() => R() - .5).slice(0, 2).map(t => t.id);
+      G.jobOffers = G.teams.filter(t => t.div !== 2 && t.id !== me.id && (t.rep - tierOf(t) * 2) > (me.rep - tierOf(me) * 2)).sort(() => R() - .5).slice(0, 2).map(t => t.id);
     }
     G.summary = { season: G.season, div: me.div, pos, exp, prize, champion: tbs[0][0].id, top: top ? { name: top.name, g: top.g, tid: top.tid } : null, table: tb.slice(0, 3).map(r => r.id), up, down, cup: G.cup.winner };
     G.summary.awards = awards(me.div); G.euroQ = tbs[0].slice(0, 4).map(r => r.id); G.summary.euro = G.euro ? G.euro.winner : null;
@@ -901,8 +938,8 @@
     const retired = [], left = [], s = G.summary;
     // kiralıklar döner
     for (const id in G.players) { const p = G.players[id]; if (p.loan && p.optBuy && p.tid === G.teamId) { p.loan = null; p.optBuy = 0; p.con = 3; continue; } if (p.loan && p.tid != null) { const own = T(p.loan.own); removeFromTeam(p); addToTeam(p, own); p.loan = null; } }
-    for (const id of s.down) T(id).div = 1;
-    for (const id of s.up) T(id).div = 0;
+    if (G.moves) for (const [id, d] of G.moves) T(id).div = d; else { for (const id of s.down) T(id).div = 1; for (const id of s.up) T(id).div = 0; }
+    G.moves = null;
     for (const t of G.teams) {
       const mine = t.id === G.teamId; foreignGen = t.div === 2;
       for (const id of t.players.slice()) {
@@ -927,7 +964,7 @@
     G.free = G.free.filter(id => P(id));
     for (let i = 0; i < 28; i++) genFree();
     G.season++; G.week = 0; G.phase = null; G.summary = null; G.youthUsed = false; G.offers = []; G.cool = {}; G.scoutQ = []; G.press = null; G.jobOffers = []; G.streak = { w: 0, u: 0 };
-    G.fixtures = [0, 1].map(d => makeFixtures(divTeams(d).map(t => t.id)));
+    G.fixtures = []; for (const d of LDIVS()) G.fixtures[d] = makeFixtures(divTeams(d).map(t => t.id));
     G.cup = newCup(); G.cupDue = false; G.euroDue = false; G.euro = undefined; G.stats = newStats(); G.shots = []; G.promises = []; G.u19 = { w: 0, d: 0, l: 0, last: '' }; G.fin.deal = null;
     youthSeason();
     G.fin.sponsor = Math.round(G.fin.sponsor * 1.03 / 1000) * 1000;
@@ -939,8 +976,16 @@
     ensureWorld(); sponsorOffer();
     save();
   }
+  const pois = l => { let k = 0, p = 1; const L = Math.exp(-l); do { k++; p *= R(); } while (p > L && k < 10); return k - 1; };
+  function quickResult(f) {
+    const a = teamQ(T(f.h)) + 2, b = teamQ(T(f.a));
+    f.hs = pois(1.35 * Math.pow(a / b, 5)); f.as = pois(1.15 * Math.pow(b / a, 5)); f.scorers = []; f.quick = true;
+  }
   function simOthers() {
-    for (let d = 0; d < 2; d++) for (const f of G.fixtures[d][G.week]) if (f.hs == null) finishMatch(simFull(newMatch(f)));
+    for (const d of LDIVS()) {
+      const view = G.lg && G.lg[d] && G.lg[d].mode === 'view' && ccOf(d) !== ccOf(T(G.teamId).div);
+      for (const f of (G.fixtures[d] || [])[G.week] || []) if (f.hs == null) { if (view) quickResult(f); else finishMatch(simFull(newMatch(f))); }
+    }
   }
 
   /* ---------- Transfer, sözleşme, scout ---------- */
@@ -1058,7 +1103,7 @@
     if (G.youthUsed) return null;
     const me = T(G.teamId);
     if (me.players.length >= 28) return null;
-    const p = genPlayer(wpick(['GK', 'DEF', 'MID', 'FWD'], x => (x === 'GK' ? 1 : 3)), ri(46, 54) + me.fac.youth * 2 - me.div * 2, ri(16, 18));
+    const p = genPlayer(wpick(['GK', 'DEF', 'MID', 'FWD'], x => (x === 'GK' ? 1 : 3)), ri(46, 54) + me.fac.youth * 2 - tierOf(me) * 2, ri(16, 18));
     p.pot = clamp(p.ovr + ri(12, 22) + me.fac.youth * 2, p.ovr, 94); refresh(p);
     p.wage = 800; p.con = 3;
     addToTeam(p, me); G.youthUsed = true;
@@ -1103,6 +1148,7 @@
   const pickCaptain = team => team.players.map(P).sort((a, b) => (b.trait === 'lead' ? 30 : 0) + b.age + b.ovr * .5 - ((a.trait === 'lead' ? 30 : 0) + a.age + a.ovr * .5))[0].id;
   function setCaptain(pid) { T(G.teamId).cap = pid; save(); }
   function ensureWorld() {
+    syncNames();
     if (!G.teams.some(t => t.div === 2)) FM.FOREIGN.forEach(d => {
       const t = { id: G.teams.length, ...d, div: 2, players: [], lineup: [], formation: pick(['4-4-2', '4-3-3', '4-2-3-1', '3-5-2']), ment: 1, tac: { press: ri(0, 2), tempo: ri(0, 2), line: ri(0, 2), width: ri(0, 2) }, sp: {}, fac: { training: 3, youth: 3, stadium: 3 } };
       G.teams.push(t); buildSquad(t); autoPick(t);
@@ -1113,7 +1159,7 @@
     const me = T(G.teamId);
     G.staff = G.staff || { coach: 0, fitness: 0, scout: 0, physio: 0 }; G.promises = G.promises || []; G.social = G.social || []; G.stats = G.stats || newStats(); G.shots = G.shots || [];
     G.youth = G.youth || []; G.u19 = G.u19 || { w: 0, d: 0, l: 0, last: '' };
-    if (G.fin.ticket == null) G.fin.ticket = 15 - me.div * 4;
+    if (G.fin.ticket == null) G.fin.ticket = 15 - tierOf(me) * 4;
     if (!me.plan) me.plan = { focus: 0, mark: null };
     if (me.cap == null || !me.players.includes(me.cap)) me.cap = pickCaptain(me);
     if (!G.youthInit) { G.youthInit = true; genYouth(10); }
@@ -1149,7 +1195,7 @@
   const staffCost = k => FM.STAFF[k][2] * (G.staff[k] + 1);
   function setTicket(v) { G.fin.ticket = clamp(Math.round(v), 3, 60); save(); }
   function projAtt(price) {
-    const me = T(G.teamId), refP = 15 - me.div * 4, pos = table().findIndex(r => r.id === G.teamId) + 1;
+    const me = T(G.teamId), refP = 15 - tierOf(me) * 4, pos = table().findIndex(r => r.id === G.teamId) + 1;
     return Math.round(stadiumCap(me) * clamp((.35 + G.fans / 100 * .5 + (12 - pos) * .012) * clamp(1 - (price - refP) / refP * .45, .3, 1.2), .08, 1));
   }
 
@@ -1247,7 +1293,7 @@
   function newEuro() {
     const fo = G.teams.filter(t => t.div === 2).map(t => t.id).sort(() => R() - .5);
     let dom = (G.euroQ || []).filter(id => T(id));
-    if (dom.length !== 4) dom = divTeams(0).sort((a, b) => b.rep - a.rep || a.id - b.id).slice(0, 4).map(t => t.id);
+    if (dom.length !== 4) dom = divTeams(cDivs(ccOf(T(G.teamId).div))[0]).sort((a, b) => b.rep - a.rep || a.id - b.id).slice(0, 4).map(t => t.id);
     return { groups: [0, 1, 2, 3].map(i => [dom[i], fo[i * 3], fo[i * 3 + 1], fo[i * 3 + 2]]), md: [], ko: [], cur: [], round: -1, alive: [], winner: null, dom };
   }
   function euroTable(gi) {
@@ -1291,7 +1337,7 @@
     return done;
   }
 
-  Object.assign(FM, {
+  Object.assign(FM, { LDIVS, ccOf, tierOf, cDivs,
     WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, injSub, protest, coachOf, finishMatch, doSub, ratings, winnerSide,
     table, userFixture, newGame, save, load, reset, exportSave, importSave, endWeek, startNewSeason, simOthers, askPrice, isClause, marketList, buy, sellOffer, sell,
     loanIn, loanOut, loanedOut, renew, renewTerms, scout, known, est, avgRating, talk, answerPress, takeJob, windowOpen, deadline, cupTie, playCupRound,

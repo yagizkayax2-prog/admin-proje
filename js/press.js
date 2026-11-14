@@ -170,7 +170,7 @@
     const mid = seats.filter(s => s.r === 1 || s.r === 2).sort(() => rnd() - .5), who = new Map();
     const order = [asked].concat(G.journos.map(j => j.id).filter(id => id !== asked));
     order.forEach((id, k) => { if (mid[k]) who.set(mid[k], id); });
-    const league = me.div ? FM.DIV_TR[1] : FM.DIV_TR[0], dark = me.c1;
+    const league = FM.DIV_TR[me.div] || FM.DIV_TR[0], dark = me.c1;
     let svg = `<svg viewBox="0 0 1600 560" class="room" role="img" aria-label="Basın salonu, ${c.qs.length} soruluk toplantı">
       <defs><linearGradient id="rw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${dark}" stop-opacity=".55"/><stop offset="1" stop-color="#0b111c"/></linearGradient>
       <linearGradient id="rf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2433"/><stop offset="1" stop-color="#0d131d"/></linearGradient></defs>

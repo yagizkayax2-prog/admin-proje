@@ -54,6 +54,7 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Tünel sahnesi, gol sevinci çeşitleri, meşale ve sahaya giren taraftar olayları; ev sahibi tribün olaylarında para cezası ve kapalı tribün
 - Haftanın 11'i ve haftanın golü oylaması
 - Maç akışı: oyun dakikası ~1,15 sn; kendi yarısında sabırlı kurulum, orta sahada ileri pas, son bölümde dolaştırma; pozisyon öncesi topu kazanma ve kısa paslarla ilerleme; oyuncu animasyonları (vuruş, plonjon, kayarak müdahale, kafa için sıçrama, gol sevinci, üzüntü)
+- Yeni kariyer sihirbazı: veri tabanı kurulumu (16 ülke, ülke başına 1 ya da 2 lig, oynanabilir ya da yalnızca izle, futbolcu sayısı, oyun hızı ve kayıt boyutu tahmini), takım seçme ekranı (kulüp profili, formalar, kültür, tesisler, rakipler, yönetim beklentisi) ve menajer profili; her ülkede ayrı lig, düşme-yükselme ve kupa
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
 ## Dosyalar
@@ -70,6 +71,8 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | `js/depth.js` | Maç raporu ve xG, yardımcı önerileri, sözleşme maddeleri, takas ve söylentiler, kadro planlayıcı, sezon akışı, teknik direktör gelişimi, diğer hocalar, gazete |
 | `js/extras.js` | Başkan ve seçimler, süreli inşaat, forma geliri, milli takım görevi, tribün olaylarında disiplin, haftanın 11'i ve golü |
 | `js/extras-ui.js` | Bu eklerin ekranları (başkan, inşaat, milli takım, haftanın 11'i ve golü) |
+| `js/world.js` | Veri tabanı: ülkelerin kurgusal kulüpleri ve kulüp profilleri |
+| `js/setup-ui.js` | Yeni kariyer sihirbazı: veri tabanı kurulumu, takım seç, menajer profili |
 | `js/depth-ui.js` | Bu sistemlerin ekranları ve klavye kısayolları |
 | `js/ui-more.js` | Menü, rehber ve tur, maç öncesi ekranı, basın salonu ve yeni ekranlar |
 | `js/boot.js` | Açılış |

@@ -64,7 +64,7 @@
   /* ---------- Kabuk ---------- */
   function ticker() {
     const G = FM.G, t = me(), w = G.week - 1, items = [];
-    if (w >= 0) for (const d of [t.div, 1 - t.div]) for (const f of G.fixtures[d][w]) if (f.hs != null) items.push(`<span><b>Sonuç</b>${FM.crest(T(f.h), 16)}${T(f.h).name} <em>${f.hs}-${f.as}</em> ${T(f.a).name}</span>`);
+    if (w >= 0) for (const d of FM.cDivs(FM.ccOf(t.div))) for (const f of (G.fixtures[d] || [])[w] || []) if (f.hs != null) items.push(`<span><b>Sonuç</b>${FM.crest(T(f.h), 16)}${T(f.h).name} <em>${f.hs}-${f.as}</em> ${T(f.a).name}</span>`);
     for (const n of G.news.slice(0, 6)) items.push(`<span><b class="hb">Haber</b>${esc(n.text.length > 80 ? n.text.slice(0, 78) + '…' : n.text)}</span>`);
     if (!items.length) items.push('<span><b class="hb">Haber</b>Sezon başlıyor. İlk maç için “Devam et” düğmesine bas.</span>');
     const row = items.join('');
@@ -125,7 +125,7 @@
   }
   function tableHtml(rows, offset, compact, div) {
     return `<div class="scroll"><table class="tbl lg"><thead><tr><th>#</th><th class="l">Takım</th><th>O</th>${compact ? '' : '<th>G</th><th>B</th><th>M</th><th>A</th><th>Y</th>'}<th>AV</th><th>P</th>${compact ? '' : '<th class="l">Form</th>'}</tr></thead><tbody>` +
-      rows.map((r, i) => { const t = T(r.id), n = offset + i + 1, zone = div === 1 && n <= 2 ? 'up' : div === 0 && n >= 11 ? 'down' : ''; return `<tr class="${r.id === FM.G.teamId ? 'mine' : ''} ${zone}" data-a="team" data-id="${r.id}" tabindex="0"><td class="rk r${n}">${n}</td><td class="l tm">${FM.crest(t, 22)}${t.name}</td><td>${r.pl}</td>${compact ? '' : `<td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td>`}<td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td><b>${r.pts}</b></td>${compact ? '' : `<td class="l form">${r.form.slice(-5).map(x => `<i class="f${x}">${x}</i>`).join('')}</td>`}</tr>`; }).join('') + '</tbody></table></div>';
+      rows.map((r, i) => { const t = T(r.id), n = offset + i + 1, two = FM.cDivs(FM.ccOf(div)).length > 1, tr = FM.tierOf(div), zone = two && tr === 1 && n <= 2 ? 'up' : two && tr === 0 && n >= 11 ? 'down' : ''; return `<tr class="${r.id === FM.G.teamId ? 'mine' : ''} ${zone}" data-a="team" data-id="${r.id}" tabindex="0"><td class="rk r${n}">${n}</td><td class="l tm">${FM.crest(t, 22)}${t.name}</td><td>${r.pl}</td>${compact ? '' : `<td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td>`}<td>${r.gf - r.ga > 0 ? '+' : ''}${r.gf - r.ga}</td><td><b>${r.pts}</b></td>${compact ? '' : `<td class="l form">${r.form.slice(-5).map(x => `<i class="f${x}">${x}</i>`).join('')}</td>`}</tr>`; }).join('') + '</tbody></table></div>';
   }
 
   /* ---------- Kadro ---------- */
@@ -233,8 +233,9 @@
     const all = Object.values(FM.G.players).filter(p => p.tid != null && T(p.tid).div === d);
     const top = (f, n) => all.filter(p => f(p) > 0).sort((a, b) => f(b) - f(a) || a.apps - b.apps).slice(0, n);
     const lst = (f, fmt) => top(f, 8).map((p, i) => `<li class="${p.tid === FM.G.teamId ? 'mine' : ''}"><span class="wk">${i + 1}</span>${FM.crest(T(p.tid), 20)}<span class="nm">${esc(p.name)}</span><b>${fmt ? fmt(f(p)) : f(p)}</b></li>`).join('') || '<li class="muted">Henüz veri yok.</li>';
-    return `<div class="seg">${FM.DIV_TR.map((n, i) => `<button data-a="tbldiv" data-v="${i}" class="${d === i ? 'on' : ''}">${n}</button>`).join('')}</div>
-      <section class="card"><h2>${FM.DIV_TR[d]} · ${FM.G.season}. sezon</h2>${tableHtml(FM.table(d), 0, false, d)}<p class="muted">${d === 0 ? 'Son iki takım Umut Ligi\'ne düşer.' : 'İlk iki takım Yıldızlar Ligi\'ne yükselir.'}</p></section>
+    const divs = FM.LDIVS(), ccs = [...new Set(divs.map(FM.ccOf))], myCc = FM.ccOf(d);
+    return `${ccs.length > 1 ? `<div class="seg wrap">${ccs.map(cc => `<button data-a="tbldiv" data-v="${FM.cDivs(cc)[0]}" class="${myCc === cc ? 'on' : ''}">${FM.COUNTRIES[cc] ? FM.COUNTRIES[cc].n : cc}</button>`).join('')}</div>` : ''}<div class="seg">${FM.cDivs(myCc).map(i => `<button data-a="tbldiv" data-v="${i}" class="${d === i ? 'on' : ''}">${FM.DIV_TR[i]}</button>`).join('')}</div>
+      <section class="card"><h2>${FM.DIV_TR[d]} · ${FM.G.season}. sezon</h2>${tableHtml(FM.table(d), 0, false, d)}<p class="muted">${FM.cDivs(myCc).length < 2 ? 'Bu ülkede tek lig kurulu: düşme ve yükselme yok.' : FM.tierOf(d) === 0 ? `Son iki takım ${FM.DIV_TR[FM.cDivs(myCc)[1]]}'ne düşer.` : `İlk iki takım ${FM.DIV_TR[FM.cDivs(myCc)[0]]}'ne yükselir.`}${FM.G.lg && FM.G.lg[d] && FM.G.lg[d].mode === 'view' ? ' Bu lig yalnızca izleniyor: sonuçlar hızlı hesaplanır.' : ''}</p></section>
       <div class="grid2"><section class="card"><h2>Gol krallığı</h2><ol class="rank">${lst(p => p.g)}</ol></section><section class="card"><h2>Asist krallığı</h2><ol class="rank">${lst(p => p.as)}</ol></section>
       <section class="card"><h2>En yüksek ortalama puan</h2><ol class="rank">${lst(p => (p.rn >= 3 ? FM.avgRating(p) : 0), fmtR)}</ol></section></div>`;
   }
@@ -455,7 +456,7 @@
   const VIEWS = { youth: viewYouth, euro: viewEuro, stats: viewStats, social: viewSocial, inbox: viewInbox, career: viewCareer, home: viewHome, squad: viewSquad, tactics: viewTactics, fixtures: viewFixtures, table: viewTable, transfer: viewTransfer, training: viewTraining, club: viewClub };
   function render(keepScroll) {
     const G = FM.G, app = $('app'), y = window.scrollY;
-    if (!G) { app.innerHTML = U.screen === 'new' || !FM.ui.menuScreen ? startScreen() : FM.ui.menuScreen(); if (FM.ui.after) FM.ui.after(); return; }
+    if (!G) { app.innerHTML = U.screen === 'new' || !FM.ui.menuScreen ? (FM.ui.newScreen ? FM.ui.newScreen() : startScreen()) : FM.ui.menuScreen(); if (FM.ui.after) FM.ui.after(); return; }
     if (G.phase === 'sacked') { app.innerHTML = sackedScreen(); return; }
     if (G.phase === 'seasonEnd') { app.innerHTML = seasonScreen(); confettiBurst(); return; }
     app.innerHTML = shell(VIEWS[U.view]());
@@ -541,7 +542,7 @@
     const G = FM.G, say = r => toast(r.msg, r.ok ? 'good' : 'bad');
     switch (a) {
       case 'pick-team': U.pickTeam = +d.id; { const v = $('mgr').value, y = window.scrollY; render(); $('mgr').value = v; window.scrollTo(0, y); } break;
-      case 'start': FM.Audio.init(); FM.setSlot(U.newSlot || FM.slot()); FM.newGame(U.pickTeam, $('mgr').value.trim()); U.screen = null; U.hist = ['home']; U.hi = 0; U.tourStep = FM.Settings && !FM.Settings.get('tourDone') ? 0 : null; U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); break;
+      case 'start': FM.Audio.init(); FM.setSlot(U.newSlot || FM.slot()); FM.newGame(U.ns ? U.ns.club : U.pickTeam, $('mgr').value.trim(), U.ns ? U.ns.setup : undefined); U.ns = null; U.screen = null; U.hist = ['home']; U.hi = 0; U.tourStep = FM.Settings && !FM.Settings.get('tourDone') ? 0 : null; U.view = 'home'; U.shownBal = null; render(); window.scrollTo(0, 0); break;
       case 'tab': go(d.v); break;
       case 'back': if (U.hi > 0) go(U.hist[--U.hi], true); break;
       case 'fwd': if (U.hi < U.hist.length - 1) go(U.hist[++U.hi], true); break;
