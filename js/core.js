@@ -231,13 +231,47 @@
   const onPitch = side => side.on.filter(x => x != null).map(P);
   function slotRole(side, pid) { const i = side.on.indexOf(pid); return i < 0 ? null : side.slots[i][0]; }
 
-  function chance(m, s, r) {
+  /* Sahaya dayalı motor: açık oyun pozisyonları canlı maç ekranında oyuncuların yerleşiminden doğar (FM.pitchChance).
+     Bu modda istatistiksel motor açık oyun pozisyonu üretmez; duran toplar (penaltı, frikik, korner) istatistikten gelmeye devam eder. */
+  function pitchShot(m, s, r, F) {
+    const side = m.s[s], opp = m.s[1 - s], sh = P(F.pid), as = F.aid != null && F.aid !== F.pid ? P(F.aid) : null;
+    if (!sh) return null;
+    const keeperId = opp.on[0], keeper = keeperId != null ? P(keeperId) : null;
+    const shoE = sh.a.sho * (.75 + .25 * sh.fit / 100);
+    // konum xG'si × şutçunun niteliği / kalecinin gücü
+    let pg = F.xg * Math.pow(shoE / Math.max(20, r[1 - s].gk), 1.15) * (sh.trait === 'cool' ? 1.08 : 1) * (sh.trait === 'big' && m.cup ? 1.1 : 1) * (m.wx.t === 'snow' ? .92 : m.wx.t === 'rain' ? 1.05 : 1) * (side._pg || 1);
+    pg = clamp(pg, .01, .7);
+    m.st.shots[s]++;
+    const e = { type: 'chance', kind: 'open', pitch: true, counted: true, min: m.min, side: s, pid: sh.id, aid: as ? as.id : null, kid: keeperId, xg: Math.round(pg * 100) / 100, sx: F.sx, sy: F.sy };
+    if (m.xg) m.xg[s] += pg;
+    m.shots.push(e);
+    const names = { p: sh.name, a: as ? as.name : '', k: keeper ? keeper.name : 'Savunma' };
+    if (R() < pg) {
+      e.out = 'goal'; m.score[s]++; m.st.target[s]++; sh.g++; if (as) as.as++;
+      rate(m, sh.id, 1.1); rate(m, e.aid, .6); rate(m, keeperId, -.3);
+      opp.on.forEach((id, i) => { if (id != null && opp.slots[i][0] === 'DEF') rate(m, id, -.15); });
+      e.text = txt('goal', names) + (as ? ' ' + txt('assist', names) : '');
+      m.log.push({ min: m.min, side: s, type: 'goal', pid: sh.id, aid: e.aid, kind: 'open' });
+    } else {
+      const y = R(), onT = clamp(.38 + F.xg * .8 - F.press * .05, .25, .7);
+      if (y < onT && keeper) { e.out = 'save'; m.st.target[s]++; rate(m, keeperId, .35); rate(m, sh.id, .08); e.text = txt('save', names); }
+      else if (F.press >= 2 && y < onT + .25) { e.out = 'block'; m.st.corners[s]++; e.text = txt('block', names); }
+      else if (y > .95) { e.out = 'post'; e.text = txt('post', names); }
+      else { e.out = 'miss'; rate(m, sh.id, -.08); e.text = txt('miss', names); }
+    }
+    return e;
+  }
+  function pitchOffside(m, s, pid) { const p = P(pid); if (!p || m.done) return null; m.st.off[s]++; return { type: 'off', min: m.min, side: s, pid, text: txt('off', { p: p.name }) }; }
+  function pitchChance(m, s, F) { if (m.done) return null; const r = [ratings(m.s[0]), ratings(m.s[1])]; return chance(m, s, r, F); }
+  function chance(m, s, r, F) {
     const side = m.s[s], opp = m.s[1 - s], tac = side.tac;
     const outfield = onPitch(side).filter(p => slotRole(side, p.id) !== 'GK');
     if (!outfield.length) return null;
     const inXI = id => id != null && side.on.includes(id) && slotRole(side, id) !== 'GK';
     const x0 = R(), wide = tac.width === 2;
+    if (F) return pitchShot(m, s, r, F);
     const kind = x0 < .014 ? 'pen' : x0 < .12 * [.8, 1, 1.25][opp.tac.tackle] ? 'fk' : x0 < .12 * [.8, 1, 1.25][opp.tac.tackle] + (wide ? .15 : .08) + (tac.fb === 2 ? .03 : 0) ? 'ck' : 'open';
+    if (m.pitch && kind === 'open') return { type: 'pitchreq', min: m.min, side: s };   // canlı ekranda sahadan çözülür
     const roleW = { FWD: 5, MID: 2, DEF: .6 };
     let sh, as = null;
     const spr = side.spr || {}, pi = side.pi || {}, cross = kind === 'fk' && spr.fk === 'cross';
@@ -366,7 +400,7 @@
     const ev = [];
     for (const sd of m.s) if (sd.shout && m.min >= sd.shout.until) sd.shout = null;
     const r = [ratings(m.s[0]), ratings(m.s[1])];
-    const c0 = r[0].ctl ** 2, c1 = r[1].ctl ** 2, poss0 = c0 / (c0 + c1);
+    const c0 = r[0].ctl ** 2, c1 = r[1].ctl ** 2, poss0 = m.vposs != null ? clamp(m.vposs, .2, .8) : c0 / (c0 + c1); m.vposs = null;
     m.st.poss[0] += poss0; m.st.poss[1] += 1 - poss0;
     const wxD = m.wx.t === 'snow' ? 1.12 : m.wx.t === 'rain' ? 1.05 : 1;
     for (let s = 0; s < 2; s++) {
@@ -394,7 +428,7 @@
       } else if (pl.length && R() < .0007) sendOff(m, s, pick(pl), ev, false);
       const pl2 = onPitch(side);
       if (pl2.length && R() < .0009 * wxD * (m.pitchF || 1)) {
-        const p = wpick(pl2, q => (q.trait === 'glass' ? 3 : 1)), i = side.on.indexOf(p.id), role = side.slots[i][0];
+        const p = wpick(pl2, q => (q.trait === 'glass' ? 3 : 1) * (1 + (q.risk || 0) / 35)), i = side.on.indexOf(p.id), role = side.slots[i][0];
         injure(p);
         ev.push({ type: 'inj', min: m.min, side: s, pid: p.id, text: txt('inj', { p: p.name }) });
         if (side.user && !m.auto && side.subsLeft > 0 && side.bench.length) { side.on[i] = null; ev[ev.length - 1].need = true; ev[ev.length - 1].slot = i; }
@@ -1426,7 +1460,7 @@
     return done;
   }
 
-  Object.assign(FM, { quickResult, drawCup, startEuroRound, seasonEnd, aiTransfers, CUP_AFTER, EURO_AFTER, roleFor, LDIVS, ccOf, tierOf, cDivs, clubCc, isForeign, foreignCount, foreignLimit, foreignOk, budgetOf,
+  Object.assign(FM, { teamQ, pitchChance, pitchOffside, quickResult, drawCup, startEuroRound, seasonEnd, aiTransfers, CUP_AFTER, EURO_AFTER, roleFor, LDIVS, ccOf, tierOf, cDivs, clubCc, isForeign, foreignCount, foreignLimit, foreignOk, budgetOf,
     WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, injSub, protest, coachOf, finishMatch, doSub, ratings, winnerSide,
     table, userFixture, newGame, save, load, reset, exportSave, importSave, endWeek, startNewSeason, simOthers, askPrice, isClause, marketList, buy, sellOffer, sell,
     loanIn, loanOut, loanedOut, renew, renewTerms, scout, known, est, avgRating, talk, answerPress, takeJob, windowOpen, deadline, cupTie, playCupRound,

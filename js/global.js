@@ -179,7 +179,7 @@
       }
     }
     const r = coreBuy(pid, haggle, terms); if (r.ok && w.auc) delete w.auc[pid];
-    if (r.ok && r.price) { const fee = r10k(r.price * .05); if (fee) { G.fin.balance -= fee; money('fees', fee); r.msg += ` Menajer ücreti: ${FM.money(fee)}.`; } }
+    if (r.ok && r.price) { const fee = r10k(r.price * (FM.Club ? FM.Club.agentFee(P(pid)) : .05)); if (fee) { G.fin.balance -= fee; money('fees', fee); r.msg += ` Menajer komisyonu: ${FM.money(fee)}.`; } }
     return r;
   };
   function raise(pid) {

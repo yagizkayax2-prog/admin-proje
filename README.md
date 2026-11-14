@@ -73,6 +73,11 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Spiker metinleri iki katından fazla çeşitlendi
 - Onur listesi: kupalar, çalıştırılan kulüpler, en çok maça çıkardığın oyuncular, başarımlar
 - Kaydı dosya olarak indirme (dışa aktarma penceresi) ve dosyadan yükleme; takım seçme ekranında döndürülebilir 3D stadyum önizlemesi
+- Sahaya dayalı maç motoru (canlı izlenen maçlarda): açık oyun pozisyonları oyuncuların yerleşiminden doğar; şut kararı sahadaki konuma, gol beklentisi kaleye uzaklık, açı ve çevredeki rakip sayısına göre hesaplanır, pas kesilme olasılığı pasörün pası ile en yakın rakibin savunmasına bağlıdır; topa sahip olma oranı sahadan ölçülür. Duran toplar ve "Sonuca git" sonrası dakikalar istatistiksel motordan gelir; ayarlardan kapatılabilir
+- Oyuncu menajerleri: dört menajer tipi (makul, sert, açgözlü, kulübe yakın), tipe göre komisyon ve maaş talebi, zam tehditleri, sözleşmesi biten oyuncunun başka kulüple ön sözleşme imzalaması
+- Kulüp sahipliği: dört sahip tipi (üye kulübü, yerel iş insanı, yatırım grubu, devlet destekli fon); satın alma teklifleri ve teknik direktörün tavrı, yeni sahiple gelen bütçe ve beklenti, sabırsız sahipte daha hızlı düşen yönetim güveni
+- Sağlık ekibi (Takım → Sağlık): oyuncu başına sakatlık riski (kondisyon, yaş, maç yükü, yatkınlık, maç eksikliği, antrenman temposu), dinlendirme, aşırı yüklenme sakatlıkları ve uyarılar
+- Altyapı derinliği: 12 takımlı U19 ligi, 19. haftada U19 Kupası (kazanınca gençlerin potansiyeli artar), farklı uzmanlıkta altyapı hocası seçimi
 - Sıkıştırılmış kayıt (LZ, ~10 kat küçük): büyük veri tabanları da tarayıcıya sığar
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 
@@ -82,6 +87,8 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 | --- | --- |
 | `js/global.js` | Dünya katmanı: zorluk, işsiz başlangıç ve mülakat, scout ağı, kariyer ve kulüp geçmişi |
 | `js/global-ui.js` | Dünya katmanının ekranları: iş ekranı, Ülke sekmesi, pazar filtresi, grafikler |
+| `js/club.js` | Kulüp çevresi: menajerler, kulüp sahipliği, sağlık ekibi, U19 ligi ve altyapı hocası |
+| `js/club-ui.js` | Sağlık sekmesi, sahip kartı, U19 ekranı |
 | `js/data.js` | Kulüpler, isimler, dizilişler, spiker metinleri |
 | `js/core.js` | Oyun çekirdeği: maç motoru, lig, transfer, finans |
 | `js/gfx.js` | Üretilen armalar, oyuncu portreleri, ikonlar, sentezlenen sesler |

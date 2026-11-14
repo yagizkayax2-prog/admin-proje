@@ -99,9 +99,69 @@
   }
   /* Akan oyun: holder'ın bölgesine göre pas seçilir. Kendi yarısında sabırlı kurulum (yan ve geri pas), orta sahada ileri,
      son bölümde ceza sahası çevresinde dolaştırma. Tek pasla en fazla ~20 metre ilerlenir; pozisyonlar maç motorundan gelir. */
+  /* ---------- Sahaya dayalı motor ---------- */
+  const pidOf = d => S.m.s[d.s].on[d.i];
+  const pl = d => { const id = pidOf(d); return id != null ? FM.P(id) : null; };
+  // pas kesilme olasılığı çarpanı: pasörün pası ile topa en yakın rakibin savunması
+  function duel(h, rec) {
+    if (!S.m.pitch) return 1;
+    const opp = S.dots.filter(d => d.s !== h.s && active(d) && d.i > 0); if (!opp.length) return 1;
+    const th = opp.reduce((a, b) => (pdist(a, rec) < pdist(b, rec) ? a : b)), A = pl(h), D = pl(th);
+    return A && D ? clamp(1 + (D.a.def - A.a.pas) / 55, .6, 1.6) : 1;
+  }
+  // konum xG'si: kaleye uzaklık (metre), açı ve baskı
+  function posXg(d) {
+    const hx = ownX(d.s, d.x), dx = Math.max(.5, (1 - hx) * 105), dy = (d.y - .5) * 68, dist = Math.hypot(dx, dy);
+    const press = S.dots.filter(o => o.s !== d.s && active(o) && o.i > 0 && pdist(o, d) < .055).length;
+    const xg = .72 * Math.exp(-dist / 7) * (.35 + .65 * Math.cos(Math.atan2(Math.abs(dy), dx))) * [1, .72, .52, .4][Math.min(3, press)];
+    return { xg, press, hx, dist };
+  }
+  /* Pozisyon isteği: istatistik motoru "bu dakika bir pozisyon var" dedi (sıklık sahadaki bölge baskısına bağlı);
+     şutçu, şut noktası ve gol beklentisi sahadan seçilir: hücum hattındaki oyuncuların yerleşimi, savunmacıların yakınlığı. */
+  function resolvePitch(e) {
+    const s = e.side, sd = S.m.s[s], pi = sd.pi || {}, ROLEW = { FWD: 4, MID: 1.6, DEF: .45 };
+    const att = S.dots.filter(d => d.s === s && d.i > 0 && active(d) && pidOf(d) != null);
+    if (!att.length) return null;
+    const cand = att.map(d => {
+      const p = pl(d), role = sd.slots[d.i][0], ox = ownX(s, d.x);
+      // hücum anındaki tahmini şut noktası: oyuncunun şu anki hattı, mevkisine göre öne kayar
+      const sx = clamp(Math.max(ox, .5) + (role === 'FWD' ? .3 : role === 'MID' ? .22 : .16), .74, .93), sy = clamp((dirRight(s) ? d.y : 1 - d.y) * .7 + .15, .2, .8);
+      const spot = { s, x: dirRight(s) ? sx : 1 - sx, y: dirRight(s) ? sy : 1 - sy, i: d.i };
+      const q = posXg(spot);
+      const w = ROLEW[role] * (p ? p.a.sho / 70 : 1) * Math.pow(q.xg + .02, .6) * (pi[pidOf(d)] === 'push' && role !== 'FWD' ? 1.5 : 1) * (p && p.role === 'TF' ? 1.15 : 1);
+      return { d, p, spot, q, w, sx, sy };
+    });
+    let r = Math.random() * cand.reduce((a, c) => a + c.w, 0), c = cand[0];
+    for (const x of cand) { r -= x.w; if (r <= 0) { c = x; break; } }
+    const oppT = S.m.s[1 - s].tac;
+    if (Math.random() < .07 * [.7, 1, 1.5][oppT.line] * [.55, 1, 1.6][oppT.trap] * (c.p && c.p.role === 'SF' ? 1.3 : 1)) return FM.pitchOffside(S.m, s, pidOf(c.d));
+    // asist: şutçunun yakınındaki en iyi pasör
+    const mates = att.filter(d => d !== c.d), as = mates.length && Math.random() < .72 ? mates.reduce((a, b) => ((pl(b) ? pl(b).a.pas : 50) / (.08 + pdist(b, c.d)) > (pl(a) ? pl(a).a.pas : 50) / (.08 + pdist(a, c.d)) ? b : a)) : null;
+    const ev = FM.pitchChance(S.m, s, { pid: pidOf(c.d), aid: as ? pidOf(as) : null, xg: c.q.xg, press: c.q.press, sx: c.sx, sy: c.sy });
+    if (!ev) return null;
+    ev.pitch = false; ev.v = { flank: as ? (dirRight(s) ? as.y : 1 - as.y) : c.sy, shotY: c.sy, shotX: c.sx, side: Math.random() < .5 ? -1 : 1 };
+    return ev;
+  }
+  function pitchShot(h) {
+    const D = S.dbg || (S.dbg = { n: 0, gate: 0, ft: 0, shot: 0 }); D.n++;
+    if (!S.m.pitch || h.i === 0 || S.queue.length || S.pitchCool > 0 || S.m.done) { D.gate++; return false; }
+    const q = posXg(h); if (q.hx < .7) return false; D.ft++;
+    const P0 = pl(h), sd = S.m.s[h.s], pi = (sd.pi || {})[pidOf(h)];
+    let want = q.hx > .87 ? .8 : q.hx > .8 ? .5 : .16;
+    want *= q.xg > .05 ? 1 : .45; want *= pi === 'long' ? 1.5 : 1; want *= P0 && P0.a.sho > 70 ? 1.15 : 1; want *= [.9, 1, 1.1][sd.tac.tempo];
+    if (Math.random() > want) return false;
+    const aid = S.lastPass && S.lastPass.s === h.s && S.t - S.lastPass.t < 4 ? S.lastPass.pid : null;
+    const e = FM.pitchChance(S.m, h.s, { pid: pidOf(h), aid, xg: q.xg, press: q.press, sx: q.hx, sy: dirRight(h.s) ? h.y : 1 - h.y });
+    if (!e) return false;
+    S.pitchCool = 2.6; D.shot++;
+    e.v = { flank: h.y, shotY: dirRight(h.s) ? h.y : 1 - h.y, side: Math.random() < .5 ? -1 : 1 };
+    S.queue.push(e); paintUi();
+    return true;
+  }
   function ambientPass() {
     const h = S.holder; if (!h || !active(h)) { S.holder = S.dots.find(d => d.s === S.poss && active(d) && d.i > 4) || dot(S.poss, 0); return; }
     const s = h.s, share = S.m.st.poss[s] / Math.max(1, S.m.st.poss[0] + S.m.st.poss[1]);
+    if (pitchShot(h)) return;
     const mates = S.dots.filter(d => d.s === s && d !== h && active(d));
     if (!mates.length) return;
     const tc = S.m.s[s].tac, ctr = S.ctr && S.ctr.s === s && S.t < S.ctr.until;
@@ -131,7 +191,7 @@
     const near = S.dots.filter(d => d.s !== s && active(d) && d.i > 0).reduce((mn, d) => Math.min(mn, pdist(d, rec)), 1);
     const otc = S.m.s[1 - s].tac;
     h.kick = .28;
-    if (Math.random() < (.03 + .2 * (1 - share) + Math.max(0, .08 - near) * 2.2 + (otc.press - 1) * .03) * [.85, 1, 1.18][otc.tackle] * [.85, 1, 1.12][tc.pass] * (zone === 2 ? 1.25 : 1)) {
+    if (Math.random() < (.03 + .2 * (1 - share) + Math.max(0, .08 - near) * 2.2 + (otc.press - 1) * .03) * [.85, 1, 1.18][otc.tackle] * [.85, 1, 1.12][tc.pass] * (zone === 2 ? 1.25 : 1) * duel(h, rec)) {
       const opp = S.dots.filter(d => d.s !== s && active(d) && d.i > 0);
       if (opp.length) {
         const thief = opp.reduce((a, b) => (pdist(a, rec) < pdist(b, rec) ? a : b)), slide = otc.tackle === 2 || Math.random() < .3;
@@ -141,6 +201,7 @@
       }
     }
     const dd = pdist(rec, h), far = dd > (tc.pass === 2 ? .24 : .3);
+    S.lastPass = { s, pid: S.m.s[s].on[h.i], t: S.t };
     run([mv(() => rec, .32 + dd * 1.5, { arc: far ? .5 : 0, end: () => { S.holder = rec; FM.Audio.kick(); } })], false);
     S.holder = null;
   }
@@ -187,7 +248,7 @@
     const steps = [];
     const others = S.dots.filter(d => d !== sh && d !== gk && d !== as && d.i > 0 && active(d));
     let arc = .25;
-    if (!replay) steps.push(...buildUp(s, e.kind === 'open' ? .58 : e.kind === 'pen' ? .66 : .62, e.kind === 'open' ? [sh] : []));
+    if (!replay && !e.pitch) steps.push(...buildUp(s, e.kind === 'open' ? .58 : e.kind === 'pen' ? .66 : .62, e.kind === 'open' ? [sh] : []));
     if (e.kind === 'pen') {
       const spot = toPitch(s, .885, .5);
       others.forEach((d, k) => { d.ov = toPitch(s, .775 - (k % 3) * .022, .14 + k / Math.max(1, others.length - 1) * .72); });
@@ -206,11 +267,13 @@
       S.dots.filter(d => d.s === s && d.i > 0 && d !== tk && d !== sh && active(d)).slice(-4).forEach((d, k) => { d.ov = toPitch(s, .87 + (k % 2) * .04, .36 + k * .09); });
       steps.push(mv(() => corner, .45, { end: () => { S.holder = null; pop(tk, 'KORNER', '#ffc93c'); } }), waitFor(near(tk, corner), 2.4), wait(.4, () => { tk.kick = .3; A.kick(); }), wait(.01, () => { sh.jump = 1; }), mv(() => sh, .75, { arc: 1 }), wait(.08, () => A.kick()));
       arc = .15;
+    } else if (e.pitch && !replay) {   // sahada oluşan pozisyon: şutçu bulunduğu yerden vurur
+      steps.push(wait(.01, () => { S.holder = sh; }), wait(.2, () => { S.holder = null; sh.kick = .32; A.kick(); }));
     } else {
       if (as !== sh) as.ov = toPitch(s, .7, flank);
-      sh.ov = toPitch(s, .86, v.shotY);
+      sh.ov = toPitch(s, v.shotX || .86, v.shotY);
       if (as !== sh) { const ap = toPitch(s, .7, flank); steps.push(mv(() => as, .35 + pdist(as, S.ball) * 1.2, { arc: .3, end: () => { S.holder = as; A.kick(); } }), waitFor(() => pdist(as, ap) < .05, 1.2)); }
-      const spt = toPitch(s, .86, v.shotY);
+      const spt = toPitch(s, v.shotX || .86, v.shotY);
       steps.push(wait(.01, () => { if (as !== sh) as.kick = .28; }), waitFor(() => pdist(sh, spt) < .06, 1.6), mv(() => sh, .45, { end: () => { S.holder = sh; A.kick(); } }), wait(.22, () => { S.holder = null; sh.kick = .32; A.kick(); }));
     }
     const done = (holder, poss) => () => { if (replay) return replayNext(); clearOv(); S.holder = holder; S.poss = poss; S.passT = holder && holder.i === 0 ? 1.6 : 1; };
@@ -557,9 +620,10 @@
   }
   function handle(e) {
     const A = FM.Audio;
-    if (!e.fed) feed(e.type === 'chance' && (e.varNo || e.varOk) ? { ...e, text: `${FM.P(e.pid) ? FM.P(e.pid).name : ''} topu ağlara gönderdi! VAR inceleme yapıyor…` } : e);
+    if (!e.fed && e.type !== 'pitchreq') feed(e.type === 'chance' && (e.varNo || e.varOk) ? { ...e, text: `${FM.P(e.pid) ? FM.P(e.pid).name : ''} topu ağlara gönderdi! VAR inceleme yapıyor…` } : e);
     if (e.dispute === S.user && !e.varNo) showDispute(e.why);
     if (e.type === 'protest') return playProtest(e);
+    if (e.type === 'pitchreq') { const r = resolvePitch(e); if (r) { S.queue.unshift(r); paintUi(); } return; }
     if (e.type === 'chance') { if (e.out === 'goal' && !e.varNo) S.goals.push(e); return playChance(e); }
     if (e.type === 'yellow' || e.type === 'red') {
       const pos = S.last[e.pid] || { x: .5, y: .5 };
@@ -887,7 +951,7 @@
       S.t += dt;
       if ((S.lvT = (S.lvT || 0) - raw) < 0 && S.ball && FM.Audio.level) { S.lvT = .6; FM.Audio.level(Math.max(0, Math.abs(S.ball.x - .5) * 2.4 - .5) + (S.m.derby ? .25 : 0)); }
       if (S.kickT > 0) S.kickT -= dt;
-      if (S.phase === 'play') { S.terrAcc[0] += ownX(0, S.ball.x); S.terrAcc[1] += ownX(1, S.ball.x); S.terrN++; if (!S.ftAcc) S.ftAcc = [0, 0]; if (ownX(0, S.ball.x) > .68) S.ftAcc[0]++; else if (ownX(1, S.ball.x) > .68) S.ftAcc[1]++; }
+      if (S.phase === 'play') { if (S.pAcc) S.pAcc[S.poss] += dt; if (S.pitchCool > 0) S.pitchCool -= dt; S.terrAcc[0] += ownX(0, S.ball.x); S.terrAcc[1] += ownX(1, S.ball.x); S.terrN++; if (!S.ftAcc) S.ftAcc = [0, 0]; if (ownX(0, S.ball.x) > .68) S.ftAcc[0]++; else if (ownX(1, S.ball.x) > .68) S.ftAcc[1]++; }
       if (S.choreoA > .28) S.choreoA = Math.max(.28, S.choreoA - dt * .035);
       if (S.discA > 0) S.discA = Math.max(0, S.discA - dt * .7);
       tickScript(dt);
@@ -911,6 +975,7 @@
           if (S.m.min === 0) feed({ min: 0, type: 'ko', text: FM.TXT.ko[0] });
           S.m.vis = [clamp(.8 + (S.ftAcc ? S.ftAcc[0] : 0) / Math.max(1, S.terrN) * 1.1, .8, 1.3), clamp(.8 + (S.ftAcc ? S.ftAcc[1] : 0) / Math.max(1, S.terrN) * 1.1, .8, 1.3)]; S.ftAcc = [0, 0];
           S.m.terr = [clamp(S.terrAcc[0] / Math.max(1, S.terrN), .15, .85), clamp(S.terrAcc[1] / Math.max(1, S.terrN), .15, .85)]; S.terrAcc = [0, 0]; S.terrN = 0;
+          if (S.m.pitch && S.pAcc[0] + S.pAcc[1] > 0) { S.m.vposs = S.pAcc[0] / (S.pAcc[0] + S.pAcc[1]); S.pAcc = [0, 0]; }
           for (const e of FM.simMinute(S.m)) { if (e.type === 'sub') feed(e); else S.queue.push(e); }
           paintUi();
         }
@@ -958,6 +1023,7 @@
     if (S.phase === 'tunnel') tunnelEnd();
     if (S.phase === 'cer') endCeremony();
     if (S.ended || S.phase === 'pens' || S.phase === 'replay') return;
+    m.pitch = false;   // sonuca gidince kalan dakikalar istatistiksel motorla
     S.script = null; clearOv(); S.htPending = false; m.auto = true; hideDispute(); varHide();
     if (S.injSlot != null) { const x = FM.injSub(m, S.user, S.injSlot); if (x) feed(x); S.injSlot = null; }
     for (const e of S.queue) { if (e.need) { const x = FM.injSub(m, e.side, e.slot); if (x) feed(x); } if (e.type === 'chance' && e.out === 'goal' && !e.varNo) S.goals.push(e); if (e.type !== 'ft' && e.type !== 'chance' && e.type !== 'pens' && !e.fed) feed(e); }
@@ -1077,6 +1143,7 @@
         rt: 0, discA: 1, said: 0, phase: 'tunnel', smoke: [], inv: null, varOn: false, dispT: 0, dispWhy: '', mgrs: [0, 1].map(k => ({ x: .5, y: 1.2, tx: BENCH[k], ty: 1.035, st: m.s[k].mgr.out ? 'idle' : 'idle', stT: 0, a: 1, ph: Math.random() * 6, gone: m.s[k].mgr.out, name: FM.coachOf(m.s[k].tid) })), cam: 0, terrAcc: [0, 0], terrN: 0, info: { stadium: h.stadium, home: h.name, away: a.name, att: Math.round(cap * fill).toLocaleString('tr-TR') }, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
         kits: [{ ...kit(h, hk), gk: '#ffc93c' }, { ...kit(a, ak), gk: '#58c4dd' }], no3d: FM.Settings ? !FM.Settings.get('gfx3d') : false
       };
+      m.pitch = !(FM.Settings && FM.Settings.get('pitchEngine') === false); S.pAcc = [0, 0]; S.pitchCool = 2;
       S.ban = (info && info.ban) || (FM.Banners ? FM.Banners.forMatch(m.fx, { cup: m.cup, comp: m.euro ? 'euro' : '' }) : null); m.ban = S.ban;
       if (S.ban) { const bl = FM.Banners.lines(S.ban, h); S.say = [[.3, m.derby ? `Derbi günü! ${h.stadium} tıklım tıklım: ${Math.round(cap * fill).toLocaleString('tr-TR')} seyirci.` : `İyi seyirler! ${h.stadium} tribünleri doldu, ${Math.round(cap * fill).toLocaleString('tr-TR')} seyirci var.`], [2.2, bl[0]], [3.6, S.ban.protest ? 'Koreografi yerine protesto: tribünde dev harflerle “YÖNETİM İSTİFA!” yazıyor.' : `${h.name} ile ${a.name} karşı karşıya. ${FM.fansOf(h)} koreografiyi açıyor: “${S.ban.choreo[0]}”`], [4.8, bl[1]], [5.8, 'Takımlar selam verdi, yazı tura atılıyor. Az sonra başlıyoruz.']]; }
       for (let s = 0; s < 2; s++) for (let i = 0; i < 11; i++) S.dots.push({ s, i, x: .5, y: 1.2, ph: Math.random() * 6.28, ov: null });

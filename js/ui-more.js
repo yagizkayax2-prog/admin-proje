@@ -47,6 +47,7 @@
       <div class="set-row"><label for="set-vol"><strong>Ses düzeyi</strong><small>${FM.Audio.muted ? 'Ses kapalı' : Math.round(S.get('vol') * 100) + '%'}</small></label><div class="row"><input id="set-vol" type="range" min="0" max="1" step=".05" value="${S.get('vol')}" data-a="set-vol"><button class="btn" data-a="sound-set2">${FM.Audio.muted ? 'Sesi aç' : 'Sesi kapat'}</button></div></div>
       <div class="set-row"><span><strong>Varsayılan maç hızı</strong><small>Maç bu hızda başlar</small></span><div class="seg">${[1, 2, 4].map(v => `<button data-a="set-speed" data-v="${v}" class="${S.get('speed') === v ? 'on' : ''}">${v}x</button>`).join('')}</div></div>
       ${tog('gfx3d', '3D stadyum', 'Kapalıyken daha hafif 2D stadyum kullanılır.')}
+      ${tog('pitchEngine', 'Sahaya dayalı maç motoru', 'Canlı izlediğin maçlarda açık oyun pozisyonları oyuncuların sahadaki yerleşiminden doğar. Kapalıyken istatistiksel motor kullanılır.')}
       ${tog('calm', 'Sakin mod', 'Animasyonları ve geçişleri azaltır.')}
       ${tog('ticker', 'Haber şeridi', 'Ekranın altında kayan sonuçlar ve haberler.')}
       ${tog('autoSave', 'Otomatik kayıt', 'Her işlemden sonra kariyer kaydedilir.')}

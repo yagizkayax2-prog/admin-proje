@@ -1081,3 +1081,14 @@ kbd { display: inline-block; min-width: 30px; text-align: center; padding: 3px 7
 .hof-c li { display: flex; gap: 8px; align-items: center; }
 .cd-stad canvas { width: 100%; height: 220px; display: block; border-radius: var(--r); background: var(--bg-2); margin-top: 6px; }
 @media (max-width: 560px) { .idle .idle-h .btn { width: 100%; } .cd-stad canvas { height: 170px; } }
+
+/* ---------- Tur 3: sağlık, sahip, U19 ---------- */
+.warn-v { color: var(--flood); }
+.rk-bar { display: inline-block; width: 72px; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; vertical-align: middle; }
+.rk-bar i { display: block; height: 100%; background: currentColor; }
+.rk-bar.pos-v i { background: var(--ok); } .rk-bar.warn-v i { background: var(--flood); } .rk-bar.neg-v i { background: var(--red); }
+.tbl.med td { white-space: nowrap; }
+.btn.sm { padding: 4px 10px; font-size: 13px; min-height: 0; }
+.pm-ag { margin-top: 8px; }
+.own p { margin: 6px 0; }
+.u19n { display: inline-flex; gap: 6px; align-items: center; }

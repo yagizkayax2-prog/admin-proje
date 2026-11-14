@@ -2,7 +2,7 @@
    Tarayıcıda saklanır; kariyer kayıtlarından bağımsızdır. */
 (function () {
   const KEY = 'saha-kenari-ayarlar';
-  const DEF = { vol: .7, speed: 1, gfx3d: true, calm: false, ticker: true, tourDone: false, autoSave: true, prematch: true };
+  const DEF = { vol: .7, speed: 1, gfx3d: true, pitchEngine: true, calm: false, ticker: true, tourDone: false, autoSave: true, prematch: true };
   let S = { ...DEF };
   try { S = { ...DEF, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { /* yok say */ }
   function apply() {
