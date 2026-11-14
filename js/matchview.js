@@ -83,11 +83,12 @@
     });
     let r = Math.random() * wts.reduce((a, b) => a + b, 0), rec = mates[0];
     for (let i = 0; i < mates.length; i++) { r -= wts[i]; if (r <= 0) { rec = mates[i]; break; } }
-    if (Math.random() < .1 + .34 * (1 - share)) {
+    const near = S.dots.filter(d => d.s !== s && active(d) && d.i > 0).reduce((mn, d) => Math.min(mn, Math.hypot(d.x - rec.x, (d.y - rec.y) * .65)), 1);
+    if (Math.random() < .05 + .3 * (1 - share) + Math.max(0, .1 - near) * 2.2 + (S.m.s[1 - s].tac.press - 1) * .04) {
       const opp = S.dots.filter(d => d.s !== s && active(d) && d.i > 0);
       if (opp.length) {
         const thief = opp.reduce((a, b) => (Math.hypot(a.x - rec.x, a.y - rec.y) < Math.hypot(b.x - rec.x, b.y - rec.y) ? a : b));
-        run([mv(() => thief, .5, { end: () => { S.holder = thief; S.poss = thief.s; } })], false);
+        run([mv(() => thief, .5, { end: () => { S.holder = thief; S.poss = thief.s; if (Math.random() < .3) pop(thief, 'TOP KAPMA', '#58c4dd'); } })], false);
         S.holder = null; return;
       }
     }
@@ -246,6 +247,11 @@
       A.whistle(1);
       return run([wait(.9)], true);
     }
+    if (e.type === 'off') {
+      const d = dotFor(e.side, e.pid); A.whistle(1); pop(d, 'OFSAYT', '#ffc93c');
+      S.refs[1].tx = d.x; S.refs[2].tx = d.x; S.holder = null;
+      return run([wait(.9, () => { S.poss = 1 - e.side; S.holder = dot(1 - e.side, 0); S.passT = .6; })], true);
+    }
     if (e.type === 'inj') { A.whistle(1); if (e.need && e.side === S.user) return injPanel(e); return run([wait(.7)], true); }
     if (e.type === 'ht') { A.whistle(2); S.htPending = true; return htOverlay(); }
     if (e.type === 'et') { A.whistle(2); S.pops.push({ x: .5, y: .45, text: 'UZATMALAR', color: '#ffc93c', t: -1 }); S.second = false; kickoff(0); return run([wait(1.6)], true); }
@@ -279,7 +285,7 @@
   function statsHtml() {
     const st = S.m.st, pt = Math.max(1, st.poss[0] + st.poss[1]), p0 = Math.round(st.poss[0] / pt * 100);
     const row = (l, a, b) => `<div class="st-row"><b>${a}</b><span>${l}</span><b>${b}</b><i style="--w:${a + b ? a / (a + b) * 100 : 50}%"></i></div>`;
-    return `<div class="st">${row('Topla oynama %', p0, 100 - p0)}${row('Şut', st.shots[0], st.shots[1])}${row('İsabetli şut', st.target[0], st.target[1])}${row('Korner', st.corners[0], st.corners[1])}${row('Faul', st.fouls[0], st.fouls[1])}${row('Sarı kart', st.yel[0], st.yel[1])}</div>`;
+    return `<div class="st">${row('Topla oynama %', p0, 100 - p0)}${row('Şut', st.shots[0], st.shots[1])}${row('İsabetli şut', st.target[0], st.target[1])}${row('Pas isabeti %', st.pass[0] ? Math.round(st.passOk[0] / st.pass[0] * 100) : 0, st.pass[1] ? Math.round(st.passOk[1] / st.pass[1] * 100) : 0)}${row('Top kapma', st.tack[0], st.tack[1])}${row('Ofsayt', st.off[0], st.off[1])}${row('Korner', st.corners[0], st.corners[1])}${row('Faul', st.fouls[0], st.fouls[1])}${row('Sarı kart', st.yel[0], st.yel[1])}</div>`;
   }
   function overlay(html) { const o = $('mvOverlay'); o.innerHTML = `<div class="ov-card">${html}</div>`; o.hidden = false; }
   function closeOverlay() { $('mvOverlay').hidden = true; if (S.htPending) htOverlay(); else S.paused = S.wasPaused; }
@@ -324,7 +330,7 @@
     S.ct += dt;
     const ct = S.ct, LY = .8;
     S.choreo = clamp((ct - .9) / 3.2, 0, 1.2);
-    const say = [[.3, `İyi seyirler! ${S.info.stadium} tribünleri doldu, ${S.info.att} seyirci var.`], [3.2, `${S.info.home} ile ${S.info.away} karşı karşıya. Tribünlerde koreografi açılıyor.`], [5.8, 'Takımlar selam verdi, yazı tura atılıyor. Az sonra başlıyoruz.']];
+    const say = [[.3, S.m.derby ? `Derbi günü! ${S.info.stadium} tıklım tıklım: ${S.info.att} seyirci.` : `İyi seyirler! ${S.info.stadium} tribünleri doldu, ${S.info.att} seyirci var.`], [3.2, `${S.info.home} ile ${S.info.away} karşı karşıya. Tribünlerde koreografi açılıyor.`], [5.8, 'Takımlar selam verdi, yazı tura atılıyor. Az sonra başlıyoruz.']];
     while (S.said < say.length && ct >= say[S.said][0]) talk(say[S.said++][1]);
     S.cheer[0] = Math.max(S.cheer[0], .35);
     if (ct < 6.8) {
@@ -360,7 +366,7 @@
   /* ---------- Çizim (perspektifli) ---------- */
   function resize() {
     const c = S.cv, w = c.parentElement.clientWidth, dpr = Math.min(2, window.devicePixelRatio || 1), m = S.m, home = FM.T(m.s[0].tid);
-    const opt = { W: w, dpr, tier: FM.stadiumTier(home), home, away: FM.T(m.s[1].tid), fill: S.fill, wx: m.wx };
+    const opt = { W: w, dpr, tier: FM.stadiumTier(home), home, away: FM.T(m.s[1].tid), fill: S.fill, wx: m.wx, banner: m.derby ? 'BUGÜN DERBİ GÜNÜ' : null };
     if (S.st && S.st.dispose) S.st.dispose();
     S.st = (!S.no3d && FM.Stadium3D && FM.Stadium3D.create({ ...opt, canvas: $('mvGL'), logo: LOGO })) || null;
     if (!S.st) { S.no3d = true; S.st = FM.Stadium.create(opt); }
@@ -396,7 +402,7 @@
     const g = S.g, w = S.W, h = S.H, P = S.st.proj;
     g.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
     if (S.st.gl) {
-      S.st.render(S.rt, { choreo: S.choreo, alpha: S.choreoA, cheer: S.cheer, disc: S.discA, shake: S.shake, shakeSide: S.shakeSide, cer: S.phase === 'cer' ? S.ct : -1 });
+      S.st.render(S.rt, { choreo: S.choreo, alpha: S.choreoA, cheer: S.cheer, disc: S.discA, shake: S.shake, shakeSide: S.shakeSide, cer: S.phase === 'cer' ? S.ct : -1, cam: S.cam, zoom: S.phase === 'replay', bx: S.ball.x, by: S.ball.y });
       g.clearRect(0, 0, w, h);
     } else {
       g.drawImage(S.st.bg, 0, 0, w, h);
@@ -471,6 +477,7 @@
     else if (dt > 0) {
       S.t += dt;
       if (S.kickT > 0) S.kickT -= dt;
+      if (S.phase === 'play') { S.terrAcc[0] += ownX(0, S.ball.x); S.terrAcc[1] += ownX(1, S.ball.x); S.terrN++; }
       if (S.choreoA > .28) S.choreoA = Math.max(.28, S.choreoA - dt * .035);
       if (S.discA > 0) S.discA = Math.max(0, S.discA - dt * .7);
       tickScript(dt);
@@ -488,6 +495,7 @@
         if (S.acc >= MIN_DUR) {
           S.acc -= MIN_DUR;
           if (S.m.min === 0) feed({ min: 0, type: 'ko', text: FM.TXT.ko[0] });
+          S.m.terr = [clamp(S.terrAcc[0] / Math.max(1, S.terrN), .15, .85), clamp(S.terrAcc[1] / Math.max(1, S.terrN), .15, .85)]; S.terrAcc = [0, 0]; S.terrN = 0;
           for (const e of FM.simMinute(S.m)) { if (e.type === 'sub') feed(e); else S.queue.push(e); }
           paintUi();
         }
@@ -540,6 +548,7 @@
     else if (a === 'speedc') { S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 4 : 1; b.textContent = S.speed + 'x'; $('mvSpd').textContent = '▷▷ ' + S.speed + 'x'; }
     else if (a === 'ment') { side.ment = +b.dataset.v; FM.T(side.tid).ment = side.ment; tacPanel(); }
     else if (a === 'tac') { side.tac[b.dataset.k] = +b.dataset.v; FM.T(side.tid).tac[b.dataset.k] = +b.dataset.v; tacPanel(); }
+    else if (a === 'cam') { S.cam = (S.cam + 1) % 4; talk('Kamera: ' + ['Yayın açısı', 'Kuşbakışı', 'Kale arkası', 'Saha kenarı'][S.cam]); }
     else if (a === 'skip') skip();
     else if (a === 'cerskip') endCeremony();
     else if (a === 'sound') { b.innerHTML = FM.icon(FM.Audio.toggle() ? 'mute' : 'sound'); }
@@ -576,7 +585,7 @@
     start(m, onDone, info) {
       const el = $('match'), h = FM.T(m.s[0].tid), a = FM.T(m.s[1].tid), A = FM.Audio, G = FM.G;
       const user = m.s[0].user ? 0 : 1, tier = FM.stadiumTier(h), cap = FM.stadiumCap(h);
-      const fill = clamp((h.id === G.teamId ? .3 + G.fans / 100 * .65 : .45 + h.rep * .09) + (m.cup ? .08 : 0), .25, 1);
+      const fill = clamp((h.id === G.teamId ? .3 + G.fans / 100 * .65 : .45 + h.rep * .09) + (m.cup ? .08 : 0) + (m.derby ? .15 : 0), .25, 1);
       el.innerHTML = `
         <div class="mv">
           <div class="mv-pitch">
@@ -595,6 +604,7 @@
             <div class="mv-ctl">
               <button class="btn icon" data-mv="pause" aria-label="Duraklat">${FM.icon('pause')}</button>
               <button class="btn icon" data-mv="speedc" id="mvSpdBtn" aria-label="Hızı değiştir">1x</button>
+              <button class="btn icon" data-mv="cam" id="mvCamBtn" aria-label="Kamera açısını değiştir" title="Kamera">${FM.icon('cam')}</button>
               <button class="btn icon" data-mv="sound" aria-label="Ses">${FM.icon(A.muted ? 'mute' : 'sound')}</button>
               <button class="btn cer" data-mv="cerskip" id="mvCerBtn">Seremoniyi atla ${FM.icon('skip')}</button>
               <button class="btn" data-mv="skip" id="mvSkipBtn" hidden>${FM.icon('skip')}<span>Sonuca git</span></button>
@@ -615,7 +625,7 @@
         m, onDone, user, cv, g: cv.getContext('2d'), t: 0, ct: 0, speed: 1, slow: 1, paused: false, acc: 0, queue: [], script: null, second: false, phase: 'cer',
         poss: 0, holder: null, passT: 1, kickT: 0, dots: [], ball: { x: .5, y: 1.1, z: 0 }, conf: [], pops: [], last: {}, shake: 0, shakeSide: 0,
         disp: [0, 0], ended: false, fill, cheer: [0, 0], choreo: 0, choreoA: 1, goals: [], rep: 0, pk: [[], []], htPending: false, wasPaused: false,
-        rt: 0, discA: 1, said: 0, info: { stadium: h.stadium, home: h.name, away: a.name, att: Math.round(cap * fill).toLocaleString('tr-TR') }, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
+        rt: 0, discA: 1, said: 0, cam: 0, terrAcc: [0, 0], terrN: 0, info: { stadium: h.stadium, home: h.name, away: a.name, att: Math.round(cap * fill).toLocaleString('tr-TR') }, fw: [], fwT: 0, injSlot: null, fin: !!(m.cup && G.cup.final), refs: [0, 1, 2].map(() => ({ x: .5, y: 1.1, tx: .5, ty: .5 })),
         kits: [{ ...kit(h), gk: '#ffc93c' }, { ...kit(a, clash), gk: '#58c4dd' }]
       };
       for (let s = 0; s < 2; s++) for (let i = 0; i < 11; i++) S.dots.push({ s, i, x: .5, y: 1.2, ph: Math.random() * 6.28, ov: null });

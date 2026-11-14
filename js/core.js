@@ -34,7 +34,8 @@
     return Math.max(50000, r10k(180000 * Math.pow(1.13, p.ovr - 50) * ageF * (1 + Math.max(0, p.pot - p.ovr) * .03)));
   }
   function refresh(p) { p.ovr = ovrAs(p, p.pos); if (p.pot < p.ovr) p.pot = p.ovr; p.value = calcValue(p); }
-  function genName() { for (;;) { const n = pick(FM.FIRST) + ' ' + pick(FM.LAST); if (!FM.NAME_BLOCK.includes(n)) return n; } }
+  let foreignGen = false;
+  function genName() { if (foreignGen) return pick(FM.FFIRST) + ' ' + pick(FM.FLAST); for (;;) { const n = pick(FM.FIRST) + ' ' + pick(FM.LAST); if (!FM.NAME_BLOCK.includes(n)) return n; } }
   function roleFor(p) {
     const a = p.a;
     if (p.pos === 'GK') return 'GK';
@@ -68,11 +69,11 @@
   const T = id => G.teams[id];
   const available = p => !p.inj && !p.susp;
   const avgRating = p => (p.rn ? p.rs / p.rn : 0);
-  const known = p => p.tid === G.teamId || !!p.sc || (p.loan && p.loan.own === G.teamId);
+  const known = p => p.tid === G.teamId || !!p.sc || !!p.y || (p.loan && p.loan.own === G.teamId);
   function est(p) { if (known(p)) return [p.ovr, p.ovr]; const lo = clamp(p.ovr - 2 - (p.id % 4), 30, 95); return [lo, Math.min(97, lo + 7)]; }
   function eff(p, role) {
     const base = p.pos === role ? p.ovr : ovrAs(p, role) * .92;
-    return base * (.72 + .28 * p.fit / 100) * (.96 + .08 * p.mor / 100);
+    return base * (.72 + .28 * p.fit / 100) * (.96 + .08 * p.mor / 100) * (p.rust ? .95 : 1) * (p.jab ? .92 : 1);
   }
   function addToTeam(p, team) {
     p.tid = team.id; team.players.push(p.id);
@@ -144,7 +145,8 @@
     return {
       tid: team.id, formation: team.formation, slots: FM.FORMATIONS[team.formation],
       on: team.lineup.slice(), bench: benchOf(team), subsLeft: 5, ment: isUser ? team.ment : 1,
-      tac: { ...team.tac }, sp: { ...team.sp }, yel: {}, played: team.lineup.filter(x => x != null), user: !!isUser
+      tac: { ...team.tac }, sp: { ...team.sp }, yel: {}, played: team.lineup.filter(x => x != null), user: !!isUser,
+      plan: isUser && team.plan ? { ...team.plan } : { focus: 0, mark: null }, chem: team.chem == null ? 60 : team.chem, cap: team.cap, start: team.lineup.slice()
     };
   }
   function newMatch(fx, opts) {
@@ -153,7 +155,8 @@
     const m = {
       fx, min: 0, score: [0, 0], done: false, cup: !!opts.cup, neutral: !!opts.neutral, et: false, pens: null, wx: fx.wx, rt: {},
       s: [makeSide(T(fx.h), fx.h === G.teamId), makeSide(T(fx.a), fx.a === G.teamId)],
-      st: { shots: [0, 0], target: [0, 0], poss: [0, 0], fouls: [0, 0], corners: [0, 0], yel: [0, 0], red: [0, 0] },
+      st: { shots: [0, 0], target: [0, 0], poss: [0, 0], fouls: [0, 0], corners: [0, 0], yel: [0, 0], red: [0, 0], pass: [0, 0], passOk: [0, 0], tack: [0, 0], off: [0, 0] },
+      derby: T(fx.h).rival === fx.a, euro: !!opts.euro, terr: [.5, .5], shots: [],
       log: []
     };
     for (const s of m.s) for (const id of s.played) m.rt[id] = 6 + (R() - .5) * .7;
@@ -161,20 +164,23 @@
   }
   const rate = (m, id, d) => { if (id != null && m.rt[id] != null) m.rt[id] += d; };
   function ratings(side) {
-    let f = 0, mi = 0, d = 0, gk = 0, pm = 0, lead = 1;
+    let f = 0, mi = 0, d = 0, gk = 0, pm = 0, lead = 1, cap = 1;
     side.slots.forEach((s, i) => {
       const id = side.on[i]; if (id == null) return;
       const p = P(id), e = eff(p, s[0]);
-      if (p.trait === 'lead') lead = 1.02;
+      if (p.trait === 'lead') lead = Math.max(lead, 1.02);
+      if (id === side.cap) cap = 1.01;
       if (s[0] === 'FWD') f += e; else if (s[0] === 'MID') { mi += e; if (p.role === 'BW') d += e * .08; if (p.role === 'PM') pm += e * .07; }
       else if (s[0] === 'DEF') d += e * (p.role === 'CB' ? 1.03 : 1); else gk += e;
     });
     const t = side.tac || { press: 1, tempo: 1, line: 1, width: 1 };
+    lead *= cap * (.97 + (side.chem == null ? 60 : side.chem) / 100 * .06);
+    const markF = side.plan && side.plan.mark != null ? .98 : 1;
     const am = [.9, 1, 1.1][side.ment] * [.96, 1, 1.02][t.line], dm = [1.1, 1, .9][side.ment] * [1.04, 1, .97][t.press] * [1.05, 1, 1][t.line];
     return {
       att: Math.max(8, (f + mi * .45) / 3.8 * am * lead),
       def: Math.max(8, (d * 1.15 + mi * .25 + gk) / 6.6 * dm * lead),
-      ctl: Math.max(8, (mi + pm + f * .2 + d * .2) / 5.2 * [.95, 1, 1.06][t.press] * [.96, 1, 1.04][t.line] * lead),
+      ctl: Math.max(8, (mi + pm + f * .2 + d * .2) / 5.2 * [.95, 1, 1.06][t.press] * [.96, 1, 1.04][t.line] * lead * markF),
       gk: Math.max(8, gk)
     };
   }
@@ -200,7 +206,7 @@
       if (sh === as) as = null;
       m.st.corners[s]++;
     } else {
-      sh = wpick(outfield, p => roleW[slotRole(side, p.id)] * p.a.sho * (p.role === 'TF' ? 1.15 : 1));
+      sh = wpick(outfield, p => roleW[slotRole(side, p.id)] * p.a.sho * (p.role === 'TF' ? 1.15 : 1) * (opp.plan && opp.plan.mark === p.id ? .45 : 1));
       const others = outfield.filter(p => p !== sh);
       if (others.length && R() < .72) as = wpick(others, p => p.a.pas * (slotRole(side, p.id) === 'DEF' ? (p.role === 'WB' ? 1 : .45) : 1) * (p.role === 'PM' ? 1.8 : p.role === 'WG' && wide ? 1.5 : 1));
     }
@@ -216,10 +222,14 @@
       if (sh.trait === 'cool') pg *= 1.08;
       if (sh.trait === 'big' && m.cup) pg *= 1.1;
       pg *= m.wx.t === 'snow' ? .9 : m.wx.t === 'rain' ? .95 : 1;
-      pg = clamp(pg, .03, .45);
+      pg = clamp(pg * (side._pg || 1), .03, .45);
     }
+    if (kind === 'open' && R() < .085 * [.7, 1, 1.5][opp.tac.line] * (sh.role === 'SF' ? 1.3 : 1)) { m.st.off[s]++; return { type: 'off', min: m.min, side: s, pid: sh.id, text: txt('off', { p: sh.name }) }; }
     m.st.shots[s]++;
     const e = { type: 'chance', kind, min: m.min, side: s, pid: sh.id, aid: as ? as.id : null, kid: keeperId };
+    e.sx = kind === 'pen' ? .885 : kind === 'fk' ? .74 : kind === 'ck' ? .92 : .78 + R() * .14;
+    e.sy = kind === 'pen' ? .5 : kind === 'fk' ? .5 + (R() < .5 ? -.13 : .13) : kind === 'ck' ? .44 + R() * .12 : .28 + R() * .44;
+    m.shots.push(e);
     const names = { p: sh.name, a: as ? as.name : '', k: keeper ? keeper.name : 'Savunma' };
     const pre = kind === 'pen' ? txt('pen', names) + ' ' : '';
     if (R() < pg) {
@@ -300,7 +310,11 @@
     for (let s = 0; s < 2; s++) {
       const side = m.s[s], o = 1 - s, pos = s ? 1 - poss0 : poss0, tac = side.tac;
       const homeF = m.neutral ? 1 : s === 0 ? (side.user ? 1.03 + G.fans / 100 * .07 : 1.07) : .95;
-      const pc = .13 * (.55 + .9 * pos) * Math.pow(r[s].att / r[o].def, 1.7) * homeF * [.9, 1, 1.1][tac.tempo] * [.96, 1, 1.05][tac.width];
+      const pm = planMod(m, s); side._pg = pm.pg;
+      const pc = .142 * (.55 + .9 * pos) * Math.pow(r[s].att / r[o].def, 1.7) * homeF * [.9, 1, 1.1][tac.tempo] * [.96, 1, 1.05][tac.width] * (.75 + .5 * m.terr[s]) * pm.pc * (m.derby && s === 0 ? 1.04 : 1);
+      const np = Math.round(1.5 + 5 * pos + R() * 2), acc = clamp(.66 + (r[s].ctl - 62) * .005 - (m.s[o].tac.press - 1) * .03 - (m.wx.t !== 'clear' ? .03 : 0), .5, .93);
+      m.st.pass[s] += np; m.st.passOk[s] += Math.round(np * acc);
+      if (R() < .3 * [.85, 1, 1.25][tac.press] * (1.3 - pos)) m.st.tack[s]++;
       if (R() < pc) { const e = chance(m, s, r); if (e) ev.push(e); }
       if (R() < .14 * (m.wx.t === 'rain' ? 1.15 : 1) * [.9, 1, 1.15][tac.press]) m.st.fouls[s]++;
       const pl = onPitch(side);
@@ -317,7 +331,7 @@
       const pl2 = onPitch(side);
       if (pl2.length && R() < .0009 * wxD) {
         const p = wpick(pl2, q => (q.trait === 'glass' ? 3 : 1)), i = side.on.indexOf(p.id), role = side.slots[i][0];
-        p.inj = ri(2, 6);
+        injure(p);
         ev.push({ type: 'inj', min: m.min, side: s, pid: p.id, text: txt('inj', { p: p.name }) });
         if (side.user && !m.auto && side.subsLeft > 0 && side.bench.length) { side.on[i] = null; ev[ev.length - 1].need = true; ev[ev.length - 1].slot = i; }
         else { const e = injSub(m, s, i); if (e) ev.push(e); else side.on[i] = null; }
@@ -365,7 +379,8 @@
         if (played.has(id)) {
           const rt = clamp(m.rt[id] + (d > 0 ? .3 : d < 0 ? -.2 : 0), 3, 10);
           m.rt[id] = rt; p.rs += rt; p.rn++; p.form.push(Math.round(rt * 10) / 10); if (p.form.length > 5) p.form.shift();
-          p.apps++; p.mor = clamp(p.mor + (d > 0 ? 6 : d < 0 ? -5 : 1) + (rt >= 8 ? 2 : 0), 20, 100);
+          p.apps++; p.mor = clamp(p.mor + (d > 0 ? 6 : d < 0 ? (id === side.cap ? -3 : -5) : 1) * (m.derby ? 1.5 : 1) + (rt >= 8 ? 2 : 0), 20, 100);
+          if (p.jab) { p.jab = 0; if (R() < .35) { const ty = injure(p, true); if (team.id === G.teamId) news(`${p.name} iğneyle oynadı ve sakatlığı ağırlaştı: ${ty} (${p.inj} hafta).`, 'bad', { pid: p.id }); } }
           if (!motm || rt > m.rt[motm]) motm = id;
         } else p.mor = clamp(p.mor - 1, 30, 100);
       }
@@ -376,7 +391,7 @@
   }
   function afterUserMatch(m, us) {
     const me = T(G.teamId), opp = T(m.s[1 - us].tid), gf = m.score[us], ga = m.score[1 - us];
-    const d = m.cup && gf === ga ? (winnerSide(m) === us ? 1 : -1) : gf - ga;
+    const d = m.cup && gf === ga ? (winnerSide(m) === us ? 1 : -1) : gf - ga, b0 = G.board, f0 = G.fans;
     const gap = (opp.rep - opp.div * 2) - (me.rep - me.div * 2);
     if (d > 0) { G.board += 3 + (gap > 0 ? 2 : 0); G.fans += 2 + (gap > 0 ? 2 : 0); unlock('firstWin'); if (gf - ga >= 5) unlock('bigWin'); if (gap >= 2) unlock('giant'); }
     else if (d === 0) { G.board += gap > 0 ? 1 : gap < 0 ? -1 : 0; }
@@ -389,7 +404,15 @@
     const cnt = {};
     for (const l of m.log) if (l.type === 'goal' && l.side === us) { const n = P(l.pid).name; cnt[n] = (cnt[n] || 0) + 1; G.legends[n] = (G.legends[n] || 0) + 1; }
     if (Object.values(cnt).some(v => v >= 3)) unlock('hattrick');
+    if (m.derby) { G.board = b0 + (G.board - b0) * 2; G.fans = f0 + (G.fans - f0) * 2; if (d > 0) unlock('derby'); }
     G.board = clamp(G.board, 0, 100); G.fans = clamp(G.fans, 0, 100);
+    const S = G.stats, st = m.st, pt = Math.max(1, st.poss[0] + st.poss[1]);
+    S.m++; S.shots += st.shots[us]; S.target += st.target[us]; S.poss += st.poss[us] / pt * 100; S.pass += st.pass[us]; S.passOk += st.passOk[us]; S.tack += st.tack[us]; S.off += st.off[us]; S.corners += st.corners[us]; S.fouls += st.fouls[us]; S.yel += st.yel[us]; S.gf += gf; S.ga += ga;
+    for (const e of m.shots) if (e.side === us) G.shots.push({ x: e.sx, y: e.sy, o: e.out, k: e.kind });
+    if (G.shots.length > 500) G.shots.splice(0, G.shots.length - 500);
+    const start = m.s[us].start.filter(x => x != null), same = me.lastXI ? start.filter(id => me.lastXI.includes(id)).length : 11;
+    me.chem = clamp((me.chem == null ? 60 : me.chem) + (same >= 9 ? 1.2 : -2), 20, 100); me.lastXI = start;
+    G.lastUser = { d, gf, ga, opp: opp.name, cup: m.cup, euro: m.euro, derby: m.derby, motm: m.motm };
   }
   function unlock(id) {
     if (G.ach[id]) return;
@@ -471,6 +494,25 @@
       else if (i === 1) { const cost = r10k(wageBill(me) * .5); if (G.fin.balance < cost) return { ok: false, msg: 'Prim için bütçe yetersiz.' }; G.fin.balance -= cost; all(8); res = `Prim sözü verildi: ${money(cost)} ödendi, moral +8.`; }
       else res = 'Bir şey yapmadın.';
     }
+    else if (m.kind === 'fx') {
+      let f = m.fx[i]; const p = m.pid != null ? P(m.pid) : null;
+      if (f.gamble != null && R() > f.gamble) f = f.fail;
+      if (f.cost) { if (G.fin.balance < f.cost) return { ok: false, msg: 'Bütçe yetersiz.' }; G.fin.balance -= f.cost; }
+      if (f.sell) {
+        if (!p || p.tid !== G.teamId) return { ok: false, msg: 'Oyuncu artık kadroda değil.' };
+        if (me.players.length <= 16) return { ok: false, msg: 'Kadroda en az 16 oyuncu kalmalı.' };
+        const buyer = pick(G.teams.filter(t => t.id !== G.teamId && t.players.length < 28)); sell(p.id, buyer.id, r10k(p.value * .9));
+      }
+      if (f.mor) all(f.mor);
+      if (f.fans) G.fans = clamp(G.fans + f.fans, 0, 100);
+      if (f.board) G.board = clamp(G.board + f.board, 0, 100);
+      if (p && f.pmor) p.mor = clamp(p.mor + f.pmor, 20, 100);
+      if (p && f.wage) p.wage = Math.round(p.wage * f.wage / 100) * 100;
+      if (p && f.promise) G.promises.push({ pid: p.id, due: G.week + 4, apps0: p.apps });
+      if (p && f.unhappy != null) p.unhappy = f.unhappy;
+      if (f.deal) G.fin.deal = f.deal;
+      res = f.res || 'Karar verildi.';
+    }
     m.done = true; m.choice = i; m.result = res; m.read = true; save();
     return { ok: true, msg: res };
   }
@@ -514,18 +556,20 @@
   }
 
   /* ---------- Yeni oyun / kayıt ---------- */
-  const teamQ = t => 58 + t.rep * 3.6 - t.div * 7;
+  const teamQ = t => (t.div === 2 ? 59 + t.rep * 3.6 : 58 + t.rep * 3.6 - t.div * 7);
   function buildSquad(team) {
+    foreignGen = team.div === 2;
     const q = teamQ(team), plan = [['GK', 3], ['DEF', 7], ['MID', 7], ['FWD', 5]], starters = { GK: 1, DEF: 4, MID: 4, FWD: 2 };
     for (const [pos, n] of plan) for (let i = 0; i < n; i++) {
       const st = i < starters[pos];
       addToTeam(genPlayer(pos, q + (st ? ri(0, 4) : ri(-8, -2)), st ? ri(22, 31) : ri(17, 34)), team);
     }
+    foreignGen = false;
   }
   const squadValue = t => t.players.reduce((s, id) => s + P(id).value, 0);
   function stadiumTier(t) { const v = squadValue(t) / 1e6 + (t.fac.stadium - 1) * 10; return v < 12 ? 1 : v < 24 ? 2 : v < 42 ? 3 : v < 62 ? 4 : 5; }
   function stadiumCap(t) { return Math.round((3000 + stadiumTier(t) * 7500) * (1 + (t.fac.stadium - 1) * .12) / 100) * 100; }
-  function newCup() { return { alive: G.teams.map(t => t.id), ties: [], hist: [], winner: null, name: '', final: false }; }
+  function newCup() { return { alive: G.teams.filter(t => t.div < 2).map(t => t.id), ties: [], hist: [], winner: null, name: '', final: false }; }
   function setupClub(me) {
     const wages = wageBill(me);
     G.fin = { balance: 1500000 + me.rep * 2500000 - me.div * 1000000, sponsor: Math.round(wages * .8 / 1000) * 1000, last: null, hist: [] };
@@ -547,6 +591,7 @@
     setupClub(me);
     G.fixtures = [0, 1].map(d => makeFixtures(divTeams(d).map(t => t.id)));
     G.cup = newCup();
+    ensureWorld(); sponsorOffer();
     news(`${G.manager}, ${me.name} teknik direktörlüğüne getirildi. Yönetim hedefi: ${FM.DIV_TR[me.div]}'nde ${expectation(me)}. sıra veya üstü.`, 'club');
     save();
     return G;
@@ -559,7 +604,7 @@
   }
   function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) { /* kayıt yoksa oyun yine çalışır */ } }
   function load() {
-    try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const g = JSON.parse(s); if (g && g.v === 2) { G = g; if (!G.inbox) G.inbox = []; return G; } } catch (e) { /* bozuk kayıt */ }
+    try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const g = JSON.parse(s); if (g && g.v === 2) { G = g; if (!G.inbox) G.inbox = []; ensureWorld(); return G; } } catch (e) { /* bozuk kayıt */ }
     return null;
   }
   function reset() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* yok say */ } G = null; }
@@ -568,7 +613,7 @@
     try {
       const g = JSON.parse(text);
       if (!g || g.v !== 2 || !Array.isArray(g.teams) || !g.players || !g.fixtures || g.teamId == null) return { ok: false, msg: 'Bu metin geçerli bir Saha Kenarı kaydı değil.' };
-      G = g; if (!G.inbox) G.inbox = []; save();
+      G = g; if (!G.inbox) G.inbox = []; ensureWorld(); save();
       return { ok: true, msg: 'Kariyer yüklendi.' };
     } catch (e) { return { ok: false, msg: 'Kayıt okunamadı: metin eksik ya da bozuk.' }; }
   }
@@ -597,9 +642,13 @@
   function endWeek() {
     const me = T(G.teamId), fx = userFixture(), home = fx && fx.h === G.teamId;
     const tb = table(), myPos = tb.findIndex(r => r.id === G.teamId) + 1, cap = stadiumCap(me);
-    const att = home ? Math.round(cap * clamp(.32 + G.fans / 100 * .5 + (12 - myPos) * .012 + R() * .06, .25, 1)) : 0;
-    const tickets = att * (15 - me.div * 4), wages = wageBill(me), sponsor = G.fin.sponsor;
-    G.fin.last = { sponsor, tickets, wages, att, net: sponsor + tickets - wages };
+    const refP = 15 - me.div * 4, price = G.fin.ticket, derby = fx && T(fx.h).rival === fx.a;
+    const att = home ? Math.round(cap * clamp((.32 + G.fans / 100 * .5 + (12 - myPos) * .012 + R() * .06 + (derby ? .15 : 0)) * clamp(1 - (price - refP) / refP * .45, .3, 1.2), .08, 1)) : 0;
+    if (home) G.fans += price > refP * 1.4 ? -1.5 : price < refP * .7 ? 1 : 0;
+    const won = fx && fx.hs != null && (fx.h === G.teamId ? fx.hs > fx.as : fx.as > fx.hs), deal = G.fin.deal;
+    const tickets = att * price, wages = wageBill(me), sponsor = deal ? deal.weekly + (won ? deal.win : 0) : G.fin.sponsor;
+    const staff = Object.values(G.staff).reduce((a, b) => a + b, 0) * STAFF_WAGE;
+    G.fin.last = { sponsor, tickets, wages, att, staff, net: sponsor + tickets - wages - staff };
     G.fin.balance += G.fin.last.net;
     G.fin.hist.push(G.fin.balance);
     if (G.fin.balance > 30000000) unlock('bank');
@@ -612,18 +661,21 @@
     for (const id in G.players) {
       const p = G.players[id]; if (p.tid == null) continue;
       const mine = p.tid === G.teamId;
-      if (p.inj) p.inj--;
+      if (p.inj) { p.inj--; if (!p.inj) { p.rust = 2; p.fit = Math.min(p.fit, 72); p.injT = null; } }
+      if (p.jab) { p.jab = 0; p.inj = p.jabW || 1; }
       if (p.susp) p.susp--;
-      p.fit = clamp(p.fit + (mine ? 24 * [1.25, 1, .75][tr.intensity] + (tr.focus === 'fit' ? 4 : 0) : 24), 0, 100);
+      p.fit = clamp(p.fit + (mine ? 24 * [1.25, 1, .75][tr.intensity] + (tr.focus === 'fit' ? 4 : 0) + G.staff.fitness * 2 : 24), 0, 100);
       if (mine) {
-        if (!p.inj && trainPlayer(p, im * (1 + (me.fac.training - 1) * .12), tr.focus)) improved.push(p.name);
-        if (!p.inj && tr.intensity === 2 && R() < .012 * (p.trait === 'glass' ? 2.5 : 1)) { p.inj = ri(1, 3); news(`${p.name} yoğun antrenmanda sakatlandı (${p.inj} hafta).`, 'bad'); }
+        if (!p.inj && trainPlayer(p, im * (1 + (me.fac.training - 1) * .12) * (1 + G.staff.coach * .08), tr.focus)) improved.push(p.name);
+        if (!p.inj && tr.intensity === 2 && R() < .012 * (p.trait === 'glass' ? 2.5 : 1)) { injure(p); p.inj = Math.min(p.inj, 3); news(`${p.name} yoğun antrenmanda sakatlandı: ${p.injT} (${p.inj} hafta).`, 'bad', { pid: p.id }); }
       } else if (p.age <= 23) trainPlayer(p, p.loan && p.loan.own === G.teamId ? 1.1 : .6, 'bal');
     }
     if (improved.length) news(`Antrenmanda gelişenler: ${improved.slice(0, 4).join(', ')}${improved.length > 4 ? ' ve ' + (improved.length - 4) + ' oyuncu daha' : ''}.`, 'good');
     for (const id of G.scoutQ) { const p = P(id); if (p) { p.sc = 1; news(`Scout raporu hazır: ${p.name} — güç ${p.ovr}, potansiyel ${p.pot}.`, 'info', { cat: 'SCOUT', pid: p.id, title: `Scout raporu: ${p.name}` }); } }
     G.scoutQ = []; G.cool = {}; G.offers = [];
     for (const m of G.inbox || []) if (m.opts && !m.done && (m.kind === 'offer' || m.kind === 'press')) { m.done = true; m.result = 'Yanıt verilmedi, süresi doldu.'; }
+    people(); postMatch(); social(); youthWeek();
+    G.stats.pts.push((G.stats.pts[G.stats.pts.length - 1] || 0) + (won ? 3 : fx && fx.hs === fx.as ? 1 : 0));
     G.week++;
     if (G.week >= WEEK_COUNT) { seasonEnd(); save(); return; }
     if (windowOpen() && R() < (deadline() ? .7 : .22) && me.players.length > 16) {
@@ -651,12 +703,13 @@
     if (G.board >= 70 && R() < .07) { const amt = r10k(500000 + R() * 1000000); G.fin.balance += amt; mail({ cat: 'MALİYE', from: 'Kulüp başkanı', title: 'Kulüp sahibinden para', body: `Başkan gidişattan memnun ve transfer bütçesine ${money(amt)} ekledi.` }); }
     if (G.week % 4 === 0) { const ys = me.players.map(P).filter(p => p.age <= 21).sort((a, b) => b.pot - a.pot).slice(0, 3); if (ys.length) mail({ cat: 'KADRO', pid: ys[0].id, title: 'Genç oyuncular: aylık rapor', body: 'En çok gelecek vadeden gençler: ' + ys.map(p => `${p.name} (${p.age} yaş, güç ${p.ovr}, potansiyel ${p.pot})`).join('; ') + '.' }); }
     if (CUP_AFTER.includes(G.week) && !G.cup.winner) drawCup();
+    const er = EURO_AFTER.indexOf(G.week); if (er >= 0 && G.euro && !G.euro.winner) startEuroRound(er);
     if (G.board <= 10 && G.week >= 8) sack();
     save();
   }
   /* Diğer kulüpler de transfer yapar: serbest oyuncu imzalar, birbirinden oyuncu alır */
   function aiTransfers() {
-    const others = G.teams.filter(t => t.id !== G.teamId);
+    const others = G.teams.filter(t => t.id !== G.teamId && t.div < 2);
     if (R() < .4 && G.free.length) {
       const club = pick(others.filter(t => t.players.length < 26));
       const cands = club ? G.free.map(P).filter(p => p.ovr >= teamQ(club) - 3 && p.ovr <= teamQ(club) + 8) : [];
@@ -682,14 +735,14 @@
   function sack() {
     const me = T(G.teamId);
     G.phase = 'sacked';
-    const lower = G.teams.filter(t => t.id !== me.id && (t.rep - t.div * 2) < (me.rep - me.div * 2)).sort(() => R() - .5);
-    G.jobOffers = (lower.length >= 3 ? lower : G.teams.filter(t => t.id !== me.id).sort(() => R() - .5)).slice(0, 3).map(t => t.id);
+    const lower = G.teams.filter(t => t.div < 2 && t.id !== me.id && (t.rep - t.div * 2) < (me.rep - me.div * 2)).sort(() => R() - .5);
+    G.jobOffers = (lower.length >= 3 ? lower : G.teams.filter(t => t.div < 2 && t.id !== me.id).sort(() => R() - .5)).slice(0, 3).map(t => t.id);
     news(`${me.name} yönetimi ${G.manager} ile yollarını ayırdı.`, 'bad');
   }
   function takeJob(tid) {
     const t = T(tid);
     G.teamId = tid; G.phase = G.summary ? 'seasonEnd' : null;
-    setupClub(t);
+    setupClub(t); t.plan = null; ensureWorld();
     news(`${G.manager}, ${t.name} ile anlaştı. Hedef: ${expectation(t)}. sıra veya üstü.`, 'club');
     save();
   }
@@ -734,9 +787,10 @@
     G.board = clamp(G.board + (pos <= exp ? 10 : -8), 0, 100);
     G.jobOffers = [];
     if (pos <= Math.max(1, exp - 2) || champ) {
-      G.jobOffers = G.teams.filter(t => t.id !== me.id && (t.rep - t.div * 2) > (me.rep - me.div * 2)).sort(() => R() - .5).slice(0, 2).map(t => t.id);
+      G.jobOffers = G.teams.filter(t => t.div < 2 && t.id !== me.id && (t.rep - t.div * 2) > (me.rep - me.div * 2)).sort(() => R() - .5).slice(0, 2).map(t => t.id);
     }
     G.summary = { season: G.season, div: me.div, pos, exp, prize, champion: tbs[0][0].id, top: top ? { name: top.name, g: top.g, tid: top.tid } : null, table: tb.slice(0, 3).map(r => r.id), up, down, cup: G.cup.winner };
+    G.summary.awards = awards(me.div); G.euroQ = tbs[0].slice(0, 4).map(r => r.id); G.summary.euro = G.euro ? G.euro.winner : null;
     G.history.push({ season: G.season, div: me.div, pos, champion: T(tbs[0][0].id).name, pts: tb[pos - 1].pts, team: me.name, cup: G.cup.winner != null ? T(G.cup.winner).name : '—' });
     G.phase = 'seasonEnd';
     if (G.board <= 10) { sack(); G.phase = 'sacked'; }
@@ -748,10 +802,10 @@
     for (const id of s.down) T(id).div = 1;
     for (const id of s.up) T(id).div = 0;
     for (const t of G.teams) {
-      const mine = t.id === G.teamId;
+      const mine = t.id === G.teamId; foreignGen = t.div === 2;
       for (const id of t.players.slice()) {
         const p = P(id);
-        p.age++; p.g = 0; p.as = 0; p.apps = 0; p.yc = 0; p.rc = 0; p.rs = 0; p.rn = 0; p.inj = 0; p.susp = 0; p.fit = 100; p.mor = clamp(p.mor + 5, 40, 85);
+        p.age++; p.g = 0; p.as = 0; p.apps = 0; p.yc = 0; p.rc = 0; p.rs = 0; p.rn = 0; p.inj = 0; p.susp = 0; p.fit = 100; p.mor = clamp(p.mor + 5, 40, 85); p.idle = 0; p._ap = 0; p.rust = 0; p.jab = 0; p.injT = null; p.unhappy = false; p.asked = 0;
         if (p.age >= 30) { const n = ri(1, p.age >= 33 ? 4 : 2); for (let i = 0; i < n; i++) { const k = pick(p.pos === 'GK' ? ['gk', 'phy'] : ['pac', 'phy', 'pac', pick(ATTRS.slice(0, 5))]); p.a[k] = Math.max(5, p.a[k] - ri(1, 2)); } }
         refresh(p);
         p.con--;
@@ -765,18 +819,21 @@
       for (const pos of ['GK', 'DEF', 'MID', 'FWD']) while (t.players.filter(id => P(id).pos === pos).length < min[pos]) { const p = genPlayer(pos, q + ri(-6, 1), ri(17, 22)); p.con = 3; addToTeam(p, t); }
       if (!mine) autoPick(t);
     }
+    foreignGen = false;
     const keepFree = new Set(left.length ? G.free.slice(-left.length) : []);
     for (const id of G.free) if (!keepFree.has(id) && P(id)) delete G.players[id];
     G.free = G.free.filter(id => P(id));
     for (let i = 0; i < 28; i++) genFree();
     G.season++; G.week = 0; G.phase = null; G.summary = null; G.youthUsed = false; G.offers = []; G.cool = {}; G.scoutQ = []; G.press = null; G.jobOffers = []; G.streak = { w: 0, u: 0 };
     G.fixtures = [0, 1].map(d => makeFixtures(divTeams(d).map(t => t.id)));
-    G.cup = newCup(); G.cupDue = false;
+    G.cup = newCup(); G.cupDue = false; G.euroDue = false; G.euro = undefined; G.stats = newStats(); G.shots = []; G.promises = []; G.u19 = { w: 0, d: 0, l: 0, last: '' }; G.fin.deal = null;
+    youthSeason();
     G.fin.sponsor = Math.round(G.fin.sponsor * 1.03 / 1000) * 1000;
     news(`${G.season}. sezon başlıyor! Transfer dönemi 4 hafta açık.`, 'club');
     if (retired.length) news(`Futbolu bırakanlar: ${retired.join(', ')}.`, 'info');
     if (left.length) news(`Sözleşmesi biten ve ayrılanlar: ${left.join(', ')}.`, 'bad');
     ensureLineup(T(G.teamId));
+    ensureWorld(); sponsorOffer();
     save();
   }
   function simOthers() {
@@ -813,7 +870,7 @@
     if (p.tid == null) G.free = G.free.filter(x => x !== pid);
     else { const old = T(p.tid); removeFromTeam(p); if (old.players.length < 16) addToTeam(genPlayer(p.pos, teamQ(old) - 4, ri(18, 22)), old); autoPick(old); }
     if (p.ovr >= Math.max(...me.players.map(id => P(id).ovr))) G.fans = clamp(G.fans + 4, 0, 100);
-    addToTeam(p, me);
+    addToTeam(p, me); me.chem = clamp((me.chem || 60) - 3, 20, 100);
     G.fin.balance -= price; p.mor = 80; p.con = 3; p.wage = Math.max(p.wage, Math.round(p.value / 260 / 100) * 100);
     news(`${p.name} ${money(price)} karşılığında 3 yıllık sözleşmeyle kadroya katıldı.`, 'good', { cat: 'TRANSFER', pid: p.id });
     save();
@@ -877,7 +934,7 @@
     const p = P(pid);
     if (known(p)) return { ok: false, msg: 'Bu oyuncu zaten tanınıyor.' };
     if (G.scoutQ.includes(pid)) return { ok: false, msg: 'Scout zaten yolda.' };
-    if (G.scoutQ.length >= 4) return { ok: false, msg: 'Bu hafta en fazla 4 oyuncu izlenebilir.' };
+    if (G.scoutQ.length >= 4 + G.staff.scout) return { ok: false, msg: `Bu hafta en fazla ${4 + G.staff.scout} oyuncu izlenebilir.` };
     if (G.fin.balance < 30000) return { ok: false, msg: 'Bütçe yetersiz.' };
     G.fin.balance -= 30000; G.scoutQ.push(pid); save();
     return { ok: true, msg: `Scout ${p.name} için yola çıktı. Rapor hafta sonunda gelir.` };
@@ -913,10 +970,215 @@
     return (neg ? '−' : '') + '₺' + s;
   }
 
+
+  /* ====================== Genişleme: plan, ekip, sakatlık, altyapı, istekler, sosyal, kıta kupası ====================== */
+  const STAFF_WAGE = 8000, EURO_AFTER = [2, 5, 8, 12, 16, 20];
+  const newStats = () => ({ m: 0, shots: 0, target: 0, poss: 0, pass: 0, passOk: 0, tack: 0, off: 0, corners: 0, fouls: 0, yel: 0, gf: 0, ga: 0, pts: [] });
+  function injure(p, heavy) {
+    const physio = G.staff && p.tid === G.teamId ? G.staff.physio : 0, t = wpick(FM.INJ.filter(x => !heavy || x[1] >= 3), x => x[3]);
+    p.inj = Math.max(1, ri(t[1], t[2]) + 1 - Math.floor((physio + 1) / 2)); p.injT = t[0];
+    return t[0];
+  }
+  function jab(pid) {
+    const p = P(pid);
+    if (!p.inj || p.inj > 2) return { ok: false, msg: 'Yalnızca iyileşmesine en fazla 2 hafta kalan oyuncular iğneyle oynatılabilir.' };
+    p.jabW = p.inj; p.inj = 0; p.jab = 1; save();
+    return { ok: true, msg: `${p.name} bu hafta iğneyle oynayabilir. Sakatlığın ağırlaşma riski var.` };
+  }
+  const pickCaptain = team => team.players.map(P).sort((a, b) => (b.trait === 'lead' ? 30 : 0) + b.age + b.ovr * .5 - ((a.trait === 'lead' ? 30 : 0) + a.age + a.ovr * .5))[0].id;
+  function setCaptain(pid) { T(G.teamId).cap = pid; save(); }
+  function ensureWorld() {
+    if (!G.teams.some(t => t.div === 2)) FM.FOREIGN.forEach(d => {
+      const t = { id: G.teams.length, ...d, div: 2, players: [], lineup: [], formation: pick(['4-4-2', '4-3-3', '4-2-3-1', '3-5-2']), ment: 1, tac: { press: ri(0, 2), tempo: ri(0, 2), line: ri(0, 2), width: ri(0, 2) }, sp: {}, fac: { training: 3, youth: 3, stadium: 3 } };
+      G.teams.push(t); buildSquad(t); autoPick(t);
+    });
+    for (const [a, b] of FM.RIVALS) if (T(a).rival == null) { T(a).rival = b; T(b).rival = a; }
+    for (const t of G.teams) if (t.chem == null) t.chem = 60;
+    const me = T(G.teamId);
+    G.staff = G.staff || { coach: 0, fitness: 0, scout: 0, physio: 0 }; G.promises = G.promises || []; G.social = G.social || []; G.stats = G.stats || newStats(); G.shots = G.shots || [];
+    G.youth = G.youth || []; G.u19 = G.u19 || { w: 0, d: 0, l: 0, last: '' };
+    if (G.fin.ticket == null) G.fin.ticket = 15 - me.div * 4;
+    if (!me.plan) me.plan = { focus: 0, mark: null };
+    if (me.cap == null || !me.players.includes(me.cap)) me.cap = pickCaptain(me);
+    if (!G.youthInit) { G.youthInit = true; genYouth(10); }
+    if (G.euro === undefined) G.euro = G.week === 0 ? newEuro() : null;
+  }
+
+  /* ---- rakibe özel plan ---- */
+  function scoutReport(team) {
+    const slots = FM.FORMATIONS[team.formation], z = { L: [], C: [], R: [] };
+    slots.forEach((sl, i) => { const id = team.lineup[i]; if (id == null || sl[0] !== 'DEF') return; z[sl[2] < .34 ? 'L' : sl[2] > .66 ? 'R' : 'C'].push(eff(P(id), 'DEF')); });
+    const avg = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 50), out = { L: avg(z.L), C: avg(z.C), R: avg(z.R) };
+    out.weak = Object.keys(out).reduce((a, b) => (out[b] < out[a] ? b : a));
+    const xi = team.lineup.filter(x => x != null).map(P);
+    out.star = xi.length ? xi.reduce((a, b) => (b.g * 3 + b.ovr > a.g * 3 + a.ovr ? b : a)).id : null;
+    return out;
+  }
+  function planMod(m, s) {
+    const side = m.s[s], f = side.plan ? side.plan.focus : 0;
+    if (!f) return { pc: 1, pg: 1 };
+    if (!side._rep || side._repMin < m.min - 15) { side._rep = scoutReport({ formation: m.s[1 - s].formation, lineup: m.s[1 - s].on }); side._repMin = m.min; }
+    const r = side._rep, all = (r.L + r.C + r.R) / 3, mod = clamp(all / Math.max(20, r[['', 'L', 'C', 'R'][f]]), .9, 1.14);
+    return { pc: 1 + (mod - 1) * .8, pg: 1 + (mod - 1) * .5 };
+  }
+
+  /* ---- teknik ekip, bilet ---- */
+  function hireStaff(k) {
+    const lvl = G.staff[k], cost = FM.STAFF[k][2] * (lvl + 1);
+    if (lvl >= 3) return { ok: false, msg: 'En üst seviyede.' };
+    if (G.fin.balance < cost) return { ok: false, msg: 'Bütçe yetersiz.' };
+    G.fin.balance -= cost; G.staff[k]++; news(`${FM.STAFF[k][0]} ${G.staff[k]}. seviyeye yükseltildi.`, 'club'); save();
+    return { ok: true, msg: `${FM.STAFF[k][0]} güçlendirildi.` };
+  }
+  const staffCost = k => FM.STAFF[k][2] * (G.staff[k] + 1);
+  function setTicket(v) { G.fin.ticket = clamp(Math.round(v), 3, 60); save(); }
+  function projAtt(price) {
+    const me = T(G.teamId), refP = 15 - me.div * 4, pos = table().findIndex(r => r.id === G.teamId) + 1;
+    return Math.round(stadiumCap(me) * clamp((.35 + G.fans / 100 * .5 + (12 - pos) * .012) * clamp(1 - (price - refP) / refP * .45, .3, 1.2), .08, 1));
+  }
+
+  /* ---- altyapı (U19) ---- */
+  function genYouth(n) {
+    const me = T(G.teamId);
+    for (let i = 0; i < n; i++) {
+      const p = genPlayer(wpick(['GK', 'DEF', 'MID', 'FWD'], x => (x === 'GK' ? 1 : 3)), ri(42, 52) + me.fac.youth * 2 - (me.div === 1 ? 2 : 0), ri(15, 18));
+      p.pot = clamp(p.ovr + ri(10, 24) + me.fac.youth * 2, p.ovr, 94); refresh(p); p.wage = 500; p.con = 3; p.y = 1; p.sc = 1;
+      G.youth.push(p.id);
+    }
+  }
+  function promote(pid) {
+    const p = P(pid), me = T(G.teamId);
+    if (!p || !G.youth.includes(pid)) return { ok: false, msg: 'Oyuncu altyapıda değil.' };
+    if (me.players.length >= 28) return { ok: false, msg: 'Kadro dolu (en fazla 28 oyuncu).' };
+    G.youth = G.youth.filter(x => x !== pid); p.y = 0; p.wage = 800; p.g = 0; addToTeam(p, me);
+    news(`${p.name} (${FM.POS_LONG[p.pos]}, ${p.age}) altyapıdan A takıma yükseldi.`, 'good', { pid }); save();
+    return { ok: true, msg: `${p.name} A takımda.` };
+  }
+  function releaseYouth(pid) { G.youth = G.youth.filter(x => x !== pid); delete G.players[pid]; save(); return { ok: true, msg: 'Oyuncu serbest bırakıldı.' }; }
+  function youthWeek() {
+    if (!G.youth.length) return;
+    const ys = G.youth.map(P).filter(Boolean), me = T(G.teamId), str = ys.reduce((a, p) => a + p.ovr, 0) / ys.length, x = R() + (str - 52) * .02;
+    const res = x > .62 ? 'w' : x > .36 ? 'd' : 'l', ga = ri(0, 2), gf = res === 'w' ? ga + ri(1, 3) : res === 'd' ? ga : Math.max(0, ga - 1);
+    const ag = res === 'l' ? gf + ri(1, 2) : ga;
+    G.u19[res]++; G.u19.last = `${gf}–${ag}`;
+    for (let i = 0; i < gf; i++) { const sc = wpick(ys, p => ({ GK: 0, DEF: 1, MID: 3, FWD: 6 }[p.pos])); sc.g = (sc.g || 0) + 1; }
+    for (const p of ys) trainPlayer(p, 1.1 + G.staff.coach * .08 + (me.fac.youth - 1) * .1, 'bal');
+  }
+  function youthSeason() {
+    const out = [];
+    for (const id of G.youth.slice()) { const p = P(id); if (!p) continue; p.age++; p.g = 0; if (p.age >= 20) { out.push(p.name); G.youth = G.youth.filter(x => x !== id); delete G.players[id]; } }
+    G.youth = G.youth.filter(id => P(id));
+    genYouth(4 + Math.floor(T(G.teamId).fac.youth / 2));
+    if (out.length) news(`Yaşı dolan ve altyapıdan ayrılanlar: ${out.join(', ')}.`, 'info');
+    news('Altyapıya yeni dönem oyuncuları katıldı. Takım › Altyapı sekmesinden inceleyebilirsin.', 'good');
+  }
+
+  /* ---- sponsor anlaşması ---- */
+  function sponsorOffer() {
+    const b = G.fin.sponsor, k = v => Math.round(v / 1000) * 1000;
+    mail({ cat: 'MALİYE', kind: 'fx', title: 'Sponsor teklifleri masada', body: `Bu sezon için üç sponsor teklifi var. Haftalık taban şu an ${money(b)}. Seçim yapmazsan garantili anlaşma geçerli olur.`,
+      opts: [`Garantili: haftada ${money(b)}`, `Dengeli: haftada ${money(k(b * .8))} + galibiyet başına ${money(k(b * .6))}`, `Başarı primli: haftada ${money(k(b * .55))} + galibiyet başına ${money(k(b * 1.25))}`],
+      fx: [{ deal: { weekly: b, win: 0 }, res: 'Garantili anlaşma imzalandı.' }, { deal: { weekly: k(b * .8), win: k(b * .6) }, res: 'Dengeli anlaşma imzalandı.' }, { deal: { weekly: k(b * .55), win: k(b * 1.25) }, res: 'Başarı primli anlaşma imzalandı.' }] });
+  }
+
+  /* ---- oyuncu istekleri, sözler ---- */
+  function people() {
+    const me = T(G.teamId), pls = me.players.map(P), avg = pls.reduce((a, p) => a + p.ovr, 0) / pls.length;
+    for (const p of pls) { p.idle = p._ap === p.apps && available(p) ? (p.idle || 0) + 1 : 0; p._ap = p.apps; if (p.rust) p.rust--; }
+    for (const pr of G.promises.slice()) if (G.week >= pr.due) {
+      const p = P(pr.pid); G.promises = G.promises.filter(x => x !== pr);
+      if (!p || p.tid !== G.teamId) continue;
+      if (p.apps - pr.apps0 >= 2) { p.mor = clamp(p.mor + 10, 20, 100); mail({ cat: 'KADRO', pid: p.id, from: p.name, title: `${p.name}: sözünü tuttun`, body: `${p.name} verdiğin sözü tuttuğun için teşekkür etti. Morali yükseldi.` }); }
+      else { p.mor = clamp(p.mor - 20, 20, 100); p.unhappy = true; mail({ cat: 'KADRO', pid: p.id, from: p.name, title: `${p.name}: sözünü tutmadın`, body: `${p.name} söz verdiğin süreyi alamadı. Çok kırgın ve ayrılmayı düşünüyor.` }); }
+    }
+    if (R() > .35) return;
+    const leave = pls.find(p => p.unhappy && !p.loan && windowOpen() && p.asked !== 3);
+    const play = pls.find(p => (p.idle || 0) >= 4 && p.ovr >= avg - 1 && !p.loan && !p.asked && !G.promises.some(x => x.pid === p.id));
+    const wage = pls.find(p => p.rn >= 6 && avgRating(p) >= 7.1 && p.wage < p.value / 260 * .95 && p.asked !== 2 && !p.loan);
+    if (leave) { leave.asked = 3; mail({ cat: 'KADRO', kind: 'fx', pid: leave.id, from: leave.name, title: `${leave.name} ayrılmak istiyor`, body: `${leave.name} kulüpte mutlu olmadığını ve transfer listesine konmak istediğini söyledi.`, opts: ['Satışına izin ver', 'İkna etmeye çalış', 'Reddet'], fx: [{ sell: true, res: 'Oyuncu piyasa değerine yakın bir bedelle satıldı.' }, { gamble: .5, pmor: 15, unhappy: false, res: 'İkna oldu, kalmaya karar verdi (moral +15).', fail: { pmor: -8, res: 'İkna olmadı, morali daha da düştü.' } }, { pmor: -10, res: 'İsteği reddedildi (moral −10).' }] }); }
+    else if (play) { play.asked = 1; mail({ cat: 'KADRO', kind: 'fx', pid: play.id, from: play.name, title: `${play.name} forma istiyor`, body: `${play.name} ${play.idle} haftadır forma giyemediğinden şikâyetçi. Kendisine süre verilmesini istiyor.`, opts: ['Söz ver: 4 hafta içinde en az 2 maç', 'Sabretmesini iste', 'Satılık listeye koy'], fx: [{ promise: true, pmor: 6, res: 'Söz verdin. 4 hafta içinde en az 2 maçta oynatmalısın.' }, { gamble: .5, pmor: 2, res: 'Anlayışla karşıladı.', fail: { pmor: -8, res: 'Tatmin olmadı (moral −8).' } }, { unhappy: true, pmor: -12, res: 'Satılık listeye kondu; mutsuz.' }] }); }
+    else if (wage) { wage.asked = 2; const up = Math.round(wage.wage * .25 / 100) * 100; mail({ cat: 'KADRO', kind: 'fx', pid: wage.id, from: wage.name, title: `${wage.name} zam istiyor`, body: `${wage.name} bu sezonki performansının (ortalama ${avgRating(wage).toFixed(1)}) karşılığını istiyor: haftalık ${money(up)} zam.`, opts: ['Zammı yap (+%25)', 'Sezon sonunda konuşuruz', 'Reddet'], fx: [{ wage: 1.25, pmor: 12, res: 'Zam yapıldı (moral +12).' }, { pmor: -3, res: 'Konu sezon sonuna ertelendi.' }, { pmor: -12, res: 'Zam reddedildi (moral −12).' }] }); }
+  }
+  function postMatch() {
+    const L = G.lastUser; if (!L || L.asked || R() > .4) return; L.asked = true;
+    const me = T(G.teamId), bad = me.lineup.map(P).filter(p => p && p.form.length && p.form[p.form.length - 1] < 5.8).sort((a, b) => a.form[a.form.length - 1] - b.form[b.form.length - 1])[0];
+    if (bad && R() < .5) mail({ cat: 'BASIN', kind: 'fx', pid: bad.id, title: `Maç sonu: ${bad.name} soruldu`, body: `Maç sonu röportajında ${bad.name} için "bugün çok kötüydü, onu oynatmaya devam edecek misiniz?" diye soruldu.`, opts: ['Oyuncunu savun', 'Açıkça eleştir', 'Yorum yapma'], fx: [{ pmor: 8, res: 'Oyuncunu savundun (morali +8).' }, { pmor: -9, mor: 1, fans: 1, res: 'Eleştirin manşet oldu (oyuncu −9, takım +1).' }, { res: 'Soruyu geçiştirdin.' }] });
+    else if (L.d < 0) mail({ cat: 'BASIN', kind: 'fx', title: 'Maç sonu: mağlubiyetin sorumlusu kim?', body: `${L.opp} karşısındaki ${L.gf}–${L.ga} mağlubiyetin ardından soruldu.`, opts: ['Sorumluluğu üstlen', 'Oyuncuları eleştir', 'Hakemi suçla'], fx: [{ mor: 3, board: -1, res: 'Sorumluluğu üstlendin (moral +3, yönetim −1).' }, { mor: -4, fans: 2, res: 'Oyuncular alındı (moral −4, taraftar +2).' }, { fans: 3, board: -3, res: 'Hakem açıklaman tartışıldı (taraftar +3, yönetim −3).' }] });
+    else if (L.d > 0) mail({ cat: 'BASIN', kind: 'fx', title: 'Maç sonu: galibiyet yorumu', body: `${L.opp} karşısındaki ${L.gf}–${L.ga} galibiyetin ardından soruldu.`, opts: ['Takımı öv', 'Mütevazı kal', 'İddialı konuş'], fx: [{ mor: 3, res: 'Takım övgüden memnun (moral +3).' }, { board: 2, res: 'Yönetim tavrını beğendi (+2).' }, { fans: 4, mor: -1, res: 'Taraftar coştu (+4), takımda baskı arttı (moral −1).' }] });
+  }
+  function social() {
+    const L = G.lastUser; if (!L || L.posted) return; L.posted = true;
+    const me = T(G.teamId), S = FM.SOCIAL, key = L.d > 0 ? 'win' : L.d < 0 ? 'loss' : 'draw', star = L.motm != null && P(L.motm) ? P(L.motm).name : me.name;
+    const fill = t => t.replace('{t}', me.name).replace('{s}', star).replace('{sc}', `${me.name} ${L.gf}–${L.ga} ${L.opp}`);
+    const post = (who, handle, text, kind) => G.social.unshift({ who, handle, text, kind, likes: ri(40, 2400), s: G.season, w: G.week });
+    post(pick(S.papers), 'Gazete', fill(pick(S[{ win: 'headWin', loss: 'headLoss', draw: 'headDraw' }[key]])), 'paper');
+    for (const nm of S.names.slice().sort(() => R() - .5).slice(0, 2 + (L.derby ? 1 : 0))) post(nm[0], nm[1], fill(pick(S[key])) + (L.derby ? ' #derbi' : ''), key);
+    if (windowOpen() && R() < .6) { const t = pick(G.teams.filter(x => x.id !== G.teamId && x.div < 2)), p = P(pick(t.players)); post('Transfer Kulisi', '@transferkulisi', pick(S.rumor).replace('{p}', p.name).replace('{c}', pick(G.teams.filter(x => x.id !== t.id)).name), 'rumor'); }
+    if (G.social.length > 45) G.social.length = 45;
+  }
+
+  /* ---- sezon ödülleri ---- */
+  function awards(div) {
+    const all = Object.values(G.players).filter(p => p.tid != null && T(p.tid).div === div && p.rn >= 10), best = (list, f) => list.slice().sort((a, b) => f(b) - f(a))[0];
+    const card = p => (p ? { name: p.name, team: T(p.tid).name, r: Math.round(avgRating(p) * 100) / 100, mine: p.tid === G.teamId } : null);
+    const xi = [];
+    for (const [pos, n] of [['GK', 1], ['DEF', 4], ['MID', 4], ['FWD', 2]]) all.filter(p => p.pos === pos).sort((a, b) => avgRating(b) - avgRating(a)).slice(0, n).forEach(p => xi.push({ name: p.name, pos, mine: p.tid === G.teamId }));
+    const tb = table(div), exp = t => expectation(T(t)), over = tb.map((r, i) => ({ id: r.id, d: exp(r.id) - (i + 1) })).sort((a, b) => b.d - a.d)[0];
+    return { poy: card(best(all, avgRating)), young: card(best(all.filter(p => p.age <= 21), avgRating)), xi, coach: over ? { team: T(over.id).name, mine: over.id === G.teamId } : null };
+  }
+
+  /* ---- Kıta Kupası ---- */
+  function newEuro() {
+    const fo = G.teams.filter(t => t.div === 2).map(t => t.id).sort(() => R() - .5);
+    let dom = (G.euroQ || []).filter(id => T(id));
+    if (dom.length !== 4) dom = divTeams(0).sort((a, b) => b.rep - a.rep || a.id - b.id).slice(0, 4).map(t => t.id);
+    return { groups: [0, 1, 2, 3].map(i => [dom[i], fo[i * 3], fo[i * 3 + 1], fo[i * 3 + 2]]), md: [], ko: [], cur: [], round: -1, alive: [], winner: null, dom };
+  }
+  function euroTable(gi) {
+    const E = G.euro, rows = {};
+    for (const id of E.groups[gi]) rows[id] = { id, pl: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+    for (const md of E.md) for (const f of md) if (f.g === gi && f.hs != null) {
+      const h = rows[f.h], a = rows[f.a]; h.pl++; a.pl++; h.gf += f.hs; h.ga += f.as; a.gf += f.as; a.ga += f.hs;
+      if (f.hs > f.as) { h.w++; a.l++; h.pts += 3; } else if (f.hs < f.as) { a.w++; h.l++; a.pts += 3; } else { h.d++; a.d++; h.pts++; a.pts++; }
+    }
+    return Object.values(rows).sort((x, y) => y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || x.id - y.id);
+  }
+  function startEuroRound(r) {
+    const E = G.euro; E.round = r;
+    const fx = (h, a, g) => ({ h, a, hs: null, as: null, g, wx: genWeather(G.week) });
+    if (r < 3) { const P3 = [[[0, 1], [2, 3]], [[0, 2], [3, 1]], [[3, 0], [1, 2]]][r]; E.cur = []; E.groups.forEach((g, gi) => P3.forEach(([x, y]) => E.cur.push(fx(g[x], g[y], gi)))); }
+    else if (r === 3) { const t = [0, 1, 2, 3].map(euroTable); E.cur = [fx(t[0][0].id, t[1][1].id), fx(t[1][0].id, t[0][1].id), fx(t[2][0].id, t[3][1].id), fx(t[3][0].id, t[2][1].id)]; }
+    else { E.cur = []; for (let i = 0; i < E.alive.length; i += 2) E.cur.push(fx(E.alive[i], E.alive[i + 1])); }
+    const mine = E.cur.find(f => f.h === G.teamId || f.a === G.teamId);
+    if (mine) { G.euroDue = true; news(`Kıta Kupası ${FM.EURO_ROUNDS[r]}: rakibin ${T(mine.h === G.teamId ? mine.a : mine.h).name}.`, 'club'); }
+    else playEuroRound();
+  }
+  const euroTie = () => (G.euroDue && G.euro ? G.euro.cur.find(f => (f.h === G.teamId || f.a === G.teamId) && f.hs == null) : null);
+  function playEuroRound() {
+    const E = G.euro, r = E.round, ko = r >= 3;
+    for (const f of E.cur) if (f.hs == null) finishMatch(simFull(newMatch(f, { cup: ko, euro: true, neutral: r === 5 })));
+    const mine = E.cur.find(f => f.h === G.teamId || f.a === G.teamId);
+    if (ko) { E.ko.push({ name: FM.EURO_ROUNDS[r], ties: E.cur }); E.alive = E.cur.map(f => f.w); } else E.md.push(E.cur);
+    if (mine) {
+      const home = mine.h === G.teamId, d = ko ? (mine.w === G.teamId ? 1 : -1) : (home ? mine.hs - mine.as : mine.as - mine.hs);
+      if (d > 0) { const pr = ko ? 1200000 : 450000; G.fin.balance += pr; G.fans = clamp(G.fans + 3, 0, 100); news(`Kıta Kupası'nda galibiyet! Ödül: ${money(pr)}.`, 'good'); }
+      else if (ko) { news('Kıta Kupası macerası sona erdi.', 'bad'); }
+    }
+    if (r === 2 && E.dom.includes(G.teamId)) { const gi = E.groups.findIndex(g => g.includes(G.teamId)), pos = euroTable(gi).findIndex(x => x.id === G.teamId); news(pos < 2 ? 'Kıta Kupası\'nda gruptan çıktın: çeyrek finaldesin!' : 'Kıta Kupası\'nda grupta kaldın.', pos < 2 ? 'good' : 'bad'); if (pos < 2) G.board = clamp(G.board + 5, 0, 100); }
+    if (r === 5) {
+      E.winner = E.alive[0]; news(`Kıta Kupası'nı ${T(E.winner).name} kazandı!`, 'club');
+      if (E.winner === G.teamId) { G.fin.balance += 6000000; (G.museum.euro = G.museum.euro || []).push(G.season); G.board = clamp(G.board + 15, 0, 100); G.fans = clamp(G.fans + 15, 0, 100); unlock('euro'); }
+    }
+    const inv = new Set(); E.cur.forEach(f => { inv.add(f.h); inv.add(f.a); });
+    for (const id in G.players) { const p = G.players[id]; if (inv.has(p.tid)) p.fit = clamp(p.fit + 14, 0, 100); }
+    const done = E.cur; E.cur = []; G.euroDue = false; save();
+    return done;
+  }
+
   Object.assign(FM, {
     WEEK_COUNT, P, T, eff, ovrAs, available, autoPick, ensureLineup, ensureSP, benchOf, newMatch, simMinute, simFull, injSub, finishMatch, doSub, ratings, winnerSide,
     table, userFixture, newGame, save, load, reset, exportSave, importSave, endWeek, startNewSeason, simOthers, askPrice, isClause, marketList, buy, sellOffer, sell,
     loanIn, loanOut, loanedOut, renew, renewTerms, scout, known, est, avgRating, talk, answerPress, takeJob, windowOpen, deadline, cupTie, playCupRound,
-    decide, fmtDate, youthIntake, upgrade, facCost, FAC, money, wageBill, expectation, stadiumCap, stadiumTier, squadValue, slotRole, divTeams
+    decide, fmtDate, youthIntake, upgrade, jab, setCaptain, scoutReport, hireStaff, staffCost, setTicket, projAtt, promote, releaseYouth, euroTie, euroTable, playEuroRound, STAFF_WAGE, facCost, FAC, money, wageBill, expectation, stadiumCap, stadiumTier, squadValue, slotRole, divTeams
   });
 })();

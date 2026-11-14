@@ -96,3 +96,46 @@ FM.TXT = {
   ht: ['İlk yarı sona erdi.'],
   ft: ['Maç bitti!']
 };
+
+/* ---------- Genişleme verileri: kıta kupası, rekabetler, sakatlıklar, teknik ekip, sosyal akış ---------- */
+FM.FOREIGN = [
+  { name: 'Rhein Adler',     short: 'RHA', c1: '#b3001b', c2: '#f5f5f5', rep: 5, stadium: 'Adler Park',        crest: [0, 1, 1] },
+  { name: 'Nordhavn BK',     short: 'NHV', c1: '#0b3c5d', c2: '#f2c14e', rep: 4, stadium: 'Havn Stadion',      crest: [1, 0, 0] },
+  { name: 'Costa Dorada CF', short: 'CDO', c1: '#e8a100', c2: '#1b1b3a', rep: 5, stadium: 'Estadi Daurat',     crest: [2, 2, 1] },
+  { name: 'Lumière FC',      short: 'LUM', c1: '#1d2d50', c2: '#e63946', rep: 4, stadium: 'Parc Lumière',      crest: [0, 3, 0] },
+  { name: 'Alpen United',    short: 'ALP', c1: '#2d6a4f', c2: '#f1faee', rep: 3, stadium: 'Gipfel Arena',      crest: [1, 3, 1] },
+  { name: 'Danube Stars',    short: 'DNB', c1: '#3a0ca3', c2: '#f7b801', rep: 4, stadium: 'Duna Aréna',        crest: [2, 0, 0] },
+  { name: 'Highland Rovers', short: 'HLR', c1: '#14532d', c2: '#fbbf24', rep: 3, stadium: 'Glen Park',         crest: [0, 2, 1] },
+  { name: 'Adriatik Yıldız', short: 'ADR', c1: '#0077b6', c2: '#ffffff', rep: 4, stadium: 'Riva Stadion',      crest: [1, 1, 0] },
+  { name: 'Porto Atlântico', short: 'PAT', c1: '#003049', c2: '#fcbf49', rep: 5, stadium: 'Estádio do Mar',    crest: [2, 1, 1] },
+  { name: 'Vistula KS',      short: 'VIS', c1: '#9d0208', c2: '#e9ecef', rep: 3, stadium: 'Stadion Wiślany',   crest: [0, 0, 0] },
+  { name: 'Baltık Deniz SK', short: 'BLT', c1: '#005f73', c2: '#ee9b00', rep: 3, stadium: 'Liman Arena',       crest: [1, 2, 1] },
+  { name: 'Lombard Calcio',  short: 'LOM', c1: '#1b263b', c2: '#48cae4', rep: 4, stadium: 'Stadio del Naviglio', crest: [2, 3, 0] }
+];
+FM.FFIRST = ['Lukas', 'Mateo', 'Jonas', 'Hugo', 'Marco', 'Erik', 'Pedro', 'Luca', 'Adam', 'Noah', 'Felix', 'Diego', 'Nils', 'Rafael', 'Tomas', 'Viktor', 'Andrei', 'Milan', 'Oscar', 'Leon', 'Ivan', 'Bruno', 'Emil', 'Theo', 'Samuel', 'Kofi', 'Yann', 'Dario', 'Stefan', 'Mikel'];
+FM.FLAST = ['Weber', 'Costa', 'Lindqvist', 'Moreau', 'Rossi', 'Novak', 'Ferreira', 'Brandt', 'Kowalski', 'Dubois', 'Marino', 'Hansen', 'Petrov', 'Silva', 'Keller', 'Jansen', 'Horvat', 'Santos', 'Bianchi', 'Nyberg', 'Laurent', 'Pavlov', 'Mensah', 'Okafor', 'Vidal', 'Fischer', 'Lopes', 'Berg', 'Marek', 'Dalton'];
+FM.RIVALS = [[0, 1], [2, 6], [3, 5], [4, 9], [7, 11], [8, 10], [12, 14], [13, 15], [16, 17], [18, 22], [19, 23], [20, 21]];
+FM.INJ = [['Kas zorlanması', 1, 2, 30], ['Ayak bileği burkulması', 1, 3, 26], ['Kas yırtığı', 3, 6, 22], ['Bağ zedelenmesi', 5, 9, 14], ['Kırık', 8, 14, 8]];
+FM.STAFF = {
+  coach: ['Yardımcı antrenör', 'Antrenmanda oyuncu gelişimini hızlandırır.', 600000],
+  fitness: ['Kondisyoner', 'Oyuncular haftalar arasında daha hızlı dinlenir.', 500000],
+  scout: ['Scout ekibi', 'Her seviye haftada bir oyuncu daha izletir.', 400000],
+  physio: ['Fizyoterapist', 'Sakatlıkların süresini kısaltır.', 500000]
+};
+FM.PLAN_TR = ['Plan yok', 'Rakibin sol kanadına yüklen', 'Rakibin merkezine yüklen', 'Rakibin sağ kanadına yüklen'];
+FM.EURO_ROUNDS = ['Grup · 1. maç', 'Grup · 2. maç', 'Grup · 3. maç', 'Çeyrek final', 'Yarı final', 'Final'];
+FM.ACH.euro = ['Kıta fatihi', 'Kıta Kupası’nı kazan.'];
+FM.ACH.derby = ['Derbi kralı', 'Bir derbiyi kazan.'];
+FM.TXT.off = ['Ofsayt! {p} savunmanın arkasında yakalandı.', 'Yardımcı hakem bayrağı kaldırdı: {p} ofsaytta.'];
+FM.TXT.tackle = ['{p} araya girdi, topu kaptı.', '{p} temiz bir müdahaleyle topu aldı.'];
+FM.SOCIAL = {
+  win: ['Bu takım bu sene çok başka! {t} ❤', 'Maç boyu baskı, hak edilmiş galibiyet. Helal olsun.', '{s} bugün sahanın en iyisiydi, alkış.', 'Hoca ne dediyse sahada o oldu. Devam!'],
+  draw: ['Bir puan bir puandır ama bu maç alınırdı.', 'İkinci yarı düştük, hoca değişiklikte geç kaldı.', 'Kötünün iyisi. Haftaya telafi şart.'],
+  loss: ['Bu oyunla bir yere varamayız. Yönetim uyansın.', 'Savunma yine dağıldı, kim sorumlu?', 'Hocaya güveniyorum ama sabrım azalıyor.', 'Tribün üstüne düşeni yaptı, takım yapmadı.'],
+  headWin: ['{t} durdurulamıyor: {sc}', '{s} şov yaptı, {t} güldü', '{t} taraftarına bayram yaşattı'],
+  headDraw: ['{t} puanı paylaştı: {sc}', 'Kazanan çıkmadı: {sc}'],
+  headLoss: ['{t} için alarm: {sc}', '{t} dağıldı, taraftar tepkili', 'Kötü gece: {sc}'],
+  rumor: ['{c}, {p} için nabız yokluyor.', '{p} ile {c} arasında görüşme iddiası.', 'Menajeri doğruladı: {p} teklifleri değerlendiriyor.'],
+  names: [['Tribün Sesi', '@tribunsesi'], ['Kale Arkası', '@kalearkasi'], ['Forma Aşkı', '@formaaski'], ['Deplasman Yolcusu', '@deplasmanci'], ['Eski Açık', '@eskiacik'], ['Gece Maçı', '@gecemaci']],
+  papers: ['Spor Postası', 'Saha Gazetesi', 'Maç Günü']
+};

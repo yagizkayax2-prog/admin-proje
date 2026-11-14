@@ -15,6 +15,13 @@ Tarayıcıda çalışan, Türkçe bir futbol menajerlik oyunu. Kurulum gerektirm
 - Basın toplantıları, oyuncu görüşmeleri, yönetim güveni ve taraftar desteği, görevden alınma ve iş teklifleri
 - Üst gezinme çubuğu (geri/ileri, bölümler, arama, tarih, Devam et), alt sekmeler ve kayan haber bandı
 - Karar verilebilen gelen kutusu: teklifler, basın toplantıları, kulis bilgileri, soyunma odası, raporlar
+- Kıta Kupası: 4 grup, çeyrek final, yarı final, final; yabancı kulüpler
+- Rakibe özel maç planı (zayıf bölgeye yüklenme, adam adama markaj), ofsayt, top kapma, pas isabeti ve saha hâkimiyeti
+- Oyuncu istekleri (forma, zam, ayrılık), verilen sözlerin takibi, maç sonu röportajları
+- Teknik ekip, sakatlık türleri ve iğneyle oynatma, takım uyumu ve kaptanlık
+- U19 altyapı takımı, sponsor anlaşması seçimi, bilet fiyatı
+- Derbiler, sosyal akış, sezon ödülleri, istatistik merkezi (şut haritası, oyuncu karşılaştırma)
+- Maçta 4 kamera açısı ve gol tekrarında yakın çekim; kulüp sayfasında döndürülebilir 3D stadyum
 - Kulüp müzesi: kupalar, rekorlar, efsaneler, başarımlar
 - Otomatik kayıt (tarayıcının `localStorage` alanı) ve kaydı metin olarak dışa/içe aktarma
 

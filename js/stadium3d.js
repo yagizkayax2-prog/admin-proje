@@ -111,7 +111,7 @@
     }
     const up1 = home.name.split(' ')[0].toLocaleUpperCase('tr');
     buildTier(true, 7, 1.2, 25, 11, 'ÖLÜMÜNE ' + up1 + '!');
-    buildTier(false, 27.5, 14.5, 48, 33, 'BURASI ' + home.stadium.toLocaleUpperCase('tr'));
+    buildTier(false, 27.5, 14.5, 48, 33, o.banner || 'BURASI ' + home.stadium.toLocaleUpperCase('tr'));
     // katlar arası alın ve arka duvar
     function band(d0, h0, d1, h1, color, filter) {
       const pos = [];
@@ -213,8 +213,8 @@
     }
 
     /* ---- kamera yardımcıları ---- */
-    const v = new T3.Vector3();
-    let ref = 1;
+    const v = new T3.Vector3(), tp = new T3.Vector3(), tl = new T3.Vector3(), cp = new T3.Vector3(), cl = new T3.Vector3();
+    let ref = 1, first = true;
     const scr = (x, y, z) => { v.set(x, y, z).project(camera); return [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H]; };
     const proj = (x, y) => { const wxx = (x - .5) * 2 * A0, wz = (y - .5) * 2 * B0, a = scr(wxx, 0, wz), b = scr(wxx + 1, 0, wz); return { X: a[0], Y: a[1], s: Math.abs(b[0] - a[0]) / ref }; };
     let lastKey = '';
@@ -234,8 +234,16 @@
     /* a: { choreo, alpha, cheer:[ev,dep], disc, shake, shakeSide, cer (seremoni süresi ya da -1) } */
     function render(time, a) {
       const k = a.cer >= 0 ? 1 - clamp(a.cer / 3.6, 0, 1) : 0, e = k * k * (3 - 2 * k);
-      camera.position.set(camMain.x + Math.sin(time * .12) * 1.2 + e * 14, camMain.y + e * 34, camMain.z + e * 46);
-      camera.lookAt(look);
+      const bx = ((a.bx == null ? .5 : a.bx) - .5) * 2 * A0, bz = ((a.by == null ? .5 : a.by) - .5) * 2 * B0;
+      if (a.orbit != null) { tp.set(Math.sin(a.orbit) * 150, 78, Math.cos(a.orbit) * 150); tl.set(0, 4, 0); }
+      else if (a.zoom) { tp.set(bx * .55, 26, bz + 52); tl.set(bx, 1.5, bz); }
+      else if (a.cam === 1) { tp.set(0, 168, 46); tl.set(0, 0, -2); }
+      else if (a.cam === 2) { tp.set(-128, 38, 0); tl.set(0, 0, 0); }
+      else if (a.cam === 3) { tp.set(bx * .25, 22, 98); tl.set(bx * .35, 4, -4); }
+      else { tp.set(camMain.x + Math.sin(time * .12) * 1.2 + e * 14, camMain.y + e * 34, camMain.z + e * 46); tl.copy(look); }
+      const kk = first ? 1 : a.orbit != null ? 1 : .07; first = false;
+      cp.lerp(tp, kk); cl.lerp(tl, kk);
+      camera.position.copy(cp); camera.lookAt(cl);
       camera.updateMatrixWorld(); camera.updateProjectionMatrix();
       const p0 = scr(0, 0, B0), p1 = scr(1, 0, B0); ref = Math.abs(p1[0] - p0[0]) || 1;
       const ch = a.choreo || 0, al = a.alpha == null ? 1 : a.alpha, amp = Math.max(a.cheer[0], a.cheer[1] * .4);
